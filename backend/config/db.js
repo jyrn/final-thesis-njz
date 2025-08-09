@@ -15,8 +15,6 @@ const connectDB = async () => {
 
     // Connect to MongoDB with options for better performance and error handling
     const conn = await mongoose.connect(mongoURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       // These options help with connection stability
       maxPoolSize: 10, // Maximum number of connections in the pool
       serverSelectionTimeoutMS: 5000, // Timeout for server selection

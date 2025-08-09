@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
+const { initializeFirebase } = require('./config/firebase');
 
 // Load environment variables from .env file
 dotenv.config();
@@ -11,6 +12,9 @@ const app = express();
 
 // Connect to MongoDB
 connectDB();
+
+// Initialize Firebase Admin SDK
+initializeFirebase();
 
 // Middleware
 // Enable CORS for cross-origin requests
@@ -23,8 +27,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-// Authentication routes
-app.use('/api/auth', require('./routes/auth'));
+// Firebase Authentication routes
+app.use('/api/firebase-auth', require('./routes/firebaseAuth'));
 
 // Basic route for testing
 app.get('/', (req, res) => {
@@ -55,5 +59,5 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server is running on port ${PORT}`);
   console.log(`📱 API available at http://localhost:${PORT}`);
-  console.log(`🔐 Auth routes: http://localhost:${PORT}/api/auth`);
+  console.log(`🔥 Firebase Auth routes: http://localhost:${PORT}/api/firebase-auth`);
 }); 
