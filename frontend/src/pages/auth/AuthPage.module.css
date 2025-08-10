@@ -5,13 +5,13 @@
   justify-content: center;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   padding: 16px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   position: relative;
   overflow-x: hidden;
 }
 
 .container::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -49,7 +49,7 @@
 }
 
 .leftPanel::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -69,20 +69,24 @@
   justify-content: center;
   padding: 40px;
   z-index: 2;
+  text-align: center;
 }
 
 /* PESO Logo */
 .logoContainer {
-  position: absolute;
-  top: 40px;
-  left: 40px;
+  position: relative;
+  top: auto;
+  left: auto;
   z-index: 10;
   animation: fadeInDown 0.8s ease-out;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
 }
 
 .pesoLogo {
-  width: 80px;
-  height: 80px;
+  width: 200px; /* Increased from 100px */
+  height: 200px; /* Increased from 100px */
   object-fit: contain;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
   transition: transform 0.3s ease;
@@ -101,11 +105,12 @@
 
 .journeyText h2 {
   color: white;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
   margin: 0 0 12px 0;
   line-height: 1.2;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
 .journeyText p {
@@ -113,25 +118,7 @@
   font-size: 16px;
   margin: 0;
   line-height: 1.5;
-  max-width: 280px;
-}
-
-/* House Logo */
-.houseLogo {
-  color: white;
-  opacity: 0.8;
-  animation: fadeInUp 0.8s ease-out 0.4s both;
-  transition: transform 0.3s ease;
-}
-
-.houseLogo:hover {
-  transform: translateY(-5px);
-  opacity: 1;
-}
-
-.houseLogo svg {
-  width: 48px;
-  height: 48px;
+  transition: all 0.3s ease;
 }
 
 /* Decorative Elements */
@@ -170,24 +157,24 @@
 
 /* Right Panel - Auth Form */
 .rightPanel {
-  flex: 0 0 60%;
+  flex: 0 0 54%;
   background: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 60px 40px;
   position: relative;
 }
 
 .formContainer {
   width: 100%;
-  max-width: 420px;
+  max-width: 450px;
   animation: fadeInRight 0.8s ease-out 0.3s both;
 }
 
 .formHeader {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 40px;
 }
 
 .formTitle {
@@ -209,6 +196,7 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
+  transition: all 0.3s ease;
 }
 
 /* Input Groups */
@@ -216,6 +204,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  transition: all 0.2s ease;
 }
 
 .inputLabel {
@@ -259,6 +248,7 @@
   outline: none;
   border-color: #dc2626;
   box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
+  transform: translateY(-1px);
 }
 
 .input:focus + .inputIcon {
@@ -348,10 +338,13 @@
   margin-top: 8px;
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .primaryButton::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;
@@ -386,7 +379,7 @@
 }
 
 .socialSeparator::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 0;
@@ -516,6 +509,91 @@
   color: #6b7280;
 }
 
+.documentDescription {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 4px 0 8px 0;
+  line-height: 1.4;
+  font-style: italic;
+}
+
+/* Error and Success Messages */
+.errorMessage {
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideInDown 0.3s ease-out;
+}
+
+.successMessage {
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideInDown 0.3s ease-out;
+}
+
+.messageIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+/* Input validation states */
+.input.error {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.input.success {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.inputError {
+  color: #dc2626;
+  font-size: 12px;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  animation: slideInUp 0.2s ease-out;
+}
+
+.inputSuccess {
+  color: #10b981;
+  font-size: 12px;
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  animation: slideInUp 0.2s ease-out;
+}
+
+/* Loading states */
+.loadingSpinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-right: 8px;
+}
+
 /* Animations */
 @keyframes fadeInDown {
   from {
@@ -551,18 +629,63 @@
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 @keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive Design */
@@ -570,11 +693,11 @@
   .authCard {
     max-width: 1000px;
   }
-  
+
   .formTitle {
     font-size: 32px;
   }
-  
+
   .journeyText h2 {
     font-size: 28px;
   }
@@ -587,43 +710,37 @@
     flex-direction: column;
     max-width: 600px;
   }
-  
+
   .leftPanel {
     flex: 0 0 300px;
   }
-  
+
   .rightPanel {
     flex: 1;
-    padding: 32px 24px;
+    padding: 40px 24px;
   }
-  
+
   .logoContainer {
-    top: 20px;
-    left: 20px;
+    margin-bottom: 20px;
   }
-  
+
   .pesoLogo {
-    width: 70px;
-    height: 70px;
+    width: 110px; /* Increased from 90px */
+    height: 110px; /* Increased from 90px */
   }
-  
+
   .journeyText h2 {
     font-size: 24px;
   }
-  
+
   .journeyText p {
     font-size: 14px;
   }
-  
-  .houseLogo svg {
-    width: 40px;
-    height: 40px;
-  }
-  
+
   .formTitle {
     font-size: 28px;
   }
-  
+
   .formSubtitle {
     font-size: 14px;
   }
@@ -633,70 +750,68 @@
   .container {
     padding: 12px;
   }
-  
+
   .authCard {
     border-radius: 16px;
     min-height: 500px;
   }
-  
+
   .leftPanel {
     flex: 0 0 250px;
   }
-  
+
   .rightPanel {
-    padding: 24px 20px;
+    padding: 32px 20px;
   }
-  
+
   .formTitle {
     font-size: 24px;
   }
-  
+
   .formSubtitle {
     font-size: 13px;
   }
-  
+
   .journeyText h2 {
     font-size: 20px;
   }
-  
+
   .journeyText p {
     font-size: 13px;
     max-width: 240px;
   }
-  
-  .houseLogo svg {
-    width: 32px;
-    height: 32px;
-  }
-  
+
   .form {
     gap: 20px;
   }
-  
+
   .input {
     padding: 14px 14px 14px 44px;
     font-size: 14px;
   }
-  
+
   .primaryButton {
     padding: 14px 20px;
     font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  
+
   .googleButton {
     padding: 14px 20px;
     font-size: 14px;
   }
-  
+
   .decorativeCircle1,
   .decorativeCircle2,
   .decorativeCircle3 {
     display: none;
   }
-  
+
   .pesoLogo {
-    width: 60px;
-    height: 60px;
+    width: 100px; /* Increased from 80px */
+    height: 100px; /* Increased from 80px */
   }
 }
 
@@ -704,96 +819,94 @@
   .container {
     padding: 8px;
   }
-  
+
   .authCard {
     border-radius: 12px;
     min-height: 450px;
   }
-  
+
   .leftPanel {
     flex: 0 0 200px;
   }
-  
+
   .rightPanel {
-    padding: 20px 16px;
+    padding: 24px 16px;
   }
-  
+
   .formContainer {
     max-width: 100%;
   }
-  
+
   .formTitle {
     font-size: 20px;
   }
-  
+
   .formSubtitle {
     font-size: 12px;
   }
-  
+
   .journeyText h2 {
     font-size: 18px;
   }
-  
+
   .journeyText p {
     font-size: 12px;
     max-width: 200px;
   }
-  
-  .houseLogo svg {
-    width: 28px;
-    height: 28px;
-  }
-  
+
   .form {
     gap: 16px;
   }
-  
+
   .input {
     padding: 12px 12px 12px 40px;
     font-size: 13px;
   }
-  
+
   .inputIcon svg {
     width: 18px;
     height: 18px;
   }
-  
+
   .primaryButton {
     padding: 12px 16px;
     font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  
+
   .googleButton {
     padding: 12px 16px;
     font-size: 13px;
   }
-  
+
   .uploadArea {
     padding: 16px;
     min-height: 50px;
   }
-  
+
   .uploadIcon svg {
     width: 20px;
     height: 20px;
   }
-  
+
   .uploadMainText {
     font-size: 13px;
   }
-  
+
   .uploadHint {
     font-size: 11px;
   }
-  
+
   .logoContainer {
     top: 15px;
     left: 15px;
   }
-  
+
   .pesoLogo {
-    width: 50px;
-    height: 50px;
+    width: 90px; /* Increased from 70px */
+    height: 90px; /* Increased from 70px */
   }
 }
 
@@ -801,50 +914,84 @@
   .authCard {
     min-height: 400px;
   }
-  
+
   .leftPanel {
     flex: 0 0 180px;
   }
-  
+
   .rightPanel {
     padding: 16px 12px;
   }
-  
+
   .formTitle {
     font-size: 18px;
   }
-  
+
   .journeyText h2 {
     font-size: 16px;
   }
-  
+
   .journeyText p {
     font-size: 11px;
     max-width: 180px;
   }
-  
+
   .form {
     gap: 14px;
   }
-  
+
   .input {
     padding: 10px 10px 10px 36px;
     font-size: 12px;
   }
-  
+
   .inputIcon svg {
     width: 16px;
     height: 16px;
   }
-  
+
   .primaryButton,
   .googleButton {
     padding: 10px 14px;
     font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  
+
   .pesoLogo {
-    width: 45px;
-    height: 45px;
+    width: 80px; /* Increased from 45px */
+    height: 80px; /* Increased from 45px */
   }
+}
+
+/* Upload area improvements */
+.uploadArea {
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  transition: all 0.3s ease;
+  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 60px;
+}
+
+.uploadArea:hover {
+  border-color: #dc2626;
+  background: #fef2f2;
+  transform: translateY(-1px);
+}
+
+.uploadArea.success {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.uploadArea.error {
+  border-color: #dc2626;
+  background: #fef2f2;
 }
