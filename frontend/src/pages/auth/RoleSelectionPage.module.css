@@ -5,13 +5,13 @@
   justify-content: center;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
   padding: 16px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   position: relative;
   overflow-x: hidden;
 }
 
 .container::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -49,7 +49,7 @@
 }
 
 .leftPanel::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -73,16 +73,19 @@
 
 /* PESO Logo */
 .logoContainer {
-  position: absolute;
-  top: 40px;
-  left: 40px;
+  position: relative;
+  top: auto;
+  left: auto;
   z-index: 10;
   animation: fadeInDown 0.8s ease-out;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: center;
 }
 
 .pesoLogo {
-  width: 80px;
-  height: 80px;
+  width: 200px; /* Increased from 100px */
+  height: 200px; /* Increased from 100px */
   object-fit: contain;
   filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.15));
   transition: transform 0.3s ease;
@@ -101,11 +104,12 @@
 
 .welcomeText h2 {
   color: white;
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
   margin: 0 0 12px 0;
   line-height: 1.2;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
 .welcomeText p {
@@ -114,6 +118,7 @@
   margin: 0;
   line-height: 1.5;
   max-width: 280px;
+  transition: all 0.3s ease;
 }
 
 /* Decorative Elements */
@@ -152,7 +157,7 @@
 
 /* Right Panel - Role Selection */
 .rightPanel {
-  flex: 0 0 60%;
+  flex: 0 0 54%;
   background: white;
   display: flex;
   align-items: center;
@@ -195,6 +200,7 @@
   margin-bottom: 40px;
 }
 
+/* Role button transitions */
 .roleButton {
   width: 100%;
   padding: 24px;
@@ -212,7 +218,7 @@
 }
 
 .roleButton::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;
@@ -220,10 +226,6 @@
   height: 100%;
   background: linear-gradient(90deg, transparent, rgba(220, 38, 38, 0.05), transparent);
   transition: left 0.5s;
-}
-
-.roleButton:hover::before {
-  left: 100%;
 }
 
 .roleButton:hover {
@@ -343,8 +345,13 @@
 }
 
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
 /* Responsive Design */
@@ -352,11 +359,11 @@
   .authCard {
     max-width: 1000px;
   }
-  
+
   .formTitle {
     font-size: 32px;
   }
-  
+
   .welcomeText h2 {
     font-size: 28px;
   }
@@ -369,55 +376,55 @@
     flex-direction: column;
     max-width: 600px;
   }
-  
+
   .leftPanel {
     flex: 0 0 300px;
   }
-  
+
   .rightPanel {
     flex: 1;
     padding: 32px 24px;
   }
-  
+
   .logoContainer {
     top: 20px;
     left: 20px;
   }
-  
+
   .pesoLogo {
-    width: 70px;
-    height: 70px;
+    width: 110px; /* Increased from 90px */
+    height: 110px; /* Increased from 90px */
   }
-  
+
   .welcomeText h2 {
     font-size: 24px;
   }
-  
+
   .welcomeText p {
     font-size: 14px;
   }
-  
+
   .formTitle {
     font-size: 28px;
   }
-  
+
   .formSubtitle {
     font-size: 14px;
   }
-  
+
   .roleButtons {
     gap: 16px;
   }
-  
+
   .roleButton {
     padding: 20px;
   }
-  
+
   .iconContainer {
     width: 50px;
     height: 50px;
   }
-  
+
   .icon {
     width: 24px;
     height: 24px;
@@ -428,67 +435,67 @@
   .container {
     padding: 12px;
   }
-  
+
   .authCard {
     border-radius: 16px;
     min-height: 500px;
   }
-  
+
   .leftPanel {
     flex: 0 0 250px;
   }
-  
+
   .rightPanel {
     padding: 24px 20px;
   }
-  
+
   .formTitle {
     font-size: 24px;
   }
-  
+
   .formSubtitle {
     font-size: 13px;
   }
-  
+
   .welcomeText h2 {
     font-size: 20px;
   }
-  
+
   .welcomeText p {
     font-size: 13px;
     max-width: 240px;
   }
-  
+
   .decorativeCircle1,
   .decorativeCircle2,
   .decorativeCircle3 {
     display: none;
   }
-  
+
   .pesoLogo {
-    width: 60px;
-    height: 60px;
+    width: 100px; /* Increased from 80px */
+    height: 100px; /* Increased from 80px */
   }
-  
+
   .roleButton {
     padding: 16px;
     gap: 16px;
   }
-  
+
   .iconContainer {
     width: 45px;
     height: 45px;
   }
-  
+
   .icon {
     width: 20px;
     height: 20px;
   }
-  
+
   .buttonText h3 {
     font-size: 18px;
   }
-  
+
   .buttonText p {
     font-size: 13px;
   }
@@ -498,81 +505,81 @@
   .container {
     padding: 8px;
   }
-  
+
   .authCard {
     border-radius: 12px;
     min-height: 450px;
   }
-  
+
   .leftPanel {
     flex: 0 0 200px;
   }
-  
+
   .rightPanel {
     padding: 20px 16px;
   }
-  
+
   .formContainer {
     max-width: 100%;
   }
-  
+
   .formTitle {
     font-size: 20px;
   }
-  
+
   .formSubtitle {
     font-size: 12px;
   }
-  
+
   .welcomeText h2 {
     font-size: 18px;
   }
-  
+
   .welcomeText p {
     font-size: 12px;
     max-width: 200px;
   }
-  
+
   .roleButtons {
     gap: 12px;
   }
-  
+
   .roleButton {
     padding: 14px;
     gap: 12px;
   }
-  
+
   .iconContainer {
     width: 40px;
     height: 40px;
   }
-  
+
   .icon {
     width: 18px;
     height: 18px;
   }
-  
+
   .buttonText h3 {
     font-size: 16px;
   }
-  
+
   .buttonText p {
     font-size: 12px;
   }
-  
+
   .buttonArrow svg {
     width: 20px;
     height: 20px;
   }
-  
+
   .logoContainer {
     top: 15px;
     left: 15px;
   }
-  
+
   .pesoLogo {
-    width: 50px;
-    height: 50px;
+    width: 90px; /* Increased from 70px */
+    height: 90px; /* Increased from 70px */
   }
 }
 
@@ -580,53 +587,53 @@
   .authCard {
     min-height: 400px;
   }
-  
+
   .leftPanel {
     flex: 0 0 180px;
   }
-  
+
   .rightPanel {
     padding: 16px 12px;
   }
-  
+
   .formTitle {
     font-size: 18px;
   }
-  
+
   .welcomeText h2 {
     font-size: 16px;
   }
-  
+
   .welcomeText p {
     font-size: 11px;
     max-width: 180px;
   }
-  
+
   .roleButton {
     padding: 12px;
     gap: 10px;
   }
-  
+
   .iconContainer {
     width: 35px;
     height: 35px;
   }
-  
+
   .icon {
     width: 16px;
     height: 16px;
   }
-  
+
   .buttonText h3 {
     font-size: 14px;
   }
-  
+
   .buttonText p {
     font-size: 11px;
   }
-  
+
   .pesoLogo {
-    width: 45px;
-    height: 45px;
+    width: 80px; /* Increased from 45px */
+    height: 80px; /* Increased from 45px */
   }
 }
