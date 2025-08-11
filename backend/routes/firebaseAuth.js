@@ -102,6 +102,92 @@ router.post('/verify', async (req, res) => {
 });
 
 /**
+ * @route   POST /api/firebase-auth/create-profile
+ * @desc    Create user profile in MongoDB after Firebase registration
+ * @access  Private (requires Firebase authentication)
+ */
+router.post('/create-profile', firebaseAuth, async (req, res) => {
+  try {
+    const { fullName, role } = req.body;
+
+    if (!fullName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Full name is required'
+      });
+    }
+
+    // Check if user already exists in MongoDB
+    let user = await User.findOne({ email: req.firebaseUser.email });
+    
+    if (user) {
+      return res.status(200).json({
+        success: true,
+        message: 'User profile already exists',
+        data: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          firebaseUid: user.firebaseUid
+        }
+      });
+    }
+
+    // Create new user in MongoDB
+    user = new User({
+      name: fullName,
+      email: req.firebaseUser.email,
+      role: role || 'job_seeker',
+      firebaseUid: req.firebaseUser.uid
+    });
+    
+    await user.save();
+
+    // Create role-specific profile
+    let profile = null;
+    if (user.role === 'job_seeker') {
+      profile = new JobSeeker({
+        userId: user._id,
+        skills: [],
+        experience: [],
+        education: []
+      });
+      await profile.save();
+    } else if (user.role === 'employer') {
+      profile = new Employer({
+        userId: user._id,
+        companyName: '',
+        companyDescription: '',
+        industry: '',
+        companySize: ''
+      });
+      await profile.save();
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'User profile created successfully',
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        firebaseUid: user.firebaseUid,
+        profile: profile
+      }
+    });
+
+  } catch (error) {
+    console.error('Create profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error during profile creation'
+    });
+  }
+});
+
+/**
  * @route   GET /api/firebase-auth/me
  * @desc    Get current user profile (requires Firebase authentication)
  * @access  Private
