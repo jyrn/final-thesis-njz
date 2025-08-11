@@ -88,20 +88,24 @@ const RegisterPage: React.FC = () => {
       // 1. Create Firebase user account
       const userCredential = await signUp(formData.email, formData.password)
   
-      // 2. Get Firebase ID token
-      const idToken = await userCredential.user.getIdToken()
+      // 2. Wait for Firebase auth state to propagate
+      await new Promise(resolve => setTimeout(resolve, 1000))
   
-      // 3. Call backend API to verify token and create MongoDB user
-      const response = await apiService.verifyToken()
-      if (!response.success) {
-        throw new Error(response.message || "Failed to create user in database")
+      // 3. Create MongoDB user profile
+      const selectedRole = localStorage.getItem('selectedRole') || 'job_seeker'
+      const profileResponse = await apiService.createUserProfile({
+        fullName: formData.fullName,
+        role: selectedRole
+      })
+      
+      if (!profileResponse.success) {
+        throw new Error(profileResponse.error || "Failed to create user profile")
       }
   
       // 4. Upload resume
       await handleFileUpload()
   
       // 5. Navigate to dashboard
-      const selectedRole = localStorage.getItem("selectedRole") || "job_seeker"
       navigate(`/${selectedRole}/dashboard`)
     } catch (error: any) {
       console.error("Registration error:", error)

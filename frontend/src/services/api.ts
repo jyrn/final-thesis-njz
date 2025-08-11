@@ -79,6 +79,13 @@ class ApiService {
     });
   }
 
+  async createUserProfile(userData: { fullName: string, role: string }): Promise<ApiResponse> {
+    return this.makeRequest('/firebase-auth/create-profile', {
+      method: 'POST',
+      body: JSON.stringify(userData)
+    });
+  }
+
   // Job-related API calls
   async getJobs(): Promise<ApiResponse> {
     return this.makeRequest('/jobs');
