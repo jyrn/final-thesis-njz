@@ -3,6 +3,7 @@
 import type React from "react"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
+import { useAuth } from "../../contexts/AuthContext"
 import styles from "./AuthPage.module.css"
 
 interface DocumentUpload {
@@ -28,12 +29,11 @@ interface FormErrors {
   general?: string
 }
 
-// Google OAuth configuration
-const GOOGLE_CLIENT_ID = "your-google-client-id.apps.googleusercontent.com" // Replace with your actual client ID
-const GOOGLE_REDIRECT_URI = window.location.origin + "/auth/google/callback"
+// Firebase authentication will handle OAuth configuration
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate()
+  const { currentUser, signUp, signIn, signInWithGoogle, logout } = useAuth()
   const [isLogin, setIsLogin] = useState(true)
   const [registrationStep, setRegistrationStep] = useState(1) // 1: Basic Info, 2: Document Verification
   const [selectedRole, setSelectedRole] = useState<string>("")
@@ -64,164 +64,57 @@ const AuthPage: React.FC = () => {
     doleNoPendingCase: { file: null, uploaded: false },
   })
 
+  // Check if user is already authenticated
+  useEffect(() => {
+    if (currentUser) {
+      // User is already logged in, redirect to dashboard
+      const storedRole = localStorage.getItem('selectedRole') || 'jobseeker'
+      navigate(`/${storedRole}/dashboard`)
+    }
+  }, [currentUser, navigate])
+
   useEffect(() => {
     const role = localStorage.getItem("selectedRole") || "jobseeker"
     setSelectedRole(role)
-
-    // Load Google OAuth script
-    loadGoogleOAuthScript()
-
-    // Handle Google OAuth callback if present
-    handleGoogleCallback()
   }, [])
 
-  // Load Google OAuth script
-  const loadGoogleOAuthScript = () => {
-    if (document.getElementById("google-oauth-script")) return
-
-    const script = document.createElement("script")
-    script.id = "google-oauth-script"
-    script.src = "https://accounts.google.com/gsi/client"
-    script.async = true
-    script.defer = true
-    script.onload = initializeGoogleOAuth
-    document.head.appendChild(script)
-  }
-
-  // Initialize Google OAuth
-  const initializeGoogleOAuth = () => {
-    if (window.google) {
-      window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleResponse,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      })
-    }
-  }
-
-  // Handle Google OAuth callback from URL
-  const handleGoogleCallback = () => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const code = urlParams.get("code")
-    const state = urlParams.get("state")
-
-    if (code && state) {
-      // Handle OAuth callback
-      exchangeCodeForToken(code, state)
-    }
-  }
-
-  // Exchange authorization code for access token
-  const exchangeCodeForToken = async (code: string, state: string) => {
-    setIsUploading(true)
-    try {
-      // In a real implementation, this would be done on your backend
-      const response = await fetch("https://oauth2.googleapis.com/token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          client_id: GOOGLE_CLIENT_ID,
-          client_secret: "your-client-secret", // This should be on backend
-          code: code,
-          grant_type: "authorization_code",
-          redirect_uri: GOOGLE_REDIRECT_URI,
-        }),
-      })
-
-      const tokenData = await response.json()
-
-      if (tokenData.access_token) {
-        // Get user info
-        const userResponse = await fetch(
-          `https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokenData.access_token}`,
-        )
-        const userData = await userResponse.json()
-
-        await handleGoogleAuthSuccess(userData)
-      }
-    } catch (error) {
-      console.error("Google OAuth error:", error)
-      setErrors((prev) => ({ ...prev, general: "Google authentication failed. Please try again." }))
-    } finally {
-      setIsUploading(false)
-      // Clean up URL
-      window.history.replaceState({}, document.title, window.location.pathname)
-    }
-  }
-
-  // Handle Google OAuth response (for popup flow)
-  const handleGoogleResponse = async (response: any) => {
-    setIsUploading(true)
-    try {
-      // Decode the JWT token to get user info
-      const userInfo = parseJwt(response.credential)
-      await handleGoogleAuthSuccess(userInfo)
-    } catch (error) {
-      console.error("Google sign-in error:", error)
-      setErrors((prev) => ({ ...prev, general: "Google authentication failed. Please try again." }))
-    } finally {
-      setIsUploading(false)
-    }
-  }
-
-  // Parse JWT token
-  const parseJwt = (token: string) => {
-    try {
-      const base64Url = token.split(".")[1]
-      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/")
-      const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split("")
-          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-          .join(""),
-      )
-      return JSON.parse(jsonPayload)
-    } catch (error) {
-      throw new Error("Invalid token")
-    }
-  }
-
   // Handle successful Google authentication
-  const handleGoogleAuthSuccess = async (userInfo: any) => {
+  const handleGoogleAuthSuccess = async (user: any) => {
     try {
-      // Store user information
+      // Store user information in localStorage for compatibility with existing dashboard logic
       const userData = {
-        id: userInfo.sub || userInfo.id,
-        email: userInfo.email,
-        name: userInfo.name,
-        picture: userInfo.picture,
-        verified_email: userInfo.email_verified || userInfo.verified_email,
+        id: user.uid,
+        email: user.email,
+        name: user.displayName || formData.fullName || formData.companyName,
+        picture: user.photoURL,
+        verified_email: user.emailVerified,
         authProvider: "google",
         loginTime: new Date().toISOString(),
       }
 
-      // Store in localStorage (in production, use secure storage)
       localStorage.setItem("user", JSON.stringify(userData))
       localStorage.setItem("isAuthenticated", "true")
 
       // Auto-fill form data if in registration mode
-      if (!isLogin) {
+      if (!isLogin && user.displayName) {
         setFormData((prev) => ({
           ...prev,
-          email: userInfo.email,
-          fullName: userInfo.name,
+          email: user.email || "",
+          fullName: user.displayName || "",
         }))
       }
 
-      setSuccessMessage(`Welcome ${userInfo.name}! Google authentication successful.`)
+      setSuccessMessage(`Welcome ${user.displayName || user.email}! Google authentication successful.`)
 
       // For job seekers in registration mode, still need resume upload
       if (!isLogin && selectedRole === "jobseeker") {
-        setSuccessMessage(`Welcome ${userInfo.name}! Please upload your resume to complete registration.`)
+        setSuccessMessage(`Welcome ${user.displayName || user.email}! Please upload your resume to complete registration.`)
         return
       }
 
       // For employers in registration mode, still need company info
       if (!isLogin && selectedRole === "employer") {
-        setSuccessMessage(`Welcome ${userInfo.name}! Please complete your company information.`)
+        setSuccessMessage(`Welcome ${user.displayName || user.email}! Please complete your company information.`)
         return
       }
 
@@ -249,6 +142,13 @@ const AuthPage: React.FC = () => {
       return () => clearTimeout(timer)
     }
   }, [errors.general])
+
+  // Store selected role in localStorage for navigation
+  useEffect(() => {
+    if (selectedRole) {
+      localStorage.setItem('selectedRole', selectedRole)
+    }
+  }, [selectedRole])
 
   const validateEmail = (email: string): string | undefined => {
     if (!email) return "Email is required"
@@ -495,21 +395,53 @@ const AuthPage: React.FC = () => {
     }
   }
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!validateForm()) return
 
     setIsUploading(true)
 
-    // Simulate login process
-    setTimeout(() => {
-      setIsUploading(false)
+    try {
+      const userCredential = await signIn(formData.email, formData.password)
+      const user = userCredential.user
+
+      // Store user information for compatibility with existing dashboard logic
+      const userData = {
+        id: user.uid,
+        email: user.email,
+        name: user.displayName || formData.email,
+        picture: user.photoURL,
+        verified_email: user.emailVerified,
+        authProvider: "email",
+        loginTime: new Date().toISOString(),
+      }
+
+      localStorage.setItem("user", JSON.stringify(userData))
+      localStorage.setItem("isAuthenticated", "true")
+
       setSuccessMessage("Login successful! Redirecting...")
       setTimeout(() => {
         navigate(`/${selectedRole}/dashboard`)
       }, 1000)
-    }, 1500)
+    } catch (error: any) {
+      console.error("Login error:", error)
+      let errorMessage = "Login failed. Please try again."
+      
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = "No account found with this email address."
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = "Incorrect password. Please try again."
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Please enter a valid email address."
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = "Too many failed attempts. Please try again later."
+      }
+      
+      setErrors((prev) => ({ ...prev, general: errorMessage }))
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   const handleBasicRegistration = async (e: React.FormEvent) => {
@@ -522,9 +454,26 @@ const AuthPage: React.FC = () => {
       setRegistrationStep(2)
       setSuccessMessage("Basic information saved! Please upload required documents.")
     } else {
-      // For job seekers, prepare resume for processing and complete registration
+      // For job seekers, create Firebase account and prepare resume for processing
       setIsUploading(true)
       try {
+        const userCredential = await signUp(formData.email, formData.password)
+        const user = userCredential.user
+
+        // Store user information for compatibility with existing dashboard logic
+        const userData = {
+          id: user.uid,
+          email: user.email,
+          name: formData.fullName,
+          picture: user.photoURL,
+          verified_email: user.emailVerified,
+          authProvider: "email",
+          loginTime: new Date().toISOString(),
+        }
+
+        localStorage.setItem("user", JSON.stringify(userData))
+        localStorage.setItem("isAuthenticated", "true")
+
         await handleFileUpload()
         setTimeout(() => {
           setSuccessMessage("Account created successfully! Your resume will be processed in the dashboard.")
@@ -532,8 +481,19 @@ const AuthPage: React.FC = () => {
             navigate(`/${selectedRole}/dashboard`)
           }, 1000)
         }, 1000)
-      } catch (error) {
-        setErrors((prev) => ({ ...prev, general: "Registration failed. Please try again." }))
+      } catch (error: any) {
+        console.error("Registration error:", error)
+        let errorMessage = "Registration failed. Please try again."
+        
+        if (error.code === 'auth/email-already-in-use') {
+          errorMessage = "An account with this email already exists. Please try logging in instead."
+        } else if (error.code === 'auth/weak-password') {
+          errorMessage = "Password is too weak. Please choose a stronger password."
+        } else if (error.code === 'auth/invalid-email') {
+          errorMessage = "Please enter a valid email address."
+        }
+        
+        setErrors((prev) => ({ ...prev, general: errorMessage }))
       } finally {
         setIsUploading(false)
       }
@@ -553,38 +513,70 @@ const AuthPage: React.FC = () => {
 
     setIsUploading(true)
     try {
+      // Create Firebase account for employer
+      const userCredential = await signUp(formData.email, formData.password)
+      const user = userCredential.user
+
+      // Store user information for compatibility with existing dashboard logic
+      const userData = {
+        id: user.uid,
+        email: user.email,
+        name: formData.companyName,
+        picture: user.photoURL,
+        verified_email: user.emailVerified,
+        authProvider: "email",
+        loginTime: new Date().toISOString(),
+      }
+
+      localStorage.setItem("user", JSON.stringify(userData))
+      localStorage.setItem("isAuthenticated", "true")
+
       // Simulate document upload and verification
       console.log("Uploading employer documents...")
       await new Promise((resolve) => setTimeout(resolve, 3000))
       console.log("Documents uploaded successfully")
-      setSuccessMessage("Documents uploaded successfully! Your account is pending verification.")
+      setSuccessMessage("Account created and documents uploaded successfully! Your account is pending verification.")
       setTimeout(() => {
         navigate(`/${selectedRole}/dashboard`)
       }, 2000)
-    } catch (error) {
-      console.error("Document upload failed:", error)
-      setErrors((prev) => ({ ...prev, general: "Failed to upload documents. Please try again." }))
+    } catch (error: any) {
+      console.error("Employer registration failed:", error)
+      let errorMessage = "Registration failed. Please try again."
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "An account with this email already exists. Please try logging in instead."
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "Password is too weak. Please choose a stronger password."
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Please enter a valid email address."
+      }
+      
+      setErrors((prev) => ({ ...prev, general: errorMessage }))
     } finally {
       setIsUploading(false)
     }
   }
 
-  // Updated Google sign-in handlers
-  const handleGoogleSignIn = () => {
-    if (window.google) {
-      // Use popup flow
-      window.google.accounts.id.prompt()
-    } else {
-      // Fallback to redirect flow
-      const authUrl =
-        `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${GOOGLE_CLIENT_ID}&` +
-        `redirect_uri=${encodeURIComponent(GOOGLE_REDIRECT_URI)}&` +
-        `response_type=code&` +
-        `scope=openid email profile&` +
-        `state=${selectedRole}_${isLogin ? "login" : "register"}`
-
-      window.location.href = authUrl
+  // Firebase Google sign-in handler
+  const handleGoogleSignIn = async () => {
+    setIsUploading(true)
+    try {
+      const userCredential = await signInWithGoogle()
+      const user = userCredential.user
+      await handleGoogleAuthSuccess(user)
+    } catch (error: any) {
+      console.error("Google sign-in error:", error)
+      let errorMessage = "Google authentication failed. Please try again."
+      
+      if (error.code === 'auth/popup-closed-by-user') {
+        errorMessage = "Sign-in was cancelled. Please try again."
+      } else if (error.code === 'auth/popup-blocked') {
+        errorMessage = "Popup was blocked. Please allow popups and try again."
+      }
+      
+      setErrors((prev) => ({ ...prev, general: errorMessage }))
+    } finally {
+      setIsUploading(false)
     }
   }
 
