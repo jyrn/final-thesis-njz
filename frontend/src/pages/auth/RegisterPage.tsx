@@ -72,35 +72,49 @@ const RegisterPage: React.FC = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-    
+  
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match.')
+      setError("Passwords do not match.")
       return
     }
-
+  
     if (!resumeFile) {
-      setError('Please upload your resume.')
+      setError("Please upload your resume.")
       return
     }
-
+  
     setIsUploading(true)
     try {
-      // Create Firebase user account
-      await signUp(formData.email, formData.password)
-      
-      // Upload resume
-      await handleFileUpload()
-      
-      // Get selected role and navigate
+      // 1. Create Firebase user account
+      const userCredential = await signUp(formData.email, formData.password)
+  
+      // 2. Wait for Firebase auth state to propagate
+      await new Promise(resolve => setTimeout(resolve, 1000))
+  
+      // 3. Create MongoDB user profile
       const selectedRole = localStorage.getItem('selectedRole') || 'job_seeker'
+      const profileResponse = await apiService.createUserProfile({
+        fullName: formData.fullName,
+        role: selectedRole
+      })
+      
+      if (!profileResponse.success) {
+        throw new Error(profileResponse.error || "Failed to create user profile")
+      }
+  
+      // 4. Upload resume
+      await handleFileUpload()
+  
+      // 5. Navigate to dashboard
       navigate(`/${selectedRole}/dashboard`)
     } catch (error: any) {
-      console.error('Registration error:', error)
-      setError(error.message || 'Registration failed. Please try again.')
+      console.error("Registration error:", error)
+      setError(error.message || "Registration failed. Please try again.")
     } finally {
       setIsUploading(false)
     }
   }
+  
 
   const handleGoogleSignUp = async () => {
     setIsUploading(true)
