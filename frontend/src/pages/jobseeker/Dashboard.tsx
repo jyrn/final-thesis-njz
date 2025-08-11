@@ -385,15 +385,15 @@ const Dashboard: React.FC = () => {
     }
   }
 
-  const handleSaveJob = (jobId: number) => {
-    const updatedJob = jobService.toggleSaveJob(jobId)
+  const handleSaveJob = async (jobId: number) => {
+    const updatedJob = await jobService.toggleSaveJob(jobId)
     if (updatedJob) {
       setJobs((prevJobs) => prevJobs.map((job) => (job.id === jobId ? updatedJob : job)))
     }
   }
 
-  const handleApplyJob = (jobId: number) => {
-    const updatedJob = jobService.applyToJob(jobId)
+  const handleApplyJob = async (jobId: number) => {
+    const updatedJob = await jobService.applyToJob(jobId)
     if (updatedJob) {
       setJobs((prevJobs) => prevJobs.map((job) => (job.id === jobId ? updatedJob : job)))
 
