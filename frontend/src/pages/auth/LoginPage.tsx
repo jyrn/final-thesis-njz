@@ -11,7 +11,7 @@ const GOOGLE_CLIENT_ID = "your-google-client-id.apps.googleusercontent.com" // R
 const LoginPage: React.FC = () => {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
-    email: "brandonelouis@gmail.com",
+    email: "",
     password: "",
     rememberMe: false,
   })

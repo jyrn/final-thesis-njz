@@ -2,11 +2,82 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import styles from "./Dashboard.module.css"
-import { ResumeParser, type ParsedResume } from "../../utils/resumeParser"
-import { JobService, type Job } from "../../services/jobService"
+import { parseResume } from "../../utils/resumeParser"
 
-// SVG Icon Components (keeping existing icons)
+// Types
+interface ParsedResume {
+  personalInfo: {
+    name: string
+    email: string
+    phone: string
+    address: string
+  }
+  summary: string
+  experience: Array<{
+    company: string
+    position: string
+    duration: string
+    description: string
+  }>
+  education: Array<{
+    institution: string
+    degree: string
+    year: string
+  }>
+  skills: string[]
+  certifications: string[]
+}
+
+interface Job {
+  id: string
+  title: string
+  company: string
+  location: string
+  type: string
+  salary: string
+  description: string
+  requirements: string[]
+  postedDate: string
+  matchPercentage?: number
+  saved?: boolean
+  applied?: boolean
+}
+
+interface ResumeUploadData {
+  fileName: string
+  fileSize: number
+  uploadDate: string
+  needsProcessing?: boolean
+  processed?: boolean
+}
+
+// Icon Components
+const DashboardIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" />
+  </svg>
+)
+
+const JobsIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M20 6h-2V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z" />
+  </svg>
+)
+
+const ApplicationsIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+  </svg>
+)
+
+const ProfileIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z" />
+  </svg>
+)
+
 const SearchIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
     <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
@@ -16,12 +87,6 @@ const SearchIcon = () => (
 const FilterIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
     <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z" />
-  </svg>
-)
-
-const BellIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
   </svg>
 )
 
@@ -38,926 +103,583 @@ const BookmarkIcon = ({ filled = false }) => (
   </svg>
 )
 
-const MapPinIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+const LocationIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
     <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
   </svg>
 )
 
-const DollarSignIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+const SalaryIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
     <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z" />
   </svg>
 )
 
 const ClockIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
     <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" />
     <path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
   </svg>
 )
 
-const BuildingIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z" />
+const NotificationIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
   </svg>
 )
 
-const StarIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-5.46 4.73L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+const MenuIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z" />
   </svg>
 )
 
-const XIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+const CloseIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
     <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" />
   </svg>
 )
 
-const UploadIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z" />
-  </svg>
-)
-
-const FileTextIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
-  </svg>
-)
-
-interface Application {
-  id: number
-  jobTitle: string
-  company: string
-  appliedDate: string
-  status: "pending" | "accepted" | "rejected"
-}
-
-interface Notification {
-  id: number
-  type: "application" | "job_posted" | "status_change"
-  title: string
-  message: string
-  timestamp: string
-  read: boolean
-}
-
-interface OCRProgress {
-  status: string
-  progress: number
-  message: string
-}
-
 const Dashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<"home" | "notifications" | "applications" | "saved">("home")
+  const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState("overview")
+  const [resumeData, setResumeData] = useState<ParsedResume | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const [editableResumeData, setEditableResumeData] = useState<ParsedResume | null>(null)
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [applications, setApplications] = useState<any[]>([])
+  const [resumeUploadInfo, setResumeUploadInfo] = useState<ResumeUploadData | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [showFilters, setShowFilters] = useState(false)
-  const [jobs, setJobs] = useState<Job[]>([])
-  const [applications, setApplications] = useState<Application[]>([])
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [loading, setLoading] = useState(true)
-  const [userResume, setUserResume] = useState<ParsedResume | null>(null)
-  const [resumeProcessing, setResumeProcessing] = useState(false)
-  const [showResumeUpload, setShowResumeUpload] = useState(false)
-  const [ocrProgress, setOcrProgress] = useState<OCRProgress | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [notifications] = useState(3) // Mock notification count
 
-  // Add these state variables after the existing ones
-  const [showResumeVerification, setShowResumeVerification] = useState(false)
-  const [tempParsedResume, setTempParsedResume] = useState<ParsedResume | null>(null)
-  const [editableResumeData, setEditableResumeData] = useState<ParsedResume | null>(null)
-
-  // Filter states
-  const [filters, setFilters] = useState({
-    jobType: "",
-    positionLevel: "",
-    workplaceSetup: "",
-    location: "",
-    salaryRange: { min: "", max: "" },
-  })
-
-  const jobService = JobService.getInstance()
-  const resumeParser = new ResumeParser()
-
-  // Check if user has uploaded resume on component mount
   useEffect(() => {
-    const checkExistingResume = async () => {
-      // First check for pending resume upload from signup
-      const pendingUpload = localStorage.getItem("pendingResumeUpload")
-      const pendingFile = localStorage.getItem("pendingResumeFile")
-
-      if (pendingUpload && pendingFile) {
-        try {
-          const uploadData = JSON.parse(pendingUpload)
-          if (uploadData.needsProcessing) {
-            console.log("Found pending resume from signup, processing now...")
-
-            // Convert base64 back to file and process it
-            const response = await fetch(pendingFile)
-            const blob = await response.blob()
-            const file = new File([blob], uploadData.fileName, { type: "application/pdf" })
-
-            // Clean up pending data
-            localStorage.removeItem("pendingResumeUpload")
-            localStorage.removeItem("pendingResumeFile")
-
-            // Process the resume with OCR
-            handleResumeUpload(file)
-            return
-          }
-        } catch (error) {
-          console.error("Error processing pending resume:", error)
-          localStorage.removeItem("pendingResumeUpload")
-          localStorage.removeItem("pendingResumeFile")
-        }
-      }
-
-      // Check if resume was uploaded during signup (legacy support)
-      const uploadedResume = localStorage.getItem("uploadedResume")
-      if (uploadedResume) {
-        try {
-          const resumeData = JSON.parse(uploadedResume)
-          console.log("Found legacy resume data, creating mock parsed resume...")
-
-          // Create a mock parsed resume for users who uploaded during signup (legacy)
-          const mockParsedResume: ParsedResume = {
-            personalInfo: {
-              name: "User",
-              email: "user@example.com",
-              phone: "",
-              location: "Philippines",
-            },
-            skills: ["JavaScript", "React", "HTML/CSS", "Node.js"],
-            experience: [
-              {
-                title: "Software Developer",
-                company: "Previous Company",
-                duration: "2022 - Present",
-                description: "Developed web applications and collaborated with cross-functional teams.",
-              },
-            ],
-            education: [
-              {
-                degree: "Bachelor's Degree",
-                institution: "University",
-                year: "2020",
-              },
-            ],
-            summary: "Experienced professional with strong technical skills and proven track record.",
-            experienceLevel: "Mid-level",
-            preferredJobTypes: ["Full-time"],
-            ocrMetadata: {
-              confidence: 85,
-              quality: "good",
-              wordCount: 250,
-              processingTime: 2000,
-            },
-          }
-          setUserResume(mockParsedResume)
-          jobService.setUserResume(mockParsedResume)
-
-          // Clean up legacy data
-          localStorage.removeItem("uploadedResume")
-          return
-        } catch (error) {
-          console.error("Error parsing uploaded resume:", error)
-          localStorage.removeItem("uploadedResume")
-        }
-      }
-
-      // Then check for processed resume
-      const savedResume = localStorage.getItem("userResume")
-      if (savedResume) {
-        try {
-          const parsedResume = JSON.parse(savedResume)
-          console.log("Found saved parsed resume:", parsedResume)
-          setUserResume(parsedResume)
-          jobService.setUserResume(parsedResume)
-        } catch (error) {
-          console.error("Error parsing saved resume:", error)
-          localStorage.removeItem("userResume")
-          setShowResumeUpload(true)
-        }
-      } else {
-        console.log("No resume found, showing upload modal")
-        setShowResumeUpload(true)
-      }
-    }
-
     checkExistingResume()
+    loadJobs()
+    loadApplications()
   }, [])
 
-  // Fetch jobs when resume is available
-  useEffect(() => {
-    const fetchJobs = async () => {
-      if (!userResume && !showResumeUpload) return
+  const checkExistingResume = async () => {
+    console.log("Checking for existing resume data...")
 
-      setLoading(true)
+    // First, check for pending resume upload from signup
+    const pendingUpload = localStorage.getItem("pendingResumeUpload")
+    const pendingFile = localStorage.getItem("pendingResumeFile")
+
+    if (pendingUpload && pendingFile) {
+      console.log("Found pending resume upload from signup")
+      const uploadData: ResumeUploadData = JSON.parse(pendingUpload)
+      setResumeUploadInfo(uploadData)
+
+      // Convert base64 back to File object for processing
       try {
-        const recommendedJobs = await jobService.getRecommendedJobs()
-        setJobs(recommendedJobs)
+        const response = await fetch(pendingFile)
+        const blob = await response.blob()
+        const file = new File([blob], uploadData.fileName, { type: "application/pdf" })
 
-        // Mock applications and notifications
-        setApplications([
-          {
-            id: 1,
-            jobTitle: "Frontend Developer",
-            company: "Tech Solutions Inc.",
-            appliedDate: "2024-01-15",
-            status: "pending",
-          },
-          {
-            id: 2,
-            jobTitle: "React Developer",
-            company: "Digital Agency Co.",
-            appliedDate: "2024-01-10",
-            status: "accepted",
-          },
-        ])
+        console.log("Processing uploaded resume with OCR...")
+        setIsProcessing(true)
 
-        setNotifications([
-          {
-            id: 1,
-            type: "job_posted",
-            title: "New high-match job available",
-            message: `A new ${recommendedJobs[0]?.title} position at ${recommendedJobs[0]?.company} matches your profile (${recommendedJobs[0]?.matchPercentage}% match).`,
-            timestamp: "2 hours ago",
-            read: false,
-          },
-          {
-            id: 2,
-            type: "status_change",
-            title: "Application accepted",
-            message: "Congratulations! Your application for React Developer at Digital Agency Co. has been accepted.",
-            timestamp: "1 day ago",
-            read: false,
-          },
-        ])
+        // Process the resume with OCR
+        const parsedData = await parseResume(file)
+        console.log("Resume parsed successfully:", parsedData)
+
+        setEditableResumeData(parsedData)
+        setShowVerificationModal(true)
+
+        // Clean up pending upload data
+        localStorage.removeItem("pendingResumeUpload")
+        localStorage.removeItem("pendingResumeFile")
       } catch (error) {
-        console.error("Error fetching jobs:", error)
+        console.error("Error processing pending resume:", error)
       } finally {
-        setLoading(false)
+        setIsProcessing(false)
       }
+      return
     }
 
-    fetchJobs()
-  }, [userResume, showResumeUpload])
-
-  // Replace the handleResumeUpload function
-  const handleResumeUpload = async (file: File) => {
-    console.log("Starting resume upload and OCR processing for:", file.name)
-    setResumeProcessing(true)
-    setOcrProgress(null)
-
-    try {
-      const parsedResume = await resumeParser.parseResumeFromPDF(file, (progress) => {
-        console.log("OCR Progress:", progress)
-        setOcrProgress(progress)
-      })
-
-      console.log("Resume parsed successfully:", parsedResume)
-
-      // Store temporarily and show verification modal
-      setTempParsedResume(parsedResume)
-      setEditableResumeData({ ...parsedResume })
-      setShowResumeVerification(true)
-      setShowResumeUpload(false)
-    } catch (error) {
-      console.error("Error processing resume:", error)
-      alert(`Error processing resume: ${error instanceof Error ? error.message : "Unknown error"}`)
-    } finally {
-      setResumeProcessing(false)
-      setOcrProgress(null)
+    // Check for legacy uploaded resume data
+    const uploadedResume = localStorage.getItem("uploadedResume")
+    if (uploadedResume) {
+      console.log("Found legacy uploaded resume data")
+      const uploadData: ResumeUploadData = JSON.parse(uploadedResume)
+      setResumeUploadInfo(uploadData)
     }
+
+    // Check for already processed resume data
+    const savedResumeData = localStorage.getItem("resumeData")
+    if (savedResumeData) {
+      console.log("Found existing processed resume data")
+      const parsedData: ParsedResume = JSON.parse(savedResumeData)
+      setResumeData(parsedData)
+      return
+    }
+
+    console.log("No existing resume data found")
   }
 
-  // Add function to handle resume verification completion
-  const handleResumeVerificationComplete = () => {
+  const loadJobs = () => {
+    // Mock job data with match percentages
+    const mockJobs: Job[] = [
+      {
+        id: "1",
+        title: "Senior Software Developer",
+        company: "Tech Innovations Inc.",
+        location: "Makati, Metro Manila",
+        type: "Full-time",
+        salary: "₱80,000 - ₱120,000",
+        description:
+          "We are looking for a skilled senior software developer to join our dynamic team. You'll be working on cutting-edge projects using modern technologies.",
+        requirements: ["JavaScript", "React", "Node.js", "TypeScript", "AWS"],
+        postedDate: "2024-01-15",
+        matchPercentage: 95,
+        saved: false,
+        applied: false,
+      },
+      {
+        id: "2",
+        title: "Frontend Developer",
+        company: "Digital Solutions Corp",
+        location: "Quezon City, Metro Manila",
+        type: "Full-time",
+        salary: "₱60,000 - ₱90,000",
+        description:
+          "Join our creative team as a frontend developer. Work on exciting web applications and user interfaces that impact thousands of users.",
+        requirements: ["HTML", "CSS", "JavaScript", "Vue.js", "Figma"],
+        postedDate: "2024-01-14",
+        matchPercentage: 88,
+        saved: true,
+        applied: false,
+      },
+      {
+        id: "3",
+        title: "Full Stack Developer",
+        company: "StartupTech Philippines",
+        location: "BGC, Taguig",
+        type: "Full-time",
+        salary: "₱70,000 - ₱100,000",
+        description:
+          "Be part of our growing startup! We're looking for a versatile full stack developer who can work across our entire technology stack.",
+        requirements: ["Python", "Django", "React", "PostgreSQL", "Docker"],
+        postedDate: "2024-01-13",
+        matchPercentage: 82,
+        saved: false,
+        applied: true,
+      },
+      {
+        id: "4",
+        title: "Web Developer",
+        company: "Creative Agency Manila",
+        location: "Ortigas, Pasig",
+        type: "Contract",
+        salary: "₱50,000 - ₱75,000",
+        description:
+          "Looking for a creative web developer to work on various client projects. Perfect opportunity to work with diverse brands and technologies.",
+        requirements: ["PHP", "MySQL", "WordPress", "jQuery", "Bootstrap"],
+        postedDate: "2024-01-12",
+        matchPercentage: 75,
+        saved: false,
+        applied: false,
+      },
+      {
+        id: "5",
+        title: "Mobile App Developer",
+        company: "MobileTech Solutions",
+        location: "Alabang, Muntinlupa",
+        type: "Full-time",
+        salary: "₱65,000 - ₱95,000",
+        description:
+          "Develop innovative mobile applications for iOS and Android platforms. Work with a team of passionate developers and designers.",
+        requirements: ["React Native", "Flutter", "Firebase", "REST APIs"],
+        postedDate: "2024-01-11",
+        matchPercentage: 78,
+        saved: true,
+        applied: false,
+      },
+    ]
+    setJobs(mockJobs)
+  }
+
+  const loadApplications = () => {
+    // Mock application data
+    const mockApplications = [
+      {
+        id: "1",
+        jobTitle: "Senior Software Developer",
+        company: "Tech Innovations Inc.",
+        status: "Under Review",
+        appliedDate: "2024-01-10",
+        statusColor: "warning",
+      },
+      {
+        id: "2",
+        jobTitle: "Frontend Developer",
+        company: "Digital Solutions Corp",
+        status: "Interview Scheduled",
+        appliedDate: "2024-01-08",
+        statusColor: "info",
+      },
+      {
+        id: "3",
+        jobTitle: "Full Stack Developer",
+        company: "StartupTech Philippines",
+        status: "Accepted",
+        appliedDate: "2024-01-05",
+        statusColor: "success",
+      },
+    ]
+    setApplications(mockApplications)
+  }
+
+  const handleVerifyResumeData = () => {
     if (editableResumeData) {
-      console.log("Resume verification completed, saving data:", editableResumeData)
-      setUserResume(editableResumeData)
-      jobService.setUserResume(editableResumeData)
+      setResumeData(editableResumeData)
+      localStorage.setItem("resumeData", JSON.stringify(editableResumeData))
 
-      // Save to localStorage
-      localStorage.setItem("userResume", JSON.stringify(editableResumeData))
-      setShowResumeVerification(false)
-
-      // Show success notification
-      const successNotification: Notification = {
-        id: Date.now(),
-        type: "application",
-        title: "Resume verified successfully",
-        message: `Your resume has been verified and saved. Found ${editableResumeData.skills.length} skills and ${editableResumeData.experience.length} work experiences.`,
-        timestamp: "Just now",
-        read: false,
+      // Update upload info to mark as processed
+      const updatedUploadInfo = {
+        ...resumeUploadInfo!,
+        processed: true,
+        needsProcessing: false,
       }
+      setResumeUploadInfo(updatedUploadInfo)
+      localStorage.setItem("uploadedResume", JSON.stringify(updatedUploadInfo))
 
-      setNotifications((prev) => [successNotification, ...prev])
+      setShowVerificationModal(false)
+      console.log("Resume data verified and saved")
     }
   }
 
-  // Add function to update editable resume data
-  const updateEditableResumeData = (field: keyof ParsedResume, value: any) => {
-    if (editableResumeData) {
-      setEditableResumeData({
-        ...editableResumeData,
-        [field]: value,
-      })
-    }
-  }
+  const updateEditableResumeData = (section: keyof ParsedResume, field: string, value: any) => {
+    if (!editableResumeData) return
 
-  // Add function to update nested fields
-  const updateNestedField = (section: string, field: string, value: any) => {
-    if (editableResumeData) {
-      const currentSection = editableResumeData[section as keyof ParsedResume]
+    setEditableResumeData((prev) => {
+      if (!prev) return null
 
-      // Ensure the section exists and is an object before spreading
-      if (currentSection && typeof currentSection === "object" && !Array.isArray(currentSection)) {
-        setEditableResumeData({
-          ...editableResumeData,
-          [section]: {
-            ...currentSection,
-            [field]: value,
-          },
-        })
+      const currentSection = prev[section]
+
+      // Type check to ensure currentSection exists and is an object
+      if (!currentSection || typeof currentSection !== "object") return prev
+
+      // Additional check to ensure it's not an array
+      if (Array.isArray(currentSection)) return prev
+
+      return {
+        ...prev,
+        [section]: {
+          ...currentSection,
+          [field]: value,
+        },
       }
-    }
+    })
   }
 
-  const handleSaveJob = (jobId: number) => {
-    const updatedJob = jobService.toggleSaveJob(jobId)
-    if (updatedJob) {
-      setJobs((prevJobs) => prevJobs.map((job) => (job.id === jobId ? updatedJob : job)))
-    }
-  }
+  const handleApplyToJob = (jobId: string) => {
+    setJobs((prevJobs) => prevJobs.map((job) => (job.id === jobId ? { ...job, applied: true } : job)))
 
-  const handleApplyJob = (jobId: number) => {
-    const updatedJob = jobService.applyToJob(jobId)
-    if (updatedJob) {
-      setJobs((prevJobs) => prevJobs.map((job) => (job.id === jobId ? updatedJob : job)))
-
-      // Add to applications
-      const newApplication: Application = {
-        id: applications.length + 1,
-        jobTitle: updatedJob.title,
-        company: updatedJob.company,
+    // Add to applications
+    const job = jobs.find((j) => j.id === jobId)
+    if (job) {
+      const newApplication = {
+        id: jobId,
+        jobTitle: job.title,
+        company: job.company,
+        status: "Under Review",
         appliedDate: new Date().toISOString().split("T")[0],
-        status: "pending",
+        statusColor: "warning",
       }
       setApplications((prev) => [newApplication, ...prev])
-
-      // Add notification
-      const notification: Notification = {
-        id: Date.now(),
-        type: "application",
-        title: "Application submitted",
-        message: `Your application for ${updatedJob.title} at ${updatedJob.company} has been submitted successfully.`,
-        timestamp: "Just now",
-        read: false,
-      }
-      setNotifications((prev) => [notification, ...prev])
     }
   }
 
-  const filteredJobs = jobService.searchJobs(searchQuery, filters)
+  const handleSaveJob = (jobId: string) => {
+    setJobs((prevJobs) => prevJobs.map((job) => (job.id === jobId ? { ...job, saved: !job.saved } : job)))
+  }
+
+  const handleLogout = () => {
+    localStorage.clear()
+    localStorage.removeItem("selectedRole")
+    navigate("/auth")
+  }
 
   const getMatchColor = (percentage: number) => {
     if (percentage >= 90) return styles.matchHigh
-    if (percentage >= 70) return styles.matchMedium
+    if (percentage >= 80) return styles.matchMedium
     return styles.matchLow
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "accepted":
-        return styles.statusAccepted
-      case "rejected":
-        return styles.statusRejected
-      default:
-        return styles.statusPending
-    }
-  }
-
-  const getQualityColor = (quality: string) => {
-    switch (quality) {
-      case "excellent":
-        return "#10b981"
-      case "good":
-        return "#3b82f6"
-      case "fair":
-        return "#f59e0b"
-      case "poor":
-        return "#ef4444"
-      default:
-        return "#6b7280"
-    }
-  }
-
-  // Resume upload component with OCR progress
-  const renderResumeUpload = () => (
-    <div className={styles.resumeUploadOverlay}>
-      <div className={styles.resumeUploadModal}>
-        <div className={styles.modalHeader}>
-          <FileTextIcon />
-          <h2>Upload Your Resume (PDF Only)</h2>
-        </div>
-
-        <p>
-          We use advanced OCR (Optical Character Recognition) technology to extract text from your PDF resume. This
-          ensures accurate job matching based on your actual skills and experience.
-        </p>
-
-        <div className={styles.uploadArea}>
-          <input
-            type="file"
-            accept="application/pdf"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) {
-                // Triple validation like employer upload
-                const allowedTypes = ["application/pdf"]
-
-                // Check MIME type
-                if (!allowedTypes.includes(file.type)) {
-                  alert("Please upload only PDF files.")
-                  e.target.value = "" // Clear the input
-                  return
-                }
-
-                // Check file extension
-                if (!file.name.toLowerCase().endsWith(".pdf")) {
-                  alert("Please upload only PDF files.")
-                  e.target.value = "" // Clear the input
-                  return
-                }
-
-                // Check file size (max 10MB for OCR processing)
-                if (file.size > 10 * 1024 * 1024) {
-                  alert("File size must be less than 10MB for optimal OCR processing.")
-                  e.target.value = "" // Clear the input
-                  return
-                }
-
-                handleResumeUpload(file)
-              }
-            }}
-            className={styles.fileInput}
-            id="resumeUpload"
-            disabled={resumeProcessing}
-          />
-          <label htmlFor="resumeUpload" className={styles.uploadLabel}>
-            <UploadIcon />
-            <span>{resumeProcessing ? "Processing PDF..." : "Choose PDF Resume"}</span>
-            <small>PDF files only - OCR will extract text from images</small>
-          </label>
-        </div>
-
-        {resumeProcessing && ocrProgress && (
-          <div className={styles.processingStatus}>
-            <div className={styles.progressBar}>
-              <div className={styles.progressFill} style={{ width: `${ocrProgress.progress}%` }} />
-            </div>
-            <div className={styles.progressInfo}>
-              <span className={styles.progressText}>{ocrProgress.message}</span>
-              <span className={styles.progressPercent}>{Math.round(ocrProgress.progress)}%</span>
-            </div>
-            <div className={styles.ocrSteps}>
-              <div
-                className={`${styles.step} ${ocrProgress.status === "converting" || ocrProgress.progress > 20 ? styles.active : ""}`}
-              >
-                📄 Converting PDF to images
-              </div>
-              <div
-                className={`${styles.step} ${ocrProgress.status === "processing" || ocrProgress.progress > 50 ? styles.active : ""}`}
-              >
-                🔍 OCR text extraction
-              </div>
-              <div
-                className={`${styles.step} ${ocrProgress.status === "parsing" || ocrProgress.progress > 90 ? styles.active : ""}`}
-              >
-                🧠 Analyzing resume content
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className={styles.ocrInfo}>
-          <h4>How OCR Works:</h4>
-          <ul>
-            <li>
-              📄 <strong>PDF to Images:</strong> Each page is converted to high-resolution images
-            </li>
-            <li>
-              🔍 <strong>Text Recognition:</strong> Tesseract OCR reads text from images
-            </li>
-            <li>
-              🧠 <strong>Smart Parsing:</strong> AI extracts skills, experience, and education
-            </li>
-            <li>
-              🎯 <strong>Job Matching:</strong> Personalized recommendations with match percentages
-            </li>
-          </ul>
-        </div>
-
-        <button className={styles.skipButton} onClick={() => setShowResumeUpload(false)} disabled={resumeProcessing}>
-          Skip for now (limited functionality)
-        </button>
-      </div>
-    </div>
+  const filteredJobs = jobs.filter(
+    (job) =>
+      job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      job.location.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
-  // Resume verification component
-  const renderResumeVerification = () => (
-    <div className={styles.resumeUploadOverlay}>
-      <div className={styles.resumeVerificationModal}>
-        <div className={styles.modalHeader}>
-          <FileTextIcon />
-          <h2>Verify Your Resume Data</h2>
-          <p>Please review and edit the information extracted from your resume</p>
+  const renderOverview = () => (
+    <div className={styles.overviewContent}>
+      <div className={styles.welcomeSection}>
+        <div className={styles.welcomeText}>
+          <h2>Welcome back, {resumeData?.personalInfo.name || "Job Seeker"}! 👋</h2>
+          <p>Here's what's happening with your job search today.</p>
         </div>
-
-        {editableResumeData && (
-          <div className={styles.verificationContent}>
-            {/* Personal Information */}
-            <div className={styles.verificationSection}>
-              <h3>Personal Information</h3>
-              <div className={styles.verificationGrid}>
-                <div className={styles.verificationField}>
-                  <label>Full Name</label>
-                  <input
-                    type="text"
-                    value={editableResumeData.personalInfo.name}
-                    onChange={(e) => updateNestedField("personalInfo", "name", e.target.value)}
-                    className={styles.verificationInput}
-                  />
-                </div>
-                <div className={styles.verificationField}>
-                  <label>Email</label>
-                  <input
-                    type="email"
-                    value={editableResumeData.personalInfo.email}
-                    onChange={(e) => updateNestedField("personalInfo", "email", e.target.value)}
-                    className={styles.verificationInput}
-                  />
-                </div>
-                <div className={styles.verificationField}>
-                  <label>Phone</label>
-                  <input
-                    type="text"
-                    value={editableResumeData.personalInfo.phone}
-                    onChange={(e) => updateNestedField("personalInfo", "phone", e.target.value)}
-                    className={styles.verificationInput}
-                  />
-                </div>
-                <div className={styles.verificationField}>
-                  <label>Location</label>
-                  <input
-                    type="text"
-                    value={editableResumeData.personalInfo.location}
-                    onChange={(e) => updateNestedField("personalInfo", "location", e.target.value)}
-                    className={styles.verificationInput}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Skills */}
-            <div className={styles.verificationSection}>
-              <h3>Skills</h3>
-              <div className={styles.skillsEditor}>
-                <textarea
-                  value={editableResumeData.skills.join(", ")}
-                  onChange={(e) =>
-                    updateEditableResumeData(
-                      "skills",
-                      e.target.value
-                        .split(",")
-                        .map((s) => s.trim())
-                        .filter((s) => s),
-                    )
-                  }
-                  className={styles.skillsTextarea}
-                  placeholder="Enter skills separated by commas"
-                  rows={3}
-                />
-                <small>Separate skills with commas</small>
-              </div>
-            </div>
-
-            {/* Experience Level */}
-            <div className={styles.verificationSection}>
-              <h3>Experience Level</h3>
-              <select
-                value={editableResumeData.experienceLevel}
-                onChange={(e) => updateEditableResumeData("experienceLevel", e.target.value)}
-                className={styles.verificationSelect}
-              >
-                <option value="Entry-level">Entry-level</option>
-                <option value="Mid-level">Mid-level</option>
-                <option value="Senior">Senior</option>
-                <option value="Executive">Executive</option>
-              </select>
-            </div>
-
-            {/* Summary */}
-            <div className={styles.verificationSection}>
-              <h3>Professional Summary</h3>
-              <textarea
-                value={editableResumeData.summary}
-                onChange={(e) => updateEditableResumeData("summary", e.target.value)}
-                className={styles.summaryTextarea}
-                rows={4}
-                placeholder="Enter your professional summary"
-              />
-            </div>
-
-            {/* OCR Quality Info */}
-            <div className={styles.ocrQualityInfo}>
-              <h4>OCR Processing Results</h4>
-              <div className={styles.ocrStats}>
-                <span className={styles.ocrStat}>
-                  <strong>Confidence:</strong> {editableResumeData.ocrMetadata.confidence}%
-                </span>
-                <span className={styles.ocrStat}>
-                  <strong>Quality:</strong> {editableResumeData.ocrMetadata.quality}
-                </span>
-                <span className={styles.ocrStat}>
-                  <strong>Words Extracted:</strong> {editableResumeData.ocrMetadata.wordCount}
-                </span>
-              </div>
-            </div>
-
-            <div className={styles.verificationActions}>
-              <button
-                className={styles.backButton}
-                onClick={() => {
-                  setShowResumeVerification(false)
-                  setShowResumeUpload(true)
-                }}
-              >
-                Back to Upload
-              </button>
-              <button className={styles.confirmButton} onClick={handleResumeVerificationComplete}>
-                Confirm & Save Resume
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  )
-
-  const renderJobCard = (job: Job) => (
-    <div key={job.id} className={styles.jobCard}>
-      <div className={styles.jobHeader}>
-        <div className={styles.jobInfo}>
-          <h3 className={styles.jobTitle}>{job.title}</h3>
-          <p className={styles.company}>
-            <BuildingIcon />
-            {job.company}
-          </p>
-        </div>
-        <div className={styles.jobActions}>
-          <button
-            className={`${styles.saveButton} ${job.saved ? styles.saved : ""}`}
-            onClick={() => handleSaveJob(job.id)}
-          >
-            <BookmarkIcon filled={job.saved} />
+        <div className={styles.quickActions}>
+          <button className={styles.primaryButton} onClick={() => setActiveTab("jobs")}>
+            Browse Jobs
           </button>
-          <div className={`${styles.matchBadge} ${getMatchColor(job.matchPercentage)}`}>
-            {job.matchPercentage}% match
-          </div>
-        </div>
-      </div>
-
-      <div className={styles.jobDetails}>
-        <div className={styles.jobMeta}>
-          <span className={styles.metaItem}>
-            <MapPinIcon />
-            {job.location}
-          </span>
-          <span className={styles.metaItem}>
-            <DollarSignIcon />
-            {job.salary}
-          </span>
-          <span className={styles.metaItem}>
-            <ClockIcon />
-            {job.postedDate}
-          </span>
-        </div>
-
-        <p className={styles.jobDescription}>{job.description}</p>
-
-        {/* Show match reasons if available */}
-        {job.matchDetails?.reasonsForMatch && job.matchDetails.reasonsForMatch.length > 0 && (
-          <div className={styles.matchReasons}>
-            <h4>Why this matches you:</h4>
-            <ul>
-              {job.matchDetails.reasonsForMatch.slice(0, 3).map((reason, index) => (
-                <li key={index}>{reason}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <div className={styles.jobTags}>
-          <span className={styles.tag}>{job.type}</span>
-          <span className={styles.tag}>{job.level}</span>
-          <span className={styles.tag}>{job.workplaceType}</span>
-          {job.requirements.slice(0, 3).map((skill, index) => (
-            <span key={index} className={styles.skillTag}>
-              {skill}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className={styles.jobFooter}>
-        <button
-          className={`${styles.applyButton} ${job.applied ? styles.applied : ""}`}
-          onClick={() => handleApplyJob(job.id)}
-          disabled={job.applied}
-        >
-          {job.applied ? "Applied" : "Apply Now"}
-        </button>
-      </div>
-    </div>
-  )
-
-  const renderHome = () => (
-    <div className={styles.homeContent}>
-      {/* User Resume Summary with OCR info */}
-      {userResume && (
-        <div className={styles.resumeSummary}>
-          <div className={styles.resumeInfo}>
-            <h3>Your Profile (OCR Processed)</h3>
-            <p>
-              <strong>{userResume.personalInfo.name}</strong> • {userResume.experienceLevel}
-            </p>
-            <p>
-              {userResume.skills.length} skills • {userResume.experience.length} work experiences
-            </p>
-            <div className={styles.ocrMetadata}>
-              <span
-                className={styles.qualityBadge}
-                style={{ backgroundColor: getQualityColor(userResume.ocrMetadata.quality) }}
-              >
-                OCR Quality: {userResume.ocrMetadata.quality} ({userResume.ocrMetadata.confidence}%)
-              </span>
-              <span className={styles.processingTime}>
-                Processed in {(userResume.ocrMetadata.processingTime / 1000).toFixed(1)}s
-              </span>
-            </div>
-          </div>
-          <button className={styles.updateResumeButton} onClick={() => setShowResumeUpload(true)}>
-            Update Resume
+          <button className={styles.secondaryButton} onClick={() => setActiveTab("profile")}>
+            Update Profile
           </button>
         </div>
-      )}
+      </div>
 
-      <div className={styles.searchSection}>
-        <div className={styles.searchBar}>
-          <SearchIcon />
-          <input
-            type="text"
-            placeholder="Search jobs or companies..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+      <div className={styles.statsGrid}>
+        <div className={styles.statCard}>
+          <div className={styles.statIcon} style={{ backgroundColor: "#e3f2fd" }}>
+            <span style={{ color: "#1976d2" }}>📊</span>
+          </div>
+          <div className={styles.statInfo}>
+            <h3>Profile Completion</h3>
+            <p className={styles.statValue}>{resumeData ? "100%" : "60%"}</p>
+            <span className={styles.statChange}>+5% from last week</span>
+          </div>
         </div>
-        <button className={styles.filterButton} onClick={() => setShowFilters(!showFilters)}>
-          <FilterIcon />
-        </button>
+        <div className={styles.statCard}>
+          <div className={styles.statIcon} style={{ backgroundColor: "#f3e5f5" }}>
+            <span style={{ color: "#7b1fa2" }}>📄</span>
+          </div>
+          <div className={styles.statInfo}>
+            <h3>Applications</h3>
+            <p className={styles.statValue}>{applications.length}</p>
+            <span className={styles.statChange}>+2 this week</span>
+          </div>
+        </div>
+        <div className={styles.statCard}>
+          <div className={styles.statIcon} style={{ backgroundColor: "#e8f5e8" }}>
+            <span style={{ color: "#388e3c" }}>💼</span>
+          </div>
+          <div className={styles.statInfo}>
+            <h3>Job Matches</h3>
+            <p className={styles.statValue}>{jobs.length}</p>
+            <span className={styles.statChange}>+3 new matches</span>
+          </div>
+        </div>
+        <div className={styles.statCard}>
+          <div className={styles.statIcon} style={{ backgroundColor: "#fff3e0" }}>
+            <span style={{ color: "#f57c00" }}>⭐</span>
+          </div>
+          <div className={styles.statInfo}>
+            <h3>Profile Views</h3>
+            <p className={styles.statValue}>24</p>
+            <span className={styles.statChange}>+8 this week</span>
+          </div>
+        </div>
+      </div>
+
+      <div className={styles.dashboardGrid}>
+        <div className={styles.recentActivity}>
+          <div className={styles.sectionHeader}>
+            <h3>Recent Activity</h3>
+            <button className={styles.viewAllButton}>View All</button>
+          </div>
+          <div className={styles.activityList}>
+            <div className={styles.activityItem}>
+              <div className={styles.activityIcon} style={{ backgroundColor: "#e8f5e8" }}>
+                <span style={{ color: "#388e3c" }}>📄</span>
+              </div>
+              <div className={styles.activityContent}>
+                <p>
+                  <strong>Applied to Senior Software Developer</strong>
+                </p>
+                <p>at Tech Innovations Inc.</p>
+                <span className={styles.activityTime}>2 hours ago</span>
+              </div>
+            </div>
+            <div className={styles.activityItem}>
+              <div className={styles.activityIcon} style={{ backgroundColor: "#e3f2fd" }}>
+                <span style={{ color: "#1976d2" }}>👁️</span>
+              </div>
+              <div className={styles.activityContent}>
+                <p>
+                  <strong>Profile viewed</strong>
+                </p>
+                <p>by Digital Solutions Corp</p>
+                <span className={styles.activityTime}>1 day ago</span>
+              </div>
+            </div>
+            <div className={styles.activityItem}>
+              <div className={styles.activityIcon} style={{ backgroundColor: "#fff3e0" }}>
+                <span style={{ color: "#f57c00" }}>💾</span>
+              </div>
+              <div className={styles.activityContent}>
+                <p>
+                  <strong>Saved Frontend Developer</strong>
+                </p>
+                <p>at Creative Agency Manila</p>
+                <span className={styles.activityTime}>2 days ago</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.topMatches}>
+          <div className={styles.sectionHeader}>
+            <h3>Top Job Matches</h3>
+            <button className={styles.viewAllButton} onClick={() => setActiveTab("jobs")}>
+              View All
+            </button>
+          </div>
+          <div className={styles.matchesList}>
+            {jobs.slice(0, 3).map((job) => (
+              <div key={job.id} className={styles.matchItem}>
+                <div className={styles.matchInfo}>
+                  <h4>{job.title}</h4>
+                  <p>{job.company}</p>
+                  <div className={styles.matchMeta}>
+                    <span className={styles.location}>
+                      <LocationIcon />
+                      {job.location}
+                    </span>
+                    <span className={`${styles.matchBadge} ${getMatchColor(job.matchPercentage!)}`}>
+                      {job.matchPercentage}% match
+                    </span>
+                  </div>
+                </div>
+                <button
+                  className={styles.quickApplyButton}
+                  onClick={() => handleApplyToJob(job.id)}
+                  disabled={job.applied}
+                >
+                  {job.applied ? "Applied" : "Quick Apply"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderJobs = () => (
+    <div className={styles.jobsContent}>
+      <div className={styles.jobsHeader}>
+        <div className={styles.jobsTitle}>
+          <h2>Job Recommendations</h2>
+          <p>Personalized job matches based on your profile</p>
+        </div>
+        <div className={styles.jobsActions}>
+          <div className={styles.searchBar}>
+            <SearchIcon />
+            <input
+              type="text"
+              placeholder="Search jobs, companies, or locations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <button className={styles.filterButton} onClick={() => setShowFilters(!showFilters)}>
+            <FilterIcon />
+            Filters
+          </button>
+        </div>
       </div>
 
       {showFilters && (
-        <div className={styles.filterPanel}>
-          <div className={styles.filterHeader}>
-            <h3>Filter Jobs</h3>
-            <button onClick={() => setShowFilters(false)}>
-              <XIcon />
-            </button>
+        <div className={styles.filtersPanel}>
+          <div className={styles.filterGroup}>
+            <label>Job Type</label>
+            <select>
+              <option>All Types</option>
+              <option>Full-time</option>
+              <option>Part-time</option>
+              <option>Contract</option>
+            </select>
           </div>
-
-          <div className={styles.filterGrid}>
-            <div className={styles.filterGroup}>
-              <label>Job Type</label>
-              <select
-                value={filters.jobType}
-                onChange={(e) => setFilters((prev) => ({ ...prev, jobType: e.target.value }))}
-              >
-                <option value="">All Types</option>
-                <option value="Full-time">Full-time</option>
-                <option value="Part-time">Part-time</option>
-                <option value="Contract">Contract</option>
-                <option value="Freelance">Freelance</option>
-              </select>
-            </div>
-
-            <div className={styles.filterGroup}>
-              <label>Position Level</label>
-              <select
-                value={filters.positionLevel}
-                onChange={(e) => setFilters((prev) => ({ ...prev, positionLevel: e.target.value }))}
-              >
-                <option value="">All Levels</option>
-                <option value="Entry-level">Entry-level</option>
-                <option value="Mid-level">Mid-level</option>
-                <option value="Senior">Senior</option>
-                <option value="Executive">Executive</option>
-              </select>
-            </div>
-
-            <div className={styles.filterGroup}>
-              <label>Workplace Setup</label>
-              <select
-                value={filters.workplaceSetup}
-                onChange={(e) => setFilters((prev) => ({ ...prev, workplaceSetup: e.target.value }))}
-              >
-                <option value="">All Setups</option>
-                <option value="On-site">On-site</option>
-                <option value="Remote">Remote</option>
-                <option value="Hybrid">Hybrid</option>
-              </select>
-            </div>
-
-            <div className={styles.filterGroup}>
-              <label>Location</label>
-              <input
-                type="text"
-                placeholder="Enter location"
-                value={filters.location}
-                onChange={(e) => setFilters((prev) => ({ ...prev, location: e.target.value }))}
-              />
-            </div>
+          <div className={styles.filterGroup}>
+            <label>Location</label>
+            <select>
+              <option>All Locations</option>
+              <option>Metro Manila</option>
+              <option>Cebu</option>
+              <option>Davao</option>
+            </select>
           </div>
-
-          <div className={styles.filterActions}>
-            <button
-              className={styles.clearFilters}
-              onClick={() =>
-                setFilters({
-                  jobType: "",
-                  positionLevel: "",
-                  workplaceSetup: "",
-                  location: "",
-                  salaryRange: { min: "", max: "" },
-                })
-              }
-            >
-              Clear All
-            </button>
-            <button className={styles.applyFilters} onClick={() => setShowFilters(false)}>
-              Apply Filters
-            </button>
+          <div className={styles.filterGroup}>
+            <label>Salary Range</label>
+            <select>
+              <option>Any Salary</option>
+              <option>₱30,000 - ₱50,000</option>
+              <option>₱50,000 - ₱80,000</option>
+              <option>₱80,000+</option>
+            </select>
           </div>
+          <button className={styles.clearFilters}>Clear All</button>
         </div>
       )}
 
-      <div className={styles.jobsSection}>
-        <div className={styles.sectionHeader}>
-          <h2>
-            {userResume ? "Recommended Jobs" : "Available Jobs"}
-            {userResume && <span className={styles.mlBadge}>OCR-Powered</span>}
-          </h2>
-          <span className={styles.jobCount}>{filteredJobs.length} jobs found</span>
-        </div>
-
-        {loading ? (
-          <div className={styles.loadingState}>
-            <div className={styles.spinner}></div>
-            <p>{userResume ? "Finding the best matches for you..." : "Loading jobs..."}</p>
-          </div>
-        ) : (
-          <div className={styles.jobsList}>{filteredJobs.map(renderJobCard)}</div>
-        )}
-      </div>
-    </div>
-  )
-
-  const renderNotifications = () => (
-    <div className={styles.notificationsContent}>
-      <div className={styles.sectionHeader}>
-        <h2>Notifications</h2>
-        <span className={styles.unreadCount}>{notifications.filter((n) => !n.read).length} unread</span>
-      </div>
-
-      <div className={styles.notificationsList}>
-        {notifications.map((notification) => (
-          <div
-            key={notification.id}
-            className={`${styles.notificationCard} ${!notification.read ? styles.unread : ""}`}
-          >
-            <div className={styles.notificationIcon}>
-              {notification.type === "application" && <BellIcon />}
-              {notification.type === "status_change" && <StarIcon />}
-              {notification.type === "job_posted" && <BuildingIcon />}
+      <div className={styles.jobsGrid}>
+        {filteredJobs.map((job) => (
+          <div key={job.id} className={styles.jobCard}>
+            <div className={styles.jobHeader}>
+              <div className={styles.jobCompanyLogo}>
+                <span>{job.company.charAt(0)}</span>
+              </div>
+              <div className={styles.jobActions}>
+                <button
+                  className={`${styles.saveButton} ${job.saved ? styles.saved : ""}`}
+                  onClick={() => handleSaveJob(job.id)}
+                >
+                  <BookmarkIcon filled={job.saved} />
+                </button>
+                <div className={`${styles.matchBadge} ${getMatchColor(job.matchPercentage!)}`}>
+                  {job.matchPercentage}% match
+                </div>
+              </div>
             </div>
-            <div className={styles.notificationContent}>
-              <h4>{notification.title}</h4>
-              <p>{notification.message}</p>
-              <span className={styles.timestamp}>{notification.timestamp}</span>
+
+            <div className={styles.jobInfo}>
+              <h3>{job.title}</h3>
+              <p className={styles.jobCompany}>{job.company}</p>
+
+              <div className={styles.jobMeta}>
+                <span className={styles.metaItem}>
+                  <LocationIcon />
+                  {job.location}
+                </span>
+                <span className={styles.metaItem}>
+                  <SalaryIcon />
+                  {job.salary}
+                </span>
+                <span className={styles.metaItem}>
+                  <ClockIcon />
+                  {job.type}
+                </span>
+              </div>
+
+              <p className={styles.jobDescription}>{job.description}</p>
+
+              <div className={styles.jobRequirements}>
+                {job.requirements.slice(0, 4).map((req, index) => (
+                  <span key={index} className={styles.requirementTag}>
+                    {req}
+                  </span>
+                ))}
+                {job.requirements.length > 4 && (
+                  <span className={styles.moreRequirements}>+{job.requirements.length - 4} more</span>
+                )}
+              </div>
+            </div>
+
+            <div className={styles.jobFooter}>
+              <span className={styles.postedDate}>Posted {job.postedDate}</span>
+              <button
+                className={`${styles.applyButton} ${job.applied ? styles.applied : ""}`}
+                onClick={() => handleApplyToJob(job.id)}
+                disabled={job.applied}
+              >
+                {job.applied ? "Applied ✓" : "Apply Now"}
+              </button>
             </div>
           </div>
         ))}
@@ -969,24 +691,29 @@ const Dashboard: React.FC = () => {
     <div className={styles.applicationsContent}>
       <div className={styles.sectionHeader}>
         <h2>My Applications</h2>
-        <span className={styles.applicationCount}>{applications.length} applications</span>
+        <p>Track your job application progress</p>
       </div>
 
       <div className={styles.applicationsList}>
-        {applications.map((application) => (
-          <div key={application.id} className={styles.applicationCard}>
-            <div className={styles.applicationInfo}>
-              <h4>{application.jobTitle}</h4>
-              <p className={styles.company}>
-                <BuildingIcon />
-                {application.company}
-              </p>
-              <span className={styles.appliedDate}>Applied on {application.appliedDate}</span>
+        {applications.map((app) => (
+          <div key={app.id} className={styles.applicationCard}>
+            <div className={styles.applicationHeader}>
+              <div className={styles.applicationCompanyLogo}>
+                <span>{app.company.charAt(0)}</span>
+              </div>
+              <div className={styles.applicationInfo}>
+                <h3>{app.jobTitle}</h3>
+                <p>{app.company}</p>
+                <span className={styles.appliedDate}>Applied on {new Date(app.appliedDate).toLocaleDateString()}</span>
+              </div>
+              <div className={styles.applicationStatus}>
+                <span className={`${styles.statusBadge} ${styles[app.statusColor]}`}>{app.status}</span>
+              </div>
             </div>
-            <div className={styles.applicationStatus}>
-              <span className={`${styles.statusBadge} ${getStatusColor(application.status)}`}>
-                {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
-              </span>
+
+            <div className={styles.applicationActions}>
+              <button className={styles.viewButton}>View Details</button>
+              <button className={styles.withdrawButton}>Withdraw</button>
             </div>
           </div>
         ))}
@@ -994,97 +721,310 @@ const Dashboard: React.FC = () => {
     </div>
   )
 
-  const renderSavedJobs = () => {
-    const savedJobs = jobService.getSavedJobs()
-
-    return (
-      <div className={styles.savedJobsContent}>
-        <div className={styles.sectionHeader}>
-          <h2>Saved Jobs</h2>
-          <span className={styles.savedCount}>{savedJobs.length} saved jobs</span>
+  const renderProfile = () => (
+    <div className={styles.profileContent}>
+      <div className={styles.profileHeader}>
+        <div className={styles.profileAvatar}>
+          <img src="/diverse-user-avatars.png" alt="Profile" />
         </div>
-
-        <div className={styles.jobsList}>{savedJobs.map(renderJobCard)}</div>
+        <div className={styles.profileInfo}>
+          <h2>{resumeData?.personalInfo.name || "Your Name"}</h2>
+          <p className={styles.profileEmail}>{resumeData?.personalInfo.email || "your.email@example.com"}</p>
+          <p className={styles.profilePhone}>{resumeData?.personalInfo.phone || "+63 XXX XXX XXXX"}</p>
+          <p className={styles.profileAddress}>{resumeData?.personalInfo.address || "Your Address"}</p>
+        </div>
+        <button className={styles.editProfileButton}>Edit Profile</button>
       </div>
-    )
-  }
 
-  return (
-    <div className={styles.dashboard}>
-      {/* Resume Upload Modal */}
-      {showResumeUpload && renderResumeUpload()}
+      {resumeData ? (
+        <div className={styles.profileSections}>
+          <div className={styles.profileSection}>
+            <h3>Professional Summary</h3>
+            <p>{resumeData.summary}</p>
+          </div>
 
-      {/* Resume Verification Modal */}
-      {showResumeVerification && renderResumeVerification()}
-
-      {/* Header */}
-      <div className={styles.header}>
-        <div className={styles.headerContent}>
-          <div className={styles.logoSection}>
-            <img src="/peso-logo.png" alt="PESO Logo" className={styles.logo} />
-            <div className={styles.welcomeText}>
-              <h1>Hello, {userResume?.personalInfo.name || "User"}</h1>
-              <p>
-                {userResume
-                  ? "Find your perfect job match with OCR-powered matching"
-                  : "Upload your PDF resume for personalized recommendations"}
-              </p>
+          <div className={styles.profileSection}>
+            <h3>Work Experience</h3>
+            <div className={styles.experienceList}>
+              {resumeData.experience.map((exp, index) => (
+                <div key={index} className={styles.experienceItem}>
+                  <div className={styles.experienceHeader}>
+                    <h4>{exp.position}</h4>
+                    <span className={styles.experienceDuration}>{exp.duration}</span>
+                  </div>
+                  <p className={styles.experienceCompany}>{exp.company}</p>
+                  <p className={styles.experienceDescription}>{exp.description}</p>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className={styles.headerActions}>
-            <button className={styles.notificationButton}>
-              <BellIcon />
-              {notifications.filter((n) => !n.read).length > 0 && (
-                <span className={styles.notificationBadge}>{notifications.filter((n) => !n.read).length}</span>
+          <div className={styles.profileSection}>
+            <h3>Education</h3>
+            <div className={styles.educationList}>
+              {resumeData.education.map((edu, index) => (
+                <div key={index} className={styles.educationItem}>
+                  <h4>{edu.degree}</h4>
+                  <p>{edu.institution}</p>
+                  <span className={styles.educationYear}>{edu.year}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.profileSection}>
+            <h3>Skills</h3>
+            <div className={styles.skillsList}>
+              {resumeData.skills.map((skill, index) => (
+                <span key={index} className={styles.skillTag}>
+                  {skill}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {resumeData.certifications.length > 0 && (
+            <div className={styles.profileSection}>
+              <h3>Certifications</h3>
+              <div className={styles.certificationsList}>
+                {resumeData.certifications.map((cert, index) => (
+                  <div key={index} className={styles.certificationItem}>
+                    <span>{cert}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className={styles.noResumeData}>
+          <div className={styles.emptyState}>
+            <div className={styles.emptyIcon}>📄</div>
+            <h3>No Resume Data Available</h3>
+            <p>Upload your resume to see your complete profile information and get personalized job recommendations.</p>
+            <button className={styles.uploadResumeButton}>Upload Resume</button>
+          </div>
+
+          {resumeUploadInfo && (
+            <div className={styles.uploadInfo}>
+              <h4>Resume Upload Status</h4>
+              <p>
+                <strong>File:</strong> {resumeUploadInfo.fileName}
+              </p>
+              <p>
+                <strong>Uploaded:</strong> {new Date(resumeUploadInfo.uploadDate).toLocaleDateString()}
+              </p>
+              {resumeUploadInfo.needsProcessing && (
+                <p className={styles.processingNote}>⏳ Resume is being processed...</p>
               )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+
+  return (
+    <div className={styles.dashboard}>
+      {/* Mobile Header */}
+      <header className={styles.mobileHeader}>
+        <button className={styles.menuButton} onClick={() => setSidebarOpen(!sidebarOpen)}>
+          <MenuIcon />
+        </button>
+        <div className={styles.logo}>
+          <h1>PESO</h1>
+        </div>
+        <div className={styles.headerActions}>
+          <button className={styles.notificationButton}>
+            <NotificationIcon />
+            {notifications > 0 && <span className={styles.notificationBadge}>{notifications}</span>}
+          </button>
+        </div>
+      </header>
+
+      <div className={styles.dashboardLayout}>
+        {/* Sidebar */}
+        <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ""}`}>
+          <div className={styles.sidebarHeader}>
+            <div className={styles.logo}>
+              <h1>PESO Dashboard</h1>
+            </div>
+            <button className={styles.closeSidebar} onClick={() => setSidebarOpen(false)}>
+              <CloseIcon />
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* Navigation */}
-      <div className={styles.navigation}>
-        <button
-          className={`${styles.navButton} ${activeTab === "home" ? styles.active : ""}`}
-          onClick={() => setActiveTab("home")}
-        >
-          <SearchIcon />
-          <span>Jobs</span>
-        </button>
-        <button
-          className={`${styles.navButton} ${activeTab === "notifications" ? styles.active : ""}`}
-          onClick={() => setActiveTab("notifications")}
-        >
-          <BellIcon />
-          <span>Notifications</span>
-          {notifications.filter((n) => !n.read).length > 0 && (
-            <span className={styles.navBadge}>{notifications.filter((n) => !n.read).length}</span>
+          <div className={styles.userProfile}>
+            <div className={styles.userAvatar}>
+              <img src="/diverse-user-avatars.png" alt="User" />
+            </div>
+            <div className={styles.userInfo}>
+              <h3>{resumeData?.personalInfo.name || "Job Seeker"}</h3>
+              <p>{resumeData?.personalInfo.email || "user@example.com"}</p>
+            </div>
+          </div>
+
+          <nav className={styles.navigation}>
+            <button
+              className={`${styles.navItem} ${activeTab === "overview" ? styles.active : ""}`}
+              onClick={() => {
+                setActiveTab("overview")
+                setSidebarOpen(false)
+              }}
+            >
+              <DashboardIcon />
+              <span>Overview</span>
+            </button>
+            <button
+              className={`${styles.navItem} ${activeTab === "jobs" ? styles.active : ""}`}
+              onClick={() => {
+                setActiveTab("jobs")
+                setSidebarOpen(false)
+              }}
+            >
+              <JobsIcon />
+              <span>Jobs</span>
+              <span className={styles.navBadge}>{jobs.length}</span>
+            </button>
+            <button
+              className={`${styles.navItem} ${activeTab === "applications" ? styles.active : ""}`}
+              onClick={() => {
+                setActiveTab("applications")
+                setSidebarOpen(false)
+              }}
+            >
+              <ApplicationsIcon />
+              <span>Applications</span>
+              <span className={styles.navBadge}>{applications.length}</span>
+            </button>
+            <button
+              className={`${styles.navItem} ${activeTab === "profile" ? styles.active : ""}`}
+              onClick={() => {
+                setActiveTab("profile")
+                setSidebarOpen(false)
+              }}
+            >
+              <ProfileIcon />
+              <span>Profile</span>
+            </button>
+          </nav>
+
+          <div className={styles.sidebarFooter}>
+            <button className={styles.logoutButton} onClick={handleLogout}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.59L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" />
+              </svg>
+              <span>Logout</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* Main Content */}
+        <main className={styles.mainContent}>
+          {isProcessing && (
+            <div className={styles.processingBanner}>
+              <div className={styles.processingContent}>
+                <div className={styles.spinner}></div>
+                <span>Processing your resume with OCR technology...</span>
+              </div>
+            </div>
           )}
-        </button>
-        <button
-          className={`${styles.navButton} ${activeTab === "applications" ? styles.active : ""}`}
-          onClick={() => setActiveTab("applications")}
-        >
-          <BuildingIcon />
-          <span>Applications</span>
-        </button>
-        <button
-          className={`${styles.navButton} ${activeTab === "saved" ? styles.active : ""}`}
-          onClick={() => setActiveTab("saved")}
-        >
-          <BookmarkIcon />
-          <span>Saved</span>
-        </button>
+
+          <div className={styles.contentWrapper}>
+            {activeTab === "overview" && renderOverview()}
+            {activeTab === "jobs" && renderJobs()}
+            {activeTab === "applications" && renderApplications()}
+            {activeTab === "profile" && renderProfile()}
+          </div>
+        </main>
       </div>
 
-      {/* Main Content */}
-      <div className={styles.mainContent}>
-        {activeTab === "home" && renderHome()}
-        {activeTab === "notifications" && renderNotifications()}
-        {activeTab === "applications" && renderApplications()}
-        {activeTab === "saved" && renderSavedJobs()}
-      </div>
+      {/* Sidebar Overlay for Mobile */}
+      {sidebarOpen && <div className={styles.sidebarOverlay} onClick={() => setSidebarOpen(false)} />}
+
+      {/* Resume Verification Modal */}
+      {showVerificationModal && editableResumeData && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modal}>
+            <div className={styles.modalHeader}>
+              <h3>Verify Your Resume Data</h3>
+              <p>Please review and edit the information extracted from your resume:</p>
+            </div>
+
+            <div className={styles.modalContent}>
+              <div className={styles.editSection}>
+                <h4>Personal Information</h4>
+                <div className={styles.editGrid}>
+                  <div className={styles.editField}>
+                    <label>Name:</label>
+                    <input
+                      type="text"
+                      value={editableResumeData.personalInfo.name}
+                      onChange={(e) => updateEditableResumeData("personalInfo", "name", e.target.value)}
+                    />
+                  </div>
+                  <div className={styles.editField}>
+                    <label>Email:</label>
+                    <input
+                      type="email"
+                      value={editableResumeData.personalInfo.email}
+                      onChange={(e) => updateEditableResumeData("personalInfo", "email", e.target.value)}
+                    />
+                  </div>
+                  <div className={styles.editField}>
+                    <label>Phone:</label>
+                    <input
+                      type="text"
+                      value={editableResumeData.personalInfo.phone}
+                      onChange={(e) => updateEditableResumeData("personalInfo", "phone", e.target.value)}
+                    />
+                  </div>
+                  <div className={styles.editField}>
+                    <label>Address:</label>
+                    <input
+                      type="text"
+                      value={editableResumeData.personalInfo.address}
+                      onChange={(e) => updateEditableResumeData("personalInfo", "address", e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.editSection}>
+                <h4>Summary</h4>
+                <textarea
+                  value={editableResumeData.summary}
+                  onChange={(e) =>
+                    setEditableResumeData((prev) => (prev ? { ...prev, summary: e.target.value } : null))
+                  }
+                  rows={4}
+                />
+              </div>
+
+              <div className={styles.editSection}>
+                <h4>Skills</h4>
+                <div className={styles.skillsEdit}>
+                  {editableResumeData.skills.map((skill, index) => (
+                    <span key={index} className={styles.skillTag}>
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+                <p className={styles.editNote}>Skills extracted: {editableResumeData.skills.length} items</p>
+              </div>
+            </div>
+
+            <div className={styles.modalActions}>
+              <button className={styles.cancelButton} onClick={() => setShowVerificationModal(false)}>
+                Cancel
+              </button>
+              <button className={styles.confirmButton} onClick={handleVerifyResumeData}>
+                Confirm & Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
