@@ -11,7 +11,9 @@ const GOOGLE_CLIENT_ID = "your-google-client-id.apps.googleusercontent.com" // R
 const RegisterPage: React.FC = () => {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({
-    fullName: "",
+    lastName: "",
+    firstName: "",
+    middleName: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -84,36 +86,39 @@ const RegisterPage: React.FC = () => {
   }
 
   // Handle successful Google authentication
-  const handleGoogleAuthSuccess = async (userInfo: any) => {
-    try {
-      // Store user information
-      const userData = {
-        id: userInfo.sub || userInfo.id,
-        email: userInfo.email,
-        name: userInfo.name,
-        picture: userInfo.picture,
-        verified_email: userInfo.email_verified || userInfo.verified_email,
-        authProvider: "google",
-        loginTime: new Date().toISOString(),
-      }
+const handleGoogleAuthSuccess = async (userInfo: any) => {
+  try {
+    const [firstName, middleName, ...lastNameParts] = userInfo.name.split(" ");
+    const lastName = lastNameParts.join(" ");
 
-      // Store in localStorage (in production, use secure storage)
-      localStorage.setItem("user", JSON.stringify(userData))
-      localStorage.setItem("isAuthenticated", "true")
-
-      // Auto-fill form data
-      setFormData((prev) => ({
-        ...prev,
-        email: userInfo.email,
-        fullName: userInfo.name,
-      }))
-
-      alert(`Welcome ${userInfo.name}! Please upload your resume to complete registration.`)
-    } catch (error) {
-      console.error("Error processing Google auth:", error)
-      alert("Failed to process Google authentication.")
+    const userData = {
+      id: userInfo.sub || userInfo.id,
+      email: userInfo.email,
+      picture: userInfo.picture,
+      verified_email: userInfo.email_verified || userInfo.verified_email,
+      authProvider: "google",
+      loginTime: new Date().toISOString(),
     }
+
+    localStorage.setItem("user", JSON.stringify(userData))
+    localStorage.setItem("isAuthenticated", "true")
+
+    // Auto-fill
+    setFormData((prev) => ({
+      ...prev,
+      email: userInfo.email,
+      firstName: firstName || "",
+      middleName: middleName || "",
+      lastName: lastName || "",
+    }))
+
+    alert(`Welcome ${userInfo.name}! Please upload your resume to complete registration.`)
+  } catch (error) {
+    console.error("Error processing Google auth:", error)
+    alert("Failed to process Google authentication.")
   }
+}
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -210,21 +215,50 @@ const RegisterPage: React.FC = () => {
 
         {/* Registration Form */}
         <form className={styles.form} onSubmit={handleRegister}>
-          <div className={styles.inputGroup}>
-            <label htmlFor="fullName" className={styles.label}>
-              Full name
-            </label>
-            <input
-              id="fullName"
-              name="fullName"
-              type="text"
-              value={formData.fullName}
-              onChange={handleInputChange}
-              className={styles.input}
-              placeholder="Enter your full name"
-              required
-            />
-          </div>
+          {/* Last Name */}
+<div className={styles.inputGroup}>
+  <label htmlFor="lastName" className={styles.label}>Last Name</label>
+  <input
+    id="lastName"
+    name="lastName"
+    type="text"
+    value={formData.lastName}
+    onChange={handleInputChange}
+    className={styles.input}
+    placeholder="Enter your last name"
+    required
+  />
+</div>
+
+{/* First Name */}
+<div className={styles.inputGroup}>
+  <label htmlFor="firstName" className={styles.label}>First Name</label>
+  <input
+    id="firstName"
+    name="firstName"
+    type="text"
+    value={formData.firstName}
+    onChange={handleInputChange}
+    className={styles.input}
+    placeholder="Enter your first name"
+    required
+  />
+</div>
+
+{/* Middle Name */}
+<div className={styles.inputGroup}>
+  <label htmlFor="middleName" className={styles.label}>Middle Name</label>
+  <input
+    id="middleName"
+    name="middleName"
+    type="text"
+    value={formData.middleName}
+    onChange={handleInputChange}
+    className={styles.input}
+    placeholder="Enter your middle name"
+  />
+</div>
+
 
           <div className={styles.inputGroup}>
             <label htmlFor="email" className={styles.label}>

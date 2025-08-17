@@ -4,6 +4,7 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import styles from "./AuthPage.module.css"
+import RoleAgreementModal, { type UserRole } from "../../components/RoleAgreementModal"
 
 interface DocumentUpload {
   file: File | null
@@ -13,14 +14,16 @@ interface DocumentUpload {
 interface EmployerDocuments {
   companyProfile: DocumentUpload
   businessPermit: DocumentUpload
-  philgeonetRegistration: DocumentUpload
+  philjobnetRegistration: DocumentUpload
   doleNoPendingCase: DocumentUpload
 }
 
 interface FormErrors {
   email?: string
   password?: string
-  fullName?: string
+  firstName?: string
+  lastName?: string
+  middleName?: string
   companyName?: string
   confirmPassword?: string
   resume?: string
@@ -28,22 +31,75 @@ interface FormErrors {
   general?: string
 }
 
-// Google OAuth configuration
-const GOOGLE_CLIENT_ID = "your-google-client-id.apps.googleusercontent.com" // Replace with your actual client ID
+const GOOGLE_CLIENT_ID = "your-google-client-id.apps.googleusercontent.com"
 const GOOGLE_REDIRECT_URI = window.location.origin + "/auth/google/callback"
 
 const AuthPage: React.FC = () => {
   const navigate = useNavigate()
   const [isLogin, setIsLogin] = useState(true)
-  const [registrationStep, setRegistrationStep] = useState(1) // 1: Basic Info, 2: Document Verification
+  const [registrationStep, setRegistrationStep] = useState(1)
   const [selectedRole, setSelectedRole] = useState<string>("")
+  const [showAgreement, setShowAgreement] = useState(false)
+
+  // Add state for standalone terms and privacy modals
+  const [showStandaloneTerms, setShowStandaloneTerms] = useState(false)
+  const [showStandalonePrivacy, setShowStandalonePrivacy] = useState(false)
+  const [modalLoading, setModalLoading] = useState(false)
+
+  // Function to close all modals
+  const closeAllModals = () => {
+    setShowStandaloneTerms(false)
+    setShowStandalonePrivacy(false)
+    setModalLoading(false)
+  }
+
+  // Function to open terms modal
+  const openTermsModal = () => {
+    if (modalLoading) return
+    setShowStandalonePrivacy(false)
+    setShowStandaloneTerms(true)
+  }
+
+  // Function to open privacy modal
+  const openPrivacyModal = () => {
+    if (modalLoading) return
+    setShowStandaloneTerms(false)
+    setShowStandalonePrivacy(true)
+  }
+
+  // Function to handle modal button click with loading state
+  const handleModalButtonClick = (onClose: () => void) => {
+    setModalLoading(true)
+    setTimeout(() => {
+      onClose()
+      setModalLoading(false)
+    }, 300)
+  }
+
+  // Close modals when switching auth modes or unmounting
+  useEffect(() => {
+    return () => {
+      closeAllModals()
+    }
+  }, [isLogin])
+
+  // Close modals when component unmounts
+  useEffect(() => {
+    return () => {
+      closeAllModals()
+    }
+  }, [])
+
   const [formData, setFormData] = useState({
+    lastName: "",
+    firstName: "",
+    middleName: "",
     email: "",
     password: "",
-    fullName: "",
-    companyName: "",
     confirmPassword: "",
+    companyName: "",
   })
+
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [resumeFile, setResumeFile] = useState<File | null>(null)
@@ -51,27 +107,20 @@ const AuthPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [successMessage, setSuccessMessage] = useState("")
-
-  // Add these state variables after the existing ones
   const [fieldTouched, setFieldTouched] = useState<{ [key: string]: boolean }>({})
   const [realTimeErrors, setRealTimeErrors] = useState<FormErrors>({})
 
-  // Employer document uploads
   const [employerDocuments, setEmployerDocuments] = useState<EmployerDocuments>({
     companyProfile: { file: null, uploaded: false },
     businessPermit: { file: null, uploaded: false },
-    philgeonetRegistration: { file: null, uploaded: false },
+    philjobnetRegistration: { file: null, uploaded: false },
     doleNoPendingCase: { file: null, uploaded: false },
   })
 
   useEffect(() => {
     const role = localStorage.getItem("selectedRole") || "jobseeker"
     setSelectedRole(role)
-
-    // Load Google OAuth script
     loadGoogleOAuthScript()
-
-    // Handle Google OAuth callback if present
     handleGoogleCallback()
   }, [])
 
@@ -107,7 +156,6 @@ const AuthPage: React.FC = () => {
     const state = urlParams.get("state")
 
     if (code && state) {
-      // Handle OAuth callback
       exchangeCodeForToken(code, state)
     }
   }
@@ -116,7 +164,6 @@ const AuthPage: React.FC = () => {
   const exchangeCodeForToken = async (code: string, state: string) => {
     setIsUploading(true)
     try {
-      // In a real implementation, this would be done on your backend
       const response = await fetch("https://oauth2.googleapis.com/token", {
         method: "POST",
         headers: {
@@ -124,7 +171,7 @@ const AuthPage: React.FC = () => {
         },
         body: new URLSearchParams({
           client_id: GOOGLE_CLIENT_ID,
-          client_secret: "your-client-secret", // This should be on backend
+          client_secret: "your-client-secret",
           code: code,
           grant_type: "authorization_code",
           redirect_uri: GOOGLE_REDIRECT_URI,
@@ -134,12 +181,10 @@ const AuthPage: React.FC = () => {
       const tokenData = await response.json()
 
       if (tokenData.access_token) {
-        // Get user info
         const userResponse = await fetch(
           `https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokenData.access_token}`,
         )
         const userData = await userResponse.json()
-
         await handleGoogleAuthSuccess(userData)
       }
     } catch (error) {
@@ -147,7 +192,6 @@ const AuthPage: React.FC = () => {
       setErrors((prev) => ({ ...prev, general: "Google authentication failed. Please try again." }))
     } finally {
       setIsUploading(false)
-      // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname)
     }
   }
@@ -156,7 +200,6 @@ const AuthPage: React.FC = () => {
   const handleGoogleResponse = async (response: any) => {
     setIsUploading(true)
     try {
-      // Decode the JWT token to get user info
       const userInfo = parseJwt(response.credential)
       await handleGoogleAuthSuccess(userInfo)
     } catch (error) {
@@ -187,51 +230,35 @@ const AuthPage: React.FC = () => {
   // Handle successful Google authentication
   const handleGoogleAuthSuccess = async (userInfo: any) => {
     try {
-      // Store user information
+      const parts = userInfo.name.trim().split(/\s+/)
+      const firstName = parts[0] || ""
+      const middleName = parts.length > 2 ? parts.slice(1, -1).join(" ") : ""
+      const lastName = parts.length > 1 ? parts[parts.length - 1] : ""
+
       const userData = {
         id: userInfo.sub || userInfo.id,
         email: userInfo.email,
-        name: userInfo.name,
         picture: userInfo.picture,
         verified_email: userInfo.email_verified || userInfo.verified_email,
         authProvider: "google",
         loginTime: new Date().toISOString(),
       }
 
-      // Store in localStorage (in production, use secure storage)
       localStorage.setItem("user", JSON.stringify(userData))
       localStorage.setItem("isAuthenticated", "true")
 
-      // Auto-fill form data if in registration mode
-      if (!isLogin) {
-        setFormData((prev) => ({
-          ...prev,
-          email: userInfo.email,
-          fullName: userInfo.name,
-        }))
-      }
+      setFormData((prev) => ({
+        ...prev,
+        email: userInfo.email,
+        firstName,
+        middleName,
+        lastName,
+      }))
 
-      setSuccessMessage(`Welcome ${userInfo.name}! Google authentication successful.`)
-
-      // For job seekers in registration mode, still need resume upload
-      if (!isLogin && selectedRole === "jobseeker") {
-        setSuccessMessage(`Welcome ${userInfo.name}! Please upload your resume to complete registration.`)
-        return
-      }
-
-      // For employers in registration mode, still need company info
-      if (!isLogin && selectedRole === "employer") {
-        setSuccessMessage(`Welcome ${userInfo.name}! Please complete your company information.`)
-        return
-      }
-
-      // For login or completed registration, redirect to dashboard
-      setTimeout(() => {
-        navigate(`/${selectedRole}/dashboard`)
-      }, 2000)
+      alert(`Welcome ${userInfo.name}! Please upload your resume to complete registration.`)
     } catch (error) {
       console.error("Error processing Google auth:", error)
-      setErrors((prev) => ({ ...prev, general: "Failed to process Google authentication." }))
+      alert("Failed to process Google authentication.")
     }
   }
 
@@ -276,32 +303,30 @@ const AuthPage: React.FC = () => {
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {}
 
-    // Email validation
     const emailError = validateEmail(formData.email)
     if (emailError) newErrors.email = emailError
 
-    // Password validation
     const passwordError = validatePassword(formData.password)
     if (passwordError) newErrors.password = passwordError
 
     if (!isLogin) {
-      // Name validation for registration
       if (selectedRole === "jobseeker") {
-        const nameError = validateName(formData.fullName)
-        if (nameError) newErrors.fullName = nameError
+        const firstNameError = validateName(formData.firstName)
+        if (firstNameError) newErrors.firstName = firstNameError
+
+        const lastNameError = validateName(formData.lastName)
+        if (lastNameError) newErrors.lastName = lastNameError
       } else {
         const companyError = validateName(formData.companyName)
         if (companyError) newErrors.companyName = companyError
       }
 
-      // Confirm password validation
       if (!formData.confirmPassword) {
         newErrors.confirmPassword = "Please confirm your password"
       } else if (formData.password !== formData.confirmPassword) {
         newErrors.confirmPassword = "Passwords do not match"
       }
 
-      // Resume validation for job seekers
       if (selectedRole === "jobseeker" && !resumeFile) {
         newErrors.resume = "Please upload your resume"
       }
@@ -311,11 +336,9 @@ const AuthPage: React.FC = () => {
     return Object.keys(newErrors).length === 0
   }
 
-  // Add function to handle field blur
   const handleFieldBlur = (fieldName: string, value: string) => {
     setFieldTouched((prev) => ({ ...prev, [fieldName]: true }))
 
-    // Validate the specific field
     let fieldError: string | undefined
 
     switch (fieldName) {
@@ -325,9 +348,8 @@ const AuthPage: React.FC = () => {
       case "password":
         fieldError = validatePassword(value)
         break
-      case "fullName":
-        fieldError = validateName(value)
-        break
+      case "firstName":
+      case "lastName":
       case "companyName":
         fieldError = validateName(value)
         break
@@ -346,22 +368,18 @@ const AuthPage: React.FC = () => {
     }))
   }
 
-  // Add function to handle real-time input changes
   const handleInputChangeWithValidation = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target
 
-    // Update form data
     setFormData((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
     }))
 
-    // Clear form-level errors for this field
     if (errors[name as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [name]: undefined }))
     }
 
-    // Real-time validation for touched fields
     if (fieldTouched[name]) {
       let fieldError: string | undefined
 
@@ -372,9 +390,8 @@ const AuthPage: React.FC = () => {
         case "password":
           fieldError = validatePassword(value)
           break
-        case "fullName":
-          fieldError = validateName(value)
-          break
+        case "firstName":
+        case "lastName":
         case "companyName":
           fieldError = validateName(value)
           break
@@ -394,15 +411,12 @@ const AuthPage: React.FC = () => {
     }
   }
 
-  // Update the existing handleInputChange to use the new function
   const handleInputChange = handleInputChangeWithValidation
 
-  // Function to get the current error for a field (prioritizes real-time errors)
   const getFieldError = (fieldName: string) => {
     return realTimeErrors[fieldName as keyof FormErrors] || errors[fieldName as keyof FormErrors]
   }
 
-  // Function to check if field has error
   const hasFieldError = (fieldName: string) => {
     return !!(realTimeErrors[fieldName as keyof FormErrors] || errors[fieldName as keyof FormErrors])
   }
@@ -410,25 +424,22 @@ const AuthPage: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Check file type - only PDF allowed
       const allowedTypes = ["application/pdf"]
       if (!allowedTypes.includes(file.type)) {
         setErrors((prev) => ({ ...prev, resume: "Please upload only PDF files." }))
-        e.target.value = "" // Clear the input
+        e.target.value = ""
         return
       }
 
-      // Check file extension
       if (!file.name.toLowerCase().endsWith(".pdf")) {
         setErrors((prev) => ({ ...prev, resume: "Please upload only PDF files." }))
-        e.target.value = "" // Clear the input
+        e.target.value = ""
         return
       }
 
-      // Check file size (10MB limit for OCR processing)
       if (file.size > 10 * 1024 * 1024) {
         setErrors((prev) => ({ ...prev, resume: "File size must be less than 10MB for optimal OCR processing." }))
-        e.target.value = "" // Clear the input
+        e.target.value = ""
         return
       }
 
@@ -458,7 +469,6 @@ const AuthPage: React.FC = () => {
     setErrors((prev) => ({ ...prev, documents: undefined }))
   }
 
-  // Modified handleFileUpload to store file for later processing
   const handleFileUpload = async () => {
     if (!resumeFile) return
 
@@ -466,22 +476,19 @@ const AuthPage: React.FC = () => {
     try {
       console.log("Preparing resume for processing:", resumeFile.name)
 
-      // Convert file to base64 for storage
       const fileReader = new FileReader()
       const fileDataUrl = await new Promise<string>((resolve) => {
         fileReader.onload = () => resolve(fileReader.result as string)
         fileReader.readAsDataURL(resumeFile)
       })
 
-      // Store resume file and metadata for processing in dashboard
       const resumeUploadData = {
         fileName: resumeFile.name,
         fileSize: resumeFile.size,
         uploadDate: new Date().toISOString(),
-        needsProcessing: true, // Flag to indicate OCR processing needed
+        needsProcessing: true,
       }
 
-      // Store both the upload metadata and the file data
       localStorage.setItem("pendingResumeUpload", JSON.stringify(resumeUploadData))
       localStorage.setItem("pendingResumeFile", fileDataUrl)
 
@@ -502,7 +509,6 @@ const AuthPage: React.FC = () => {
 
     setIsUploading(true)
 
-    // Simulate login process
     setTimeout(() => {
       setIsUploading(false)
       setSuccessMessage("Login successful! Redirecting...")
@@ -512,17 +518,21 @@ const AuthPage: React.FC = () => {
     }, 1500)
   }
 
-  const handleBasicRegistration = async (e: React.FormEvent) => {
+  // Show modal instead of immediately registering
+  const handleBasicRegistration = (e: React.FormEvent) => {
     e.preventDefault()
-
     if (!validateForm()) return
+    setShowAgreement(true) // Show modal instead of immediately registering
+  }
+
+  // Proceed after modal acceptance
+  const confirmAgreementAndRegister = async () => {
+    setShowAgreement(false)
 
     if (selectedRole === "employer") {
-      // Move to document verification step for employers
       setRegistrationStep(2)
       setSuccessMessage("Basic information saved! Please upload required documents.")
     } else {
-      // For job seekers, prepare resume for processing and complete registration
       setIsUploading(true)
       try {
         await handleFileUpload()
@@ -543,7 +553,6 @@ const AuthPage: React.FC = () => {
   const handleEmployerVerification = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Check if all documents are uploaded
     const allDocumentsUploaded = Object.values(employerDocuments).every((doc) => doc.file !== null)
 
     if (!allDocumentsUploaded) {
@@ -553,7 +562,6 @@ const AuthPage: React.FC = () => {
 
     setIsUploading(true)
     try {
-      // Simulate document upload and verification
       console.log("Uploading employer documents...")
       await new Promise((resolve) => setTimeout(resolve, 3000))
       console.log("Documents uploaded successfully")
@@ -569,13 +577,10 @@ const AuthPage: React.FC = () => {
     }
   }
 
-  // Updated Google sign-in handlers
   const handleGoogleSignIn = () => {
     if (window.google) {
-      // Use popup flow
       window.google.accounts.id.prompt()
     } else {
-      // Fallback to redirect flow
       const authUrl =
         `https://accounts.google.com/o/oauth2/v2/auth?` +
         `client_id=${GOOGLE_CLIENT_ID}&` +
@@ -590,13 +595,15 @@ const AuthPage: React.FC = () => {
 
   const toggleAuthMode = () => {
     setIsLogin(!isLogin)
-    setRegistrationStep(1) // Reset to step 1 when switching modes
-    setErrors({}) // Clear errors
-    setSuccessMessage("") // Clear success message
+    setRegistrationStep(1)
+    setErrors({})
+    setSuccessMessage("")
     setFormData({
       email: "",
       password: "",
-      fullName: "",
+      firstName: "",
+      lastName: "",
+      middleName: "",
       companyName: "",
       confirmPassword: "",
     })
@@ -639,7 +646,7 @@ const AuthPage: React.FC = () => {
         <label className={styles.uploadLabel}>
           <input
             type="file"
-            accept=".pdf"
+            accept="application/pdf"
             onChange={(e) => handleEmployerDocumentChange(documentType, e.target.files?.[0] || null)}
             className={styles.fileInput}
           />
@@ -655,6 +662,369 @@ const AuthPage: React.FC = () => {
             </div>
           </div>
         </label>
+      </div>
+    )
+  }
+
+  // Standalone modal components for terms and privacy
+  const StandaloneTermsModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+    const handleBackdropClick = (e: React.MouseEvent) => {
+      if (e.target === e.currentTarget) {
+        onClose()
+      }
+    }
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+      // Prevent tab from going outside modal
+      if (e.key === 'Tab') {
+        const focusableElements = e.currentTarget.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+        const firstElement = focusableElements[0] as HTMLElement
+        const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault()
+            lastElement.focus()
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault()
+            firstElement.focus()
+          }
+        }
+      }
+    }
+
+    // Focus first focusable element when modal opens
+    useEffect(() => {
+      if (open) {
+        const firstFocusable = document.querySelector('[data-modal="terms"] button, [data-modal="terms"] [tabindex]:not([tabindex="-1"])') as HTMLElement
+        if (firstFocusable) {
+          firstFocusable.focus()
+        }
+      }
+    }, [open])
+
+    if (!open) return null
+
+    return (
+      <div
+        className={`${styles.modalOverlay} fixed inset-0 flex items-center justify-center p-4 z-[9999]`}
+        onClick={handleBackdropClick}
+        onKeyDown={handleKeyDown}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="terms-title"
+        aria-describedby="terms-content"
+        tabIndex={-1}
+        data-modal="terms"
+      >
+        <div
+          className={`${styles.modalContent} w-full max-w-2xl max-h-[80vh] overflow-hidden`}
+        >
+          <div
+            className={`${styles.modalHeader} p-6 text-white`}
+          >
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 0v12h8V4H6z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h2 id="terms-title" className="text-xl font-bold">Terms & Conditions</h2>
+                  <p className="text-blue-100 text-sm">PESO Job Portal Agreement</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="text-white hover:text-blue-200 transition-colors p-2 rounded-lg hover:bg-white hover:bg-opacity-10"
+                aria-label="Close Terms & Conditions"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div id="terms-content" className={`${styles.modalBody} ${styles.modalScroll} overflow-y-auto max-h-[calc(80vh-140px)]`}>
+            <div className="prose max-w-none">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Key Terms Summary</h3>
+                <div className="grid gap-3 mb-4">
+                  <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
+                    <span className="text-sm text-gray-700">Provide accurate and truthful information in your profile</span>
+                  </div>
+                  <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
+                    <span className="text-sm text-gray-700">Use the platform responsibly and comply with Philippine laws</span>
+                  </div>
+                  <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
+                    <span className="text-sm text-gray-700">Respect other users and maintain professional conduct</span>
+                  </div>
+                  <div className="flex items-start space-x-3 p-3 bg-blue-50 rounded-lg">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
+                    <span className="text-sm text-gray-700">Allow AI processing for better job matching capabilities</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <h4 className="text-base font-semibold text-gray-800 mb-2">1. Acceptance of Terms</h4>
+                  <p className="text-sm text-gray-600">
+                    By accessing and using the PESO Job Portal, you accept and agree to be bound by the terms and provision
+                    of this agreement. This platform is designed to connect job seekers with employers in the Philippines.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-base font-semibold text-gray-800 mb-2">2. User Accounts & Responsibilities</h4>
+                  <p className="text-sm text-gray-600">
+                    Users are responsible for maintaining the confidentiality of their account information and for all
+                    activities that occur under their account. You must provide accurate, current information and update it
+                    as needed.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-base font-semibold text-gray-800 mb-2">3. AI-Powered Job Matching</h4>
+                  <p className="text-sm text-gray-600">
+                    Our platform uses artificial intelligence to analyze resumes and match candidates with suitable job
+                    opportunities. By using this service, you consent to the processing of your resume data for matching
+                    purposes.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-base font-semibold text-gray-800 mb-2">4. Privacy & Data Protection</h4>
+                  <p className="text-sm text-gray-600">
+                    Your privacy is important to us. We collect and process personal data in accordance with our Privacy
+                    Policy and applicable Philippine data protection laws.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-base font-semibold text-gray-800 mb-2">5. Prohibited Activities</h4>
+                  <p className="text-sm text-gray-600">
+                    Users may not use the platform for unlawful purposes, post false information, engage in discriminatory
+                    practices, or attempt to circumvent security measures.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-base font-semibold text-gray-800 mb-2">6. Governing Law</h4>
+                  <p className="text-sm text-gray-600">
+                    These terms are governed by the laws of the Republic of the Philippines. Any disputes will be resolved
+                    in accordance with Philippine jurisdiction.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className={`${styles.modalFooter} bg-gray-50 px-6 py-4 flex justify-end border-t`}>
+            <button
+              onClick={() => handleModalButtonClick(onClose)}
+              disabled={modalLoading}
+              className={`${styles.modalButton} px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm shadow-md disabled:opacity-50 disabled:cursor-not-allowed`}
+              aria-label="I understand the terms and conditions"
+            >
+              {modalLoading ? "Processing..." : "I Understand"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const StandalonePrivacyModal: React.FC<{ open: boolean; onClose: () => void }> = ({ open, onClose }) => {
+    const handleBackdropClick = (e: React.MouseEvent) => {
+      if (e.target === e.currentTarget) {
+        onClose()
+      }
+    }
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+      // Prevent tab from going outside modal
+      if (e.key === 'Tab') {
+        const focusableElements = e.currentTarget.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+        const firstElement = focusableElements[0] as HTMLElement
+        const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault()
+            lastElement.focus()
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault()
+            firstElement.focus()
+          }
+        }
+      }
+    }
+
+    // Focus first focusable element when modal opens
+    useEffect(() => {
+      if (open) {
+        const firstFocusable = document.querySelector('[data-modal="privacy"] button, [data-modal="privacy"] [tabindex]:not([tabindex="-1"])') as HTMLElement
+        if (firstFocusable) {
+          firstFocusable.focus()
+        }
+      }
+    }, [open])
+
+    if (!open) return null
+
+    return (
+      <div
+        className={`${styles.modalOverlay} fixed inset-0 flex items-center justify-center p-4 z-[9999]`}
+        onClick={handleBackdropClick}
+        onKeyDown={handleKeyDown}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="privacy-title"
+        aria-describedby="privacy-content"
+        tabIndex={-1}
+        data-modal="privacy"
+      >
+        <div
+          className={`${styles.modalContent} w-full max-w-2xl max-h-[80vh] overflow-hidden`}
+        >
+          <div
+            className={`${styles.modalHeader} ${styles.modalHeaderGreen} p-6 text-white`}
+          >
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path
+                      fillRule="evenodd"
+                      d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h2 id="privacy-title" className="text-xl font-bold">Privacy Policy</h2>
+                  <p className="text-green-100 text-sm">How we protect your data</p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="text-white hover:text-green-200 transition-colors p-2 rounded-lg hover:bg-white hover:bg-opacity-10"
+                aria-label="Close Privacy Policy"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div id="privacy-content" className={`${styles.modalBody} ${styles.modalScroll} overflow-y-auto max-h-[calc(80vh-140px)]`}>
+            <div className="prose max-w-none">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Privacy Highlights</h3>
+                <div className="grid gap-3 mb-4">
+                  <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0" />
+                    <span className="text-sm text-gray-700">We collect only necessary information for job matching</span>
+                  </div>
+                  <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0" />
+                    <span className="text-sm text-gray-700">Your data is encrypted and securely stored</span>
+                  </div>
+                  <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0" />
+                    <span className="text-sm text-gray-700">We never sell your personal information to third parties</span>
+                  </div>
+                  <div className="flex items-start space-x-3 p-3 bg-green-50 rounded-lg">
+                    <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0" />
+                    <span className="text-sm text-gray-700">You can request data deletion at any time</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <h4 className="text-base font-semibold text-gray-800 mb-2">Information We Collect</h4>
+                  <p className="text-sm text-gray-600">
+                    We collect information you provide directly (profile, resume, contact details) and automatically (usage
+                    patterns, device information) to improve our job matching services.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-base font-semibold text-gray-800 mb-2">How We Use Your Information</h4>
+                  <p className="text-sm text-gray-600">
+                    Your information is used to create your profile, match you with relevant opportunities, communicate
+                    important updates, and improve our AI matching algorithms.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-base font-semibold text-gray-800 mb-2">Data Security</h4>
+                  <p className="text-sm text-gray-600">
+                    We implement industry-standard security measures including encryption, secure servers, and regular
+                    security audits to protect your personal information.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-base font-semibold text-gray-800 mb-2">Your Rights</h4>
+                  <p className="text-sm text-gray-600">
+                    You have the right to access, update, or delete your personal information. You can also opt out of
+                    certain communications and request a copy of your data.
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-base font-semibold text-gray-800 mb-2">Contact Us</h4>
+                  <p className="text-sm text-gray-600">
+                    If you have questions about this Privacy Policy or how we handle your data, please contact us through
+                    the platform or at our official PESO office.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className={`${styles.modalFooter} bg-gray-50 px-6 py-4 flex justify-end border-t`}>
+            <button
+              onClick={() => handleModalButtonClick(onClose)}
+              disabled={modalLoading}
+              className={`${styles.modalButton} px-5 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm shadow-md disabled:opacity-50 disabled:cursor-not-allowed`}
+              aria-label="I understand the privacy policy"
+            >
+              {modalLoading ? "Processing..." : "I Understand"}
+            </button>
+            </div>
+        </div>
       </div>
     )
   }
@@ -696,6 +1066,29 @@ const AuthPage: React.FC = () => {
         {/* Right Panel - Auth Form */}
         <div className={styles.rightPanel}>
           <div className={styles.formContainer}>
+            {/* Role Indicator */}
+            <div className={styles.roleIndicator}>
+              <div className={styles.roleInfo}>
+                <div className={styles.roleIcon}>
+                  {selectedRole === "employer" ? (
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                    </svg>
+                  )}
+                </div>
+                <div className={styles.roleText}>
+                  <span className={styles.roleLabel}>Signing up as</span>
+                  <span className={styles.roleName}>{selectedRole === "employer" ? "Employer" : "Job Seeker"}</span>
+                </div>
+              </div>
+              <button type="button" className={styles.changeRoleButton} onClick={() => (window.location.href = "/")}>
+                Change Role
+              </button>
+            </div>
             <div className={styles.formHeader}>
               <h1 className={styles.formTitle}>
                 {isLogin
@@ -877,9 +1270,9 @@ const AuthPage: React.FC = () => {
                 )}
 
                 {renderDocumentUpload(
-                  "philgeonetRegistration",
-                  "Upload Philgeonet Registration",
-                  "Philgeonet registration certificate",
+                  "philjobnetRegistration",
+                  "Upload PhilJobNet Registration",
+                  "PhilJobNet registration certificate",
                 )}
 
                 {renderDocumentUpload(
@@ -936,38 +1329,108 @@ const AuthPage: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div className={styles.inputGroup}>
-                    <label className={styles.inputLabel}>Full Name</label>
-                    <div className={styles.inputWrapper}>
-                      <div className={styles.inputIcon}>
-                        <svg viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                        </svg>
+                  <>
+                    {/* Last Name */}
+                    <div className={styles.inputGroup}>
+                      <label className={styles.inputLabel}>Last Name</label>
+                      <div className={styles.inputWrapper}>
+                        <div className={styles.inputIcon}>
+                          <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                          </svg>
+                        </div>
+                        <input
+                          type="text"
+                          name="lastName"
+                          value={formData.lastName}
+                          onChange={handleInputChange}
+                          onBlur={(e) => handleFieldBlur("lastName", e.target.value)}
+                          className={`${styles.input} ${hasFieldError("lastName") ? styles.error : ""}`}
+                          placeholder="Enter your last name"
+                          required
+                        />
                       </div>
-                      <input
-                        type="text"
-                        name="fullName"
-                        value={formData.fullName}
-                        onChange={handleInputChange}
-                        onBlur={(e) => handleFieldBlur("fullName", e.target.value)}
-                        className={`${styles.input} ${hasFieldError("fullName") ? styles.error : ""}`}
-                        placeholder="Enter your full name"
-                        required
-                      />
+                      {getFieldError("lastName") && (
+                        <div className={styles.inputError}>
+                          <svg className={styles.messageIcon} viewBox="0 0 20 20" fill="currentColor">
+                            <path
+                              fillRule="evenodd"
+                              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          {getFieldError("lastName")}
+                        </div>
+                      )}
                     </div>
-                    {getFieldError("fullName") && (
-                      <div className={styles.inputError}>
-                        <svg className={styles.messageIcon} viewBox="0 0 20 20" fill="currentColor">
-                          <path
-                            fillRule="evenodd"
-                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        {getFieldError("fullName")}
+
+                    {/* First Name */}
+                    <div className={styles.inputGroup}>
+                      <label className={styles.inputLabel}>First Name</label>
+                      <div className={styles.inputWrapper}>
+                        <div className={styles.inputIcon}>
+                          <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                          </svg>
+                        </div>
+                        <input
+                          type="text"
+                          name="firstName"
+                          value={formData.firstName}
+                          onChange={handleInputChange}
+                          onBlur={(e) => handleFieldBlur("firstName", e.target.value)}
+                          className={`${styles.input} ${hasFieldError("firstName") ? styles.error : ""}`}
+                          placeholder="Enter your first name"
+                          required
+                        />
                       </div>
-                    )}
-                  </div>
+                      {getFieldError("firstName") && (
+                        <div className={styles.inputError}>
+                          <svg className={styles.messageIcon} viewBox="0 0 20 20" fill="currentColor">
+                            <path
+                              fillRule="evenodd"
+                              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          {getFieldError("firstName")}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Middle Name */}
+                    <div className={styles.inputGroup}>
+                      <label className={styles.inputLabel}>Middle Name</label>
+                      <div className={styles.inputWrapper}>
+                        <div className={styles.inputIcon}>
+                          <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                          </svg>
+                        </div>
+                        <input
+                          type="text"
+                          name="middleName"
+                          value={formData.middleName}
+                          onChange={handleInputChange}
+                          onBlur={(e) => handleFieldBlur("middleName", e.target.value)}
+                          className={`${styles.input} ${hasFieldError("middleName") ? styles.error : ""}`}
+                          placeholder="Enter your middle name (optional)"
+                        />
+                      </div>
+                      {getFieldError("middleName") && (
+                        <div className={styles.inputError}>
+                          <svg className={styles.messageIcon} viewBox="0 0 20 20" fill="currentColor">
+                            <path
+                              fillRule="evenodd"
+                              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          {getFieldError("middleName")}
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
 
                 <div className={styles.inputGroup}>
@@ -1137,10 +1600,20 @@ const AuthPage: React.FC = () => {
                   </div>
                 )}
 
-                <label className={styles.checkboxLabel}>
-                  <input type="checkbox" className={styles.checkbox} required />
-                  <span>I agree to the terms and conditions</span>
-                </label>
+                {/* Notice about terms with clickable links */}
+                {!isLogin && (
+                  <p className={styles.notice}>
+                    By signing up, you agree to our{" "}
+                    <button type="button" className={styles.noticeLink} onClick={openTermsModal}>
+                      Terms & Conditions
+                    </button>{" "}
+                    and{" "}
+                    <button type="button" className={styles.noticeLink} onClick={openPrivacyModal}>
+                      Privacy Policy
+                    </button>
+                    .
+                  </p>
+                )}
 
                 <button type="submit" className={styles.primaryButton} disabled={isUploading}>
                   {isUploading && <div className={styles.loadingSpinner}></div>}
@@ -1189,11 +1662,28 @@ const AuthPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Role-specific modal system */}
+      <RoleAgreementModal
+        role={selectedRole as UserRole}
+        open={showAgreement}
+        onAccept={confirmAgreementAndRegister}
+        onCancel={() => setShowAgreement(false)}
+        appName="PESO Job Portal"
+        orgName="PESO Lipa"
+      />
+
+      {/* Standalone modals for terms and privacy from notice section */}
+      {showStandaloneTerms && (
+        <StandaloneTermsModal open={showStandaloneTerms} onClose={closeAllModals} />
+      )}
+      {showStandalonePrivacy && (
+        <StandalonePrivacyModal open={showStandalonePrivacy} onClose={closeAllModals} />
+      )}
     </div>
   )
 }
 
-// Extend the Window interface to include Google OAuth
 declare global {
   interface Window {
     google: any

@@ -1,5 +1,5 @@
 // Job service for fetching and managing job data
-import { type ParsedResume, enhancedJobMatching } from "../utils/resumeParser"
+import { type ParsedResume } from "../utils/resumeParser"
 
 export interface Job {
   id: number
@@ -194,25 +194,47 @@ export class JobService {
       }))
     }
 
-    // Use ML-powered matching
+    // Use simple matching algorithm
     const jobsWithDefaults = mockJobs.map((job) => ({
       ...job,
       saved: false,
       applied: false,
-      matchPercentage: 0,
+      matchPercentage: this.calculateMatchPercentage(job),
       postedDate: this.formatPostedDate(job.postedDate),
     }))
 
-    const matchedJobs = enhancedJobMatching(this.userResume, jobsWithDefaults)
-    this.jobs = matchedJobs
+    this.jobs = jobsWithDefaults
+    return jobsWithDefaults
+  }
 
-    return matchedJobs
+  // Calculate match percentage based on resume and job requirements
+  private calculateMatchPercentage(job: Omit<Job, "matchPercentage" | "saved" | "applied" | "matchDetails">): number {
+    if (!this.userResume) return Math.floor(Math.random() * 40) + 30
+
+    // Simple skill matching algorithm
+    const userSkills = this.userResume.skills || []
+    const jobRequirements = job.requirements || []
+    
+    if (jobRequirements.length === 0) return 50
+
+    const matchingSkills = jobRequirements.filter(req => 
+      userSkills.some(skill => 
+        skill.toLowerCase().includes(req.toLowerCase()) || 
+        req.toLowerCase().includes(skill.toLowerCase())
+      )
+    )
+
+    const matchPercentage = Math.min(95, Math.max(30, (matchingSkills.length / jobRequirements.length) * 100))
+    return Math.floor(matchPercentage)
   }
 
   // Update job matches when resume changes
   private updateJobMatches(): void {
     if (this.jobs.length > 0 && this.userResume) {
-      this.jobs = enhancedJobMatching(this.userResume, this.jobs)
+      this.jobs = this.jobs.map(job => ({
+        ...job,
+        matchPercentage: this.calculateMatchPercentage(job)
+      }))
     }
   }
 
