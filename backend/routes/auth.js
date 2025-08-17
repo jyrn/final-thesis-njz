@@ -1,34 +1,21 @@
-const express = require("express");
-const router = express.Router();
-const admin = require("../config/firebase");
-const User = require("../models/User");
+const express = require("express")
+const router = express.Router()
+const multer = require("multer")
+const path = require("path")
+const { register } = require("../controllers/authController")
 
-// Register
-router.post("/register", async (req, res) => {
-  try {
-    const { email, password, fullname, role } = req.body;
+// Multer setup
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "uploads/")
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname))
+  },
+})
+const upload = multer({ storage })
 
-    // 1. Create user in Firebase
-    const firebaseUser = await admin.auth().createUser({
-      email,
-      password,
-    });
+// Registration route
+router.post("/register", upload.single("resume"), register)
 
-    // 2. Save extra info in MongoDB
-    const newUser = new User({
-      firebaseUid: firebaseUser.uid,
-      fullname,
-      email,
-      role,
-    });
-
-    await newUser.save();
-
-    res.status(201).json({ message: "User registered successfully", user: newUser });
-  } catch (error) {
-    console.error("Register error:", error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-module.exports = router;
+module.exports = router
