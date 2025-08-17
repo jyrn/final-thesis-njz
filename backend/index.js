@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require("mongoose");
 const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
@@ -15,6 +16,8 @@ connectDB();
 
 // Routes
 app.use('/api/users', require('./routes/userRoutes'));
+app.use("/api/auth", authRoutes);
+
 
 app.get('/', (req, res) => {
   res.send('✅ Backend is running...');
