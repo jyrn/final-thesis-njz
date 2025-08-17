@@ -5,6 +5,10 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import styles from "./AuthPage.module.css"
 import RoleAgreementModal, { type UserRole } from "../../components/RoleAgreementModal"
+<<<<<<< HEAD
+=======
+import authService from "../../services/authService"
+>>>>>>> second-frontend
 
 interface DocumentUpload {
   file: File | null
@@ -502,12 +506,17 @@ const AuthPage: React.FC = () => {
     }
   }
 
+<<<<<<< HEAD
   const handleLogin = (e: React.FormEvent) => {
+=======
+  const handleLogin = async (e: React.FormEvent) => {
+>>>>>>> second-frontend
     e.preventDefault()
 
     if (!validateForm()) return
 
     setIsUploading(true)
+<<<<<<< HEAD
 
     setTimeout(() => {
       setIsUploading(false)
@@ -516,6 +525,25 @@ const AuthPage: React.FC = () => {
         navigate(`/${selectedRole}/dashboard`)
       }, 1000)
     }, 1500)
+=======
+    setErrors({})
+
+    try {
+      const result = await authService.loginWithEmail(formData.email, formData.password)
+      
+      if (result.success) {
+        setSuccessMessage("Login successful! Redirecting...")
+        setTimeout(() => {
+          navigate(`/${result.user.role === 'job_seeker' ? 'jobseeker' : result.user.role}/dashboard`)
+        }, 1000)
+      }
+    } catch (error) {
+      console.error('Login error:', error)
+      setErrors({ general: error.message || 'Login failed. Please try again.' })
+    } finally {
+      setIsUploading(false)
+    }
+>>>>>>> second-frontend
   }
 
   // Show modal instead of immediately registering
@@ -534,16 +562,46 @@ const AuthPage: React.FC = () => {
       setSuccessMessage("Basic information saved! Please upload required documents.")
     } else {
       setIsUploading(true)
+<<<<<<< HEAD
       try {
         await handleFileUpload()
         setTimeout(() => {
+=======
+      setErrors({})
+      
+      try {
+        // Prepare registration data
+        const fullName = `${formData.firstName} ${formData.middleName} ${formData.lastName}`.trim()
+        const additionalData = {
+          resume: resumeFile,
+          location: '',
+          phoneNumber: ''
+        }
+
+        const result = await authService.registerWithEmail({
+          email: formData.email,
+          password: formData.password,
+          fullName,
+          role: selectedRole === 'jobseeker' ? 'job_seeker' : selectedRole,
+          additionalData
+        })
+        
+        if (result.success) {
+>>>>>>> second-frontend
           setSuccessMessage("Account created successfully! Your resume will be processed in the dashboard.")
           setTimeout(() => {
             navigate(`/${selectedRole}/dashboard`)
           }, 1000)
+<<<<<<< HEAD
         }, 1000)
       } catch (error) {
         setErrors((prev) => ({ ...prev, general: "Registration failed. Please try again." }))
+=======
+        }
+      } catch (error) {
+        console.error('Registration error:', error)
+        setErrors({ general: error.message || 'Registration failed. Please try again.' })
+>>>>>>> second-frontend
       } finally {
         setIsUploading(false)
       }
@@ -561,6 +619,7 @@ const AuthPage: React.FC = () => {
     }
 
     setIsUploading(true)
+<<<<<<< HEAD
     try {
       console.log("Uploading employer documents...")
       await new Promise((resolve) => setTimeout(resolve, 3000))
@@ -572,11 +631,43 @@ const AuthPage: React.FC = () => {
     } catch (error) {
       console.error("Document upload failed:", error)
       setErrors((prev) => ({ ...prev, general: "Failed to upload documents. Please try again." }))
+=======
+    setErrors({})
+    
+    try {
+      // Prepare registration data for employer
+      const fullName = `${formData.firstName} ${formData.middleName} ${formData.lastName}`.trim()
+      const additionalData = {
+        companyName: formData.companyName,
+        documents: employerDocuments,
+        location: '',
+        phoneNumber: ''
+      }
+
+      const result = await authService.registerWithEmail({
+        email: formData.email,
+        password: formData.password,
+        fullName,
+        role: 'employer',
+        additionalData
+      })
+      
+      if (result.success) {
+        setSuccessMessage("Documents uploaded successfully! Your account is pending verification.")
+        setTimeout(() => {
+          navigate(`/${selectedRole}/dashboard`)
+        }, 2000)
+      }
+    } catch (error) {
+      console.error('Employer registration error:', error)
+      setErrors({ general: error.message || 'Failed to upload documents. Please try again.' })
+>>>>>>> second-frontend
     } finally {
       setIsUploading(false)
     }
   }
 
+<<<<<<< HEAD
   const handleGoogleSignIn = () => {
     if (window.google) {
       window.google.accounts.id.prompt()
@@ -590,6 +681,28 @@ const AuthPage: React.FC = () => {
         `state=${selectedRole}_${isLogin ? "login" : "register"}`
 
       window.location.href = authUrl
+=======
+  const handleGoogleSignIn = async () => {
+    setIsUploading(true)
+    setErrors({})
+    
+    try {
+      const role = selectedRole === 'jobseeker' ? 'job_seeker' : selectedRole
+      const result = await authService.loginWithGoogle(role)
+      
+      if (result.success) {
+        const message = result.isNewUser ? 'Account created successfully!' : 'Login successful!'
+        setSuccessMessage(`${message} Redirecting...`)
+        setTimeout(() => {
+          navigate(`/${result.user.role === 'job_seeker' ? 'jobseeker' : result.user.role}/dashboard`)
+        }, 1000)
+      }
+    } catch (error) {
+      console.error('Google sign-in error:', error)
+      setErrors({ general: error.message || 'Google sign-in failed. Please try again.' })
+    } finally {
+      setIsUploading(false)
+>>>>>>> second-frontend
     }
   }
 
