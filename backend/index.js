@@ -2,27 +2,26 @@ const express = require("express")
 const mongoose = require("mongoose")
 const dotenv = require("dotenv")
 const cors = require("cors")
+
+// Import routes
 const authRoutes = require("./routes/authRoutes")
-const admin = require("firebase-admin")
+const firebaseAuthRoutes = require("./routes/firebaseAuth")
+const newAuthRoutes = require("./routes/auth")
+const userRoutes = require("./routes/userRoutes")
 
 dotenv.config()
 const app = express()
 
+// Middleware
 app.use(cors())
 app.use(express.json())
 app.use("/uploads", express.static("uploads"))
 
-// Firebase Admin
-admin.initializeApp({
-  credential: admin.credential.cert({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-  }),
-})
-
 // Routes
-app.use("/api/auth", authRoutes)
+app.use("/api/auth", newAuthRoutes) // New comprehensive auth routes
+app.use("/api/firebase-auth", firebaseAuthRoutes) // Firebase-specific routes
+app.use("/api/legacy-auth", authRoutes) // Legacy auth routes (if needed)
+app.use("/api/users", userRoutes) // User management routes
 
 // MongoDB Connection
 mongoose
