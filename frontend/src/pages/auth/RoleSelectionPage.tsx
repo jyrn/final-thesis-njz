@@ -8,7 +8,7 @@ const RoleSelectionPage: React.FC = () => {
   const handleRoleSelection = (role: 'jobseeker' | 'employer') => {
     // Store the selected role in localStorage for later use
     localStorage.setItem('selectedRole', role);
-    navigate('/auth');
+    navigate(`/auth/${role}`);
   };
 
   return (

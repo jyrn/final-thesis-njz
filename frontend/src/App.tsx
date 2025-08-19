@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import MainLayout from './layouts/MainLayout';
 import RoleSelectionPage from './pages/auth/RoleSelectionPage';
-import AuthPage from './pages/auth/AuthPage';
+import EmployerAuth from './pages/auth/EmployerAuth';
+import JobseekerAuth from './pages/auth/JobseekerAuth';
+import EmployerDocuments from './pages/auth/EmployerDocuments';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import JobSeekerDashboard from './pages/jobseeker/Dashboard';
 import EmployerDashboard from './pages/employer/Dashboard';
@@ -14,7 +16,9 @@ function App() {
       <Routes>
         {/* Auth routes without layout */}
         <Route path="/" element={<RoleSelectionPage />} />
-        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/auth/employer" element={<EmployerAuth />} />
+        <Route path="/auth/employer/documents" element={<EmployerDocuments />} />
+        <Route path="/auth/jobseeker" element={<JobseekerAuth />} />
         <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/legal/terms" element={<TermsPage />} />
         <Route path="/legal/privacy" element={<PrivacyPage />} />
