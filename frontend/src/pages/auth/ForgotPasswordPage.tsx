@@ -1,16 +1,50 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { toast } from 'react-toastify';
 import styles from './ForgotPasswordPage.module.css';
+import authService from '../../services/authService';
 
 const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 🔐 TODO: Implement password reset logic
-    console.log('Password reset requested for:', email);
-    setIsSubmitted(true);
+    setError('');
+    
+    // Basic email validation
+    if (!email || !/\S+@\S+\.\S+/.test(email)) {
+      const errorMsg = 'Please enter a valid email address';
+      setError(errorMsg);
+      toast.error(errorMsg);
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      const response = await authService.forgotPassword(email);
+      
+      if (response.success) {
+        setIsSubmitted(true);
+        toast.success('Password reset link has been sent to your email. Please check your inbox.');
+      } else {
+        const errorMsg = response.error || 'Failed to send password reset email. Please try again later.';
+        setError(errorMsg);
+        toast.error(errorMsg);
+      }
+    } catch (err) {
+      const error = err as Error;
+      console.error('Forgot password error:', error);
+      const errorMsg = error.message || 'An unexpected error occurred. Please try again.';
+      setError(errorMsg);
+      toast.error(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (isSubmitted) {
@@ -60,7 +94,7 @@ const ForgotPasswordPage: React.FC = () => {
                 </p>
               </div>
 
-              <Link to="/auth" className={styles.backToLogin}>
+              <Link to="/" className={styles.backToLogin}>
                 Back to Login
               </Link>
             </div>
@@ -121,20 +155,36 @@ const ForgotPasswordPage: React.FC = () => {
                     id="email"
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className={styles.input}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setError(''); // Clear error when user types
+                    }}
+                    className={`${styles.input} ${error ? styles.inputError : ''}`}
                     placeholder="Enter your email"
                     required
+                    disabled={isLoading}
                   />
                 </div>
+                {error && <div className={styles.errorText}>{error}</div>}
               </div>
 
-              <button type="submit" className={styles.primaryButton}>
-                Send Reset Link
+              <button 
+                type="submit" 
+                className={`${styles.primaryButton} ${isLoading ? styles.loading : ''}`}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <span className={styles.spinner}></span>
+                    Sending...
+                  </>
+                ) : (
+                  'Send Reset Link'
+                )}
               </button>
             </form>
 
-            <Link to="/auth" className={styles.backToLogin}>
+            <Link to="/" className={styles.backToLogin}>
               Back to Login
             </Link>
           </div>

@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import styles from "./AuthPage.module.css"
 import RoleAgreementModal, { type UserRole } from "../../components/RoleAgreementModal"
 import TermsModal from '../../components/TermsModal'
@@ -180,18 +180,124 @@ const EmployerAuth: React.FC = () => {
   const handleBasicRegistration = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!validateForm()) return
-    
+
     setIsUploading(true)
     try {
-      // Simulate registration process
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Mock registration for now - replace with actual API call when backend is ready
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API delay
       
-      // Move to document upload step
-      setRegistrationStep(2)
+      // Simulate successful registration
+      console.log('Mock employer registration:', {
+        email: formData.email,
+        companyName: formData.companyName
+      });
+
+      // Redirect to verification page with email parameter
+      navigate(`/auth/verify-email?email=${encodeURIComponent(formData.email)}`);
     } catch (error) {
-      setErrors(prev => ({ ...prev, general: "Registration failed. Please try again." }))
+      console.error('Registration error:', error);
+      setErrors(prev => ({
+        ...prev,
+        general: error instanceof Error ? error.message : 'Registration failed. Please try again.'
+      }));
     } finally {
-      setIsUploading(false)
+      setIsUploading(false);
+    }
+  }
+
+  const handleDocumentUpload = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    const newErrors: FormErrors = {}
+
+    // Validate document uploads
+    if (!employerDocuments.companyProfile.file) {
+      newErrors.companyProfile = 'Company profile is required'
+    }
+    if (!employerDocuments.businessPermit.file) {
+      newErrors.businessPermit = 'Business permit is required'
+    }
+    if (!employerDocuments.philjobnetRegistration.file) {
+      newErrors.philjobnetRegistration = 'PhilJobNet registration is required'
+    }
+    if (!employerDocuments.doleNoPendingCase.file) {
+      newErrors.doleNoPendingCase = 'DOLE no pending case is required'
+    }
+
+    setErrors(newErrors)
+
+    if (Object.keys(newErrors).length === 0) {
+      try {
+        setIsUploading(true)
+        
+        // Create FormData for file uploads
+        const formDataToSend = new FormData()
+        formDataToSend.append('email', formData.email)
+        formDataToSend.append('companyName', formData.companyName)
+        
+        // Only append files if they exist
+        if (employerDocuments.companyProfile.file) {
+          formDataToSend.append('companyProfile', employerDocuments.companyProfile.file)
+        }
+        if (employerDocuments.businessPermit.file) {
+          formDataToSend.append('businessPermit', employerDocuments.businessPermit.file)
+        }
+        if (employerDocuments.philjobnetRegistration.file) {
+          formDataToSend.append('philjobnetRegistration', employerDocuments.philjobnetRegistration.file)
+        }
+        if (employerDocuments.doleNoPendingCase.file) {
+          formDataToSend.append('doleNoPendingCase', employerDocuments.doleNoPendingCase.file)
+        }
+
+        const response = await fetch('http://localhost:3001/api/auth/employer/documents', {
+          method: 'POST',
+          body: formDataToSend,
+          // Don't set Content-Type header, let the browser set it with the correct boundary
+          headers: {
+            'Accept': 'application/json',
+          },
+        })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Document upload failed')
+        }
+        
+        // Show success message
+        setSuccessMessage('Registration successful! Your documents are under review. You will receive an email once your account is verified.')
+        
+        // Reset form and go back to login after delay
+        setTimeout(() => {
+          setIsLogin(true)
+          setRegistrationStep(1)
+          setSuccessMessage('')
+          // Reset form data
+          setFormData({
+            email: '',
+            password: '',
+            confirmPassword: '',
+            companyName: '',
+          })
+          setEmployerDocuments({
+            companyProfile: { file: null, uploaded: false },
+            businessPermit: { file: null, uploaded: false },
+            philjobnetRegistration: { file: null, uploaded: false },
+            doleNoPendingCase: { file: null, uploaded: false },
+          })
+          
+          // Redirect to login page
+          navigate('/auth')
+        }, 3000)
+      } catch (error) {
+        console.error('Document upload error:', error)
+        setErrors({
+          ...errors,
+          form: error instanceof Error ? error.message : 'Failed to upload documents. Please try again.'
+        })
+      } finally {
+        setIsUploading(false)
+      }
     }
   }
 
@@ -352,6 +458,13 @@ const EmployerAuth: React.FC = () => {
                   {(errors.password || realTimeErrors.password) && (
                     <div className={styles.inputError}>
                       {errors.password || realTimeErrors.password}
+                    </div>
+                  )}
+                  {isLogin && (
+                    <div className={styles.forgotPasswordContainer}>
+                      <Link to="/auth/forgot-password" className={styles.forgotPasswordLink}>
+                        Forgot Password?
+                      </Link>
                     </div>
                   )}
                 </div>

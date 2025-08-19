@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, Link } from "react-router-dom"
 import styles from "./AuthPage.module.css"
 import RoleAgreementModal, { type UserRole } from "../../components/RoleAgreementModal"
 import TermsModal from "../../components/TermsModal"
@@ -293,15 +293,27 @@ const JobseekerAuth: React.FC = () => {
         await handleFileUpload()
       }
       
-      // Simulate registration process
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Mock registration for now - replace with actual API call when backend is ready
+      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API delay
       
-      // Show success modal
-      setShowSuccessModal(true)
+      // Simulate successful registration
+      console.log('Mock jobseeker registration:', {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        hasUploadedResume: !!resumeFile
+      });
+
+      // Redirect to verification page with email parameter
+      navigate(`/auth/verify-email?email=${encodeURIComponent(formData.email)}`);
     } catch (error) {
-      setErrors(prev => ({ ...prev, general: "Registration failed. Please try again." }))
+      console.error('Registration error:', error);
+      setErrors(prev => ({
+        ...prev,
+        general: error instanceof Error ? error.message : 'Registration failed. Please try again.'
+      }));
     } finally {
-      setIsUploading(false)
+      setIsUploading(false);
     }
   }
 
@@ -415,6 +427,13 @@ const JobseekerAuth: React.FC = () => {
                   {(errors.password || realTimeErrors.password) && (
                     <div className={styles.inputError}>
                       {errors.password || realTimeErrors.password}
+                    </div>
+                  )}
+                  {isLogin && (
+                    <div className={styles.forgotPasswordContainer}>
+                      <Link to="/auth/forgot-password" className={styles.forgotPasswordLink}>
+                        Forgot Password?
+                      </Link>
                     </div>
                   )}
                 </div>
@@ -561,6 +580,13 @@ const JobseekerAuth: React.FC = () => {
                   {(errors.password || realTimeErrors.password) && (
                     <div className={styles.inputError}>
                       {errors.password || realTimeErrors.password}
+                    </div>
+                  )}
+                  {isLogin && (
+                    <div className={styles.forgotPasswordContainer}>
+                      <Link to="/auth/forgot-password" className={styles.forgotPasswordLink}>
+                        Forgot Password?
+                      </Link>
                     </div>
                   )}
                 </div>

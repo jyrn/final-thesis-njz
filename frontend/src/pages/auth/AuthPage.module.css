@@ -680,6 +680,25 @@
   animation: slideInUp 0.2s ease-out;
 }
 
+.forgotPasswordContainer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.forgotPasswordLink {
+  color: #3b82f6;
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition: color 0.2s ease, text-decoration 0.2s ease;
+}
+
+.forgotPasswordLink:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
 .inputSuccess {
   color: #10b981;
   font-size: 12px;
@@ -1239,6 +1258,111 @@
   border-top: 1px solid #e5e7eb;
   padding: 1.5rem;
   border-radius: 0 0 1.5rem 1.5rem;
+}
+
+/* Email verification specific styles */
+.verificationNotice {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.verificationActions {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.backToLogin {
+  margin-top: 24px;
+  text-align: center;
+}
+
+.secondaryButton {
+  display: inline-block;
+  padding: 12px 24px;
+  background: white;
+  color: #3b82f6;
+  border: 2px solid #3b82f6;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.secondaryButton:hover {
+  background: #3b82f6;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.successText {
+  color: #10b981;
+  font-size: 14px;
+  margin-top: 12px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.successText::before {
+  content: "✓";
+  font-size: 16px;
+  font-weight: bold;
+}
+
+/* Enhanced loading spinner for email verification */
+.loadingSpinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #e5e7eb;
+  border-top: 3px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto;
+}
+
+/* Email verification icon styles */
+.emailVerificationIcon {
+  width: 64px;
+  height: 64px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 24px;
+  margin: 0 auto 20px auto;
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+}
+
+/* Step indicator for email verification */
+.stepIndicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin: 20px 0;
+}
+
+.stepDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e5e7eb;
+  transition: all 0.3s ease;
+}
+
+.stepDot.active {
+  background: #3b82f6;
+  transform: scale(1.2);
+}
+
+.stepDot.completed {
+  background: #10b981;
 }
 
 /* Responsive design */

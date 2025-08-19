@@ -111,6 +111,26 @@
 
 .passwordContainer {
   position: relative;
+  margin-bottom: 8px;
+}
+
+.forgotPasswordLink {
+  text-align: right;
+  margin-top: 4px;
+  margin-bottom: 16px;
+}
+
+.forgotPasswordLink a {
+  color: #3b82f6;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.forgotPasswordLink a:hover {
+  color: #2563eb;
+  text-decoration: underline;
 }
 
 .passwordInput {

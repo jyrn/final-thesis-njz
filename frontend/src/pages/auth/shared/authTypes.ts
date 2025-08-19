@@ -11,6 +11,11 @@ export interface FormErrors {
   general?: string
   terms?: string
   privacy?: string
+  form?: string
+  companyProfile?: string
+  businessPermit?: string
+  philjobnetRegistration?: string
+  doleNoPendingCase?: string
 }
 
 export interface DocumentUpload {

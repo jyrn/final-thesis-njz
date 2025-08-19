@@ -201,6 +201,9 @@ const LoginPage: React.FC = () => {
                   />
                 </svg>
               </button>
+              <div className={styles.forgotPasswordLink}>
+                <Link to="/auth/forgot-password">Forgot Password?</Link>
+              </div>
             </div>
           </div>
 
