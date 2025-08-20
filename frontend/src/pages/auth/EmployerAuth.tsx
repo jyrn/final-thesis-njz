@@ -363,6 +363,9 @@ const EmployerAuth: React.FC = () => {
               <h2>{registrationStep === 2 ? "Verify Your Company" : "Start Your Journey with Us"}</h2>
               <p>{registrationStep === 2 ? "Upload required documents to verify your company" : "Connect with talented job seekers"}</p>
             </div>
+            <div className={styles.decorativeCircle1}></div>
+            <div className={styles.decorativeCircle2}></div>
+            <div className={styles.decorativeCircle3}></div>
           </div>
         </div>
 

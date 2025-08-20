@@ -334,6 +334,9 @@ const JobseekerAuth: React.FC = () => {
               <h2>Start Your Journey with Us</h2>
               <p>Upload your PDF resume for AI-powered job matching with OCR technology</p>
             </div>
+            <div className={styles.decorativeCircle1}></div>
+            <div className={styles.decorativeCircle2}></div>
+            <div className={styles.decorativeCircle3}></div>
           </div>
         </div>
 
