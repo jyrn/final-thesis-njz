@@ -9,7 +9,7 @@ import TermsModal from '../../components/TermsModal'
 import SuccessModal from '../../components/SuccessModal'
 import VerificationModal from '../../components/VerificationModal'
 import { FormErrors, EmployerFormData, EmployerDocuments } from "./shared/authTypes"
-import { validateEmail, validatePassword, validateName, validateConfirmPassword } from './shared/authValidation'
+import { validateEmail, validatePassword, validateName, validateCompanyName, validateConfirmPassword } from './shared/authValidation'
 import { loadGoogleOAuthScript, initializeGoogleOAuth, parseJwt, handleGoogleAuthSuccess, handleGoogleSignIn } from "./shared/authUtils"
 
 const EmployerAuth: React.FC = () => {
@@ -87,7 +87,7 @@ const EmployerAuth: React.FC = () => {
         }
         break
       case 'companyName':
-        const companyError = validateName(value)
+        const companyError = validateCompanyName(value)
         if (companyError) {
           newRealTimeErrors.companyName = companyError
         } else {
@@ -117,7 +117,7 @@ const EmployerAuth: React.FC = () => {
     if (passwordError) newErrors.password = passwordError
 
     if (!isLogin) {
-      const companyError = validateName(formData.companyName)
+      const companyError = validateCompanyName(formData.companyName)
       if (companyError) newErrors.companyName = companyError
 
       const confirmPasswordError = validateConfirmPassword(formData.password, formData.confirmPassword)
@@ -852,3 +852,4 @@ const EmployerAuth: React.FC = () => {
 }
 
 export default EmployerAuth
+

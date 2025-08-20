@@ -5,6 +5,7 @@ import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import styles from "./Dashboard.module.css"
 import { parseResume } from "../../utils/resumeParser"
+import ResumeUploadPrompt from "../../components/ResumeUploadPrompt"
 
 // Types
 interface ParsedResume {
@@ -154,11 +155,25 @@ const Dashboard: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notifications] = useState(3) // Mock notification count
+  const [showResumePrompt, setShowResumePrompt] = useState(false)
 
   useEffect(() => {
     checkExistingResume()
     loadJobs()
     loadApplications()
+    
+    // Check if we should show the resume upload prompt
+    const hasSeenPrompt = localStorage.getItem('hasSeenResumePrompt')
+    const hasResume = localStorage.getItem('resumeData')
+    
+    if (!hasSeenPrompt && !hasResume) {
+      // Small delay to ensure the dashboard is fully loaded
+      const timer = setTimeout(() => {
+        setShowResumePrompt(true)
+      }, 1000)
+      
+      return () => clearTimeout(timer)
+    }
   }, [])
 
   const checkExistingResume = async () => {
@@ -824,8 +839,40 @@ const Dashboard: React.FC = () => {
     </div>
   )
 
+  const handleResumeUpload = async (file: File) => {
+    try {
+      setIsProcessing(true)
+      const parsedData = await parseResume(file)
+      
+      // Save the parsed resume data
+      localStorage.setItem('resumeData', JSON.stringify(parsedData))
+      setResumeData(parsedData)
+      
+      // Mark that we've seen the prompt
+      localStorage.setItem('hasSeenResumePrompt', 'true')
+      
+      return Promise.resolve()
+    } catch (error) {
+      console.error('Error processing resume:', error)
+      throw error
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleSkipResumeUpload = () => {
+    // Mark that we've seen the prompt
+    localStorage.setItem('hasSeenResumePrompt', 'true')
+    setShowResumePrompt(false)
+  }
+
   return (
     <div className={styles.dashboard}>
+      <ResumeUploadPrompt
+        isOpen={showResumePrompt}
+        onClose={handleSkipResumeUpload}
+        onUpload={handleResumeUpload}
+      />
       {/* Mobile Header */}
       <header className={styles.mobileHeader}>
         <button className={styles.menuButton} onClick={() => setSidebarOpen(!sidebarOpen)}>

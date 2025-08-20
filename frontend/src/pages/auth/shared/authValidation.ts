@@ -19,6 +19,12 @@ export const validateName = (name: string): string | undefined => {
   return undefined
 }
 
+export const validateCompanyName = (name: string): string | undefined => {
+  if (!name) return "Company name is required"
+  if (name.length < 2) return "Company name must be at least 2 characters long"
+  return undefined
+}
+
 export const validateConfirmPassword = (password: string, confirmPassword: string): string | undefined => {
   if (!confirmPassword) return "Please confirm your password"
   if (password !== confirmPassword) return "Passwords do not match"

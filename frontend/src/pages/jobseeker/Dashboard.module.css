@@ -1,3 +1,154 @@
+/* Modal Styles */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modalContent {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modalContent h2 {
+  margin-top: 0;
+  color: #1e40af;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.modalDescription {
+  color: #4b5563;
+  margin-bottom: 1.5rem;
+  line-height: 1.6;
+}
+
+.uploadForm {
+  margin-top: 1.5rem;
+}
+
+.uploadArea {
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 1.5rem;
+  background-color: #f8fafc;
+}
+
+.uploadArea:hover, .uploadArea.dragging {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.uploadIcon {
+  color: #3b82f6;
+  margin-bottom: 1rem;
+}
+
+.uploadText {
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: #1e293b;
+}
+
+.uploadHint {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.fileInput {
+  display: none;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.primaryButton, .secondaryButton {
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.primaryButton {
+  background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+  color: white;
+}
+
+.primaryButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.primaryButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.secondaryButton {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.secondaryButton:hover {
+  background: #e2e8f0;
+}
+
+.errorText {
+  color: #dc2626;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  text-align: center;
+}
+
+.closeButton {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 0.25rem;
+  line-height: 1;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.closeButton:hover {
+  color: #64748b;
+  background-color: #f1f5f9;
+}
+
 /* Dashboard Layout */
 .dashboard {
   min-height: 100vh;
