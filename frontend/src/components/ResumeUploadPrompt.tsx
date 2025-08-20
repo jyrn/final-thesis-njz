@@ -1,19 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FiUpload, FiFile, FiX, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import styles from '../pages/jobseeker/Dashboard.module.css';
 
 interface ResumeUploadPromptProps {
   isOpen: boolean;
   onClose: () => void;
   onUpload: (file: File) => Promise<void>;
+  onSkip?: () => void;
 }
 
-const ResumeUploadPrompt: React.FC<ResumeUploadPromptProps> = ({ isOpen, onClose, onUpload }) => {
+const ResumeUploadPrompt: React.FC<ResumeUploadPromptProps> = ({ isOpen, onClose, onUpload, onSkip }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -72,15 +75,22 @@ const ResumeUploadPrompt: React.FC<ResumeUploadPromptProps> = ({ isOpen, onClose
 
   return (
     <div className={styles.modalOverlay}>
-      <div className={styles.modalContent}>
-        <button className={styles.closeButton} onClick={onClose}>
-          &times;
-        </button>
+      <div className={styles.uploadModal}>
+        <div className={styles.modalHeader}>
+          <h2 className={styles.modalTitle}>Upload Your Resume</h2>
+          <button 
+            type="button" 
+            className={styles.closeButton}
+            onClick={onClose}
+            aria-label="Close"
+          >
+            <FiX size={24} />
+          </button>
+        </div>
         
-        <h2>Upload Your Resume</h2>
         <p className={styles.modalDescription}>
-          Your resume helps us match you with the best job opportunities. 
-          Upload it now to get started with personalized job recommendations.
+          Upload your resume to unlock personalized job recommendations and apply to jobs faster.
+          We support PDF files up to 5MB.
         </p>
         
         <form onSubmit={handleSubmit} className={styles.uploadForm}>
@@ -89,41 +99,75 @@ const ResumeUploadPrompt: React.FC<ResumeUploadPromptProps> = ({ isOpen, onClose
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={() => document.getElementById('resume-upload')?.click()}
+            onClick={() => fileInputRef.current?.click()}
           >
             <input
-              id="resume-upload"
+              ref={fileInputRef}
               type="file"
               accept=".pdf"
               onChange={handleFileChange}
               className={styles.fileInput}
+              id="resume-upload"
             />
-            <div className={styles.uploadIcon}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
+            
+            <div className={styles.uploadContent}>
+              <div className={styles.uploadIcon}>
+                <FiUpload size={32} />
+              </div>
+              
+              {file ? (
+                <div className={styles.fileInfo}>
+                  <div className={styles.fileIcon}>
+                    <FiFile size={20} />
+                  </div>
+                  <div className={styles.fileDetails}>
+                    <span className={styles.fileName}>{file.name}</span>
+                    <span className={styles.fileSize}>
+                      {(file.size / 1024 / 1024).toFixed(2)} MB
+                    </span>
+                  </div>
+                  <button 
+                    type="button"
+                    className={styles.removeFile}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFile(null);
+                      setError('');
+                    }}
+                    aria-label="Remove file"
+                  >
+                    <FiX size={16} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <h3 className={styles.uploadTitle}>
+                    {isDragging ? 'Drop your resume here' : 'Drag & drop your resume'}
+                  </h3>
+                  <p className={styles.uploadSubtitle}>
+                    or <span className={styles.browseLink}>browse files</span>
+                  </p>
+                  <p className={styles.fileTypeHint}>PDF, up to 5MB</p>
+                </>
+              )}
             </div>
-            <p className={styles.uploadText}>
-              {file ? file.name : 'Drag & drop your resume here or click to browse'}
-            </p>
-            <p className={styles.uploadHint}>(PDF files only, max 5MB)</p>
           </div>
           
-          {error && <p className={styles.errorText}>{error}</p>}
+          {error && (
+            <div className={styles.errorMessage}>
+              <FiAlertCircle size={16} />
+              <span>{error}</span>
+            </div>
+          )}
           
-          <div className={styles.modalActions}>
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                navigate('/jobseeker/profile');
-              }}
-              className={styles.secondaryButton}
+          <div className={styles.buttonGroup}>
+            <button 
+              type="button" 
+              className={styles.skipButton}
+              onClick={onSkip}
               disabled={isLoading}
             >
-              Skip for Now
+              Skip for now
             </button>
             <button 
               type="submit" 
