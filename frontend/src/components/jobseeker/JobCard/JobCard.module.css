@@ -76,10 +76,10 @@
 }
 
 .saveJobButton {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border: none;
-  background: transparent;
+  background: #f8fafc;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -88,14 +88,30 @@
   transition: all 0.2s ease;
   z-index: 10;
   position: relative;
+  color: #94a3b8;
+  padding: 0;
 }
 
 .saveJobButton:hover {
-  background: #f7fafc;
+  background: #f1f5f9;
+  color: #64748b;
 }
 
 .saveJobButton.saved {
-  color: #3182ce;
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.saveJobButton.saved:hover {
+  color: #2563eb;
+  background: #dbeafe;
+}
+
+/* Add a filled bookmark icon */
+.saveJobButton.saved svg {
+  fill: currentColor;
+  stroke: currentColor;
+  stroke-width: 2px;
 }
 
 .saveJobButton svg {
