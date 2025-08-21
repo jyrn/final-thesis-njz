@@ -126,7 +126,7 @@ const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply }) =
           <div className={styles.filterSection}>
             <h3 className={styles.sectionTitle}>Job type</h3>
             <div className={styles.chipGroup}>
-              {['Internship', 'Part-time', 'Full-time', 'Contract', 'Project-based'].map((option) => (
+              {['Internship', 'Part-time', 'Full-time', 'Contract'].map((option) => (
                 <button
                   key={option}
                   className={`${styles.chip} ${filters.jobType.includes(option) ? styles.chipActive : ''}`}
@@ -274,7 +274,7 @@ const FilterModal: React.FC<FilterModalProps> = ({ isOpen, onClose, onApply }) =
             Reset
           </button>
           <button className={styles.applyButton} onClick={handleApply}>
-            APPLY NOW
+            APPLY CHANGES
           </button>
         </div>
       </div>

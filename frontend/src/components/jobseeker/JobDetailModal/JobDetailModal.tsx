@@ -2,17 +2,9 @@ import React from 'react'
 import { FiArrowLeft, FiMoreHorizontal, FiMapPin } from 'react-icons/fi'
 import styles from './JobDetailModal.module.css'
 
-interface Job {
-  id: number
-  title: string
-  company: string
-  location: string
-  salary: string
-  type: string
-  level: string
-  postedDate: string
-  description?: string
-}
+import { Job } from '../../../../src/types/Job';
+
+// Using the shared Job type from types/Job.ts
 
 interface JobDetailModalProps {
   job: Job | null

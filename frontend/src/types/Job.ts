@@ -3,7 +3,7 @@ export interface Job {
   title: string
   company: string
   location: string
-  salary: string
+  salary: number
   type: string
   level: string
   postedDate: string
@@ -11,4 +11,9 @@ export interface Job {
   requirements?: string[]
   matchScore?: number
   matchingSkills?: string[]
+  isRemote?: boolean
+  isHybrid?: boolean
+  experienceLevel?: string
+  lastUpdated?: string
+  workplaceType?: 'On-site' | 'Hybrid' | 'Remote'
 }

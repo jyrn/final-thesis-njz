@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import styles from './Dashboard.module.css'
-import { FiHome, FiBriefcase, FiFileText, FiUser, FiBookmark, FiMapPin, FiDollarSign, FiClock, FiBell, FiMenu, FiX, FiFilter } from 'react-icons/fi'
+import { FiHome, FiBriefcase, FiFileText, FiUser, FiBookmark, FiMapPin, FiDollarSign, FiClock, FiBell, FiMenu, FiX, FiFilter, FiSliders } from 'react-icons/fi'
+import FilterModal from '../../components/jobseeker/FilterModal/FilterModal'
 import SearchBar from '../../components/jobseeker/SearchBar/SearchBar'
 import ResumeUploadPrompt from '../../components/ResumeUploadPrompt';
 import JobDetailModal from '../../components/jobseeker/JobDetailModal/JobDetailModal';
@@ -72,28 +73,84 @@ const Dashboard: React.FC = () => {
   const [hasSkippedResume, setHasSkippedResume] = useState(false)
   const [showInitialResumePrompt, setShowInitialResumePrompt] = useState(false)
   const [attemptedJobId, setAttemptedJobId] = useState<number | null>(null)
-
-  // Filter jobs based on search query
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredJobs(jobs);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = jobs.filter(
-        job => {
-          const titleMatch = job.title?.toLowerCase().includes(query) || false;
-          const companyMatch = job.company?.toLowerCase().includes(query) || false;
-          const descMatch = job.description?.toLowerCase().includes(query) || false;
-          const reqsMatch = job.requirements?.some(
-            req => req && req.toLowerCase().includes(query)
-          ) || false;
-          
-          return titleMatch || companyMatch || descMatch || reqsMatch;
-        }
-      );
-      setFilteredJobs(filtered);
+  const [showFilterModal, setShowFilterModal] = useState(false)
+  
+  interface ActiveFilters {
+    lastUpdate: string;
+    workplaceType: string;
+    jobType: string[];
+    positionLevel: string[];
+    location: {
+      withinKm: number;
+      nearMe: boolean;
+      withinCountry: boolean;
+      international: boolean;
+      remote: boolean;
+    };
+    salary: {
+      min: number;
+      max: number;
+    };
+  }
+  
+  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
+    lastUpdate: '',
+    workplaceType: '',
+    jobType: [],
+    positionLevel: [],
+    location: {
+      withinKm: 10,
+      nearMe: false,
+      withinCountry: false,
+      international: false,
+      remote: false
+    },
+    salary: {
+      min: 20000,
+      max: 50000
     }
-  }, [searchQuery, jobs]);
+  })
+
+  // Filter jobs based on search query and filters
+  useEffect(() => {
+    const query = searchQuery.toLowerCase();
+    
+    const filtered = jobs.filter(job => {
+      // Search query matching with null checks
+      const matchesSearch = 
+        query === '' ||
+        (job.title?.toLowerCase() || '').includes(query) ||
+        (job.company?.toLowerCase() || '').includes(query) ||
+        (job.description?.toLowerCase() || '').includes(query) ||
+        (job.requirements || []).some(req => req && req.toLowerCase().includes(query));
+      
+      // Filter matching with proper type checking
+      const matchesFilters = 
+        (!activeFilters.jobType?.length || (job.type && activeFilters.jobType.includes(job.type))) &&
+        (!activeFilters.workplaceType || 
+          (activeFilters.workplaceType === 'Remote' && job.isRemote) ||
+          (activeFilters.workplaceType === 'Hybrid' && job.isHybrid) ||
+          (activeFilters.workplaceType === 'On-site' && !job.isRemote && !job.isHybrid)
+        ) &&
+        (!activeFilters.positionLevel?.length || 
+          activeFilters.positionLevel.some((level: string) => 
+            (job.title?.toLowerCase() || '').includes(level.toLowerCase()) ||
+            (job.level && job.level === level)
+          )
+        ) &&
+        (job.salary >= (activeFilters.salary?.min || 0) && 
+         job.salary <= (activeFilters.salary?.max || Number.MAX_SAFE_INTEGER));
+      
+      return matchesSearch && matchesFilters;
+    });
+    
+    setFilteredJobs(filtered);
+  }, [searchQuery, jobs, activeFilters]);
+  
+  const handleApplyFilters = (filters: ActiveFilters) => {
+    setActiveFilters(filters);
+    setShowFilterModal(false);
+  };
 
   // Load mock data
   useEffect(() => {
@@ -377,13 +434,15 @@ const Dashboard: React.FC = () => {
             <h1 className={styles.pageTitle}>Dashboard</h1>
           </div>
           
-          <div className={styles.headerSearch}>
-            <SearchBar 
-              value={searchQuery}
-              onChange={(value) => setSearchQuery(value)}
-              placeholder="Search for jobs, companies, or keywords"
-            />
-          </div>
+          {activeTab === 'jobs' && (
+            <div className={styles.headerSearch}>
+              <SearchBar 
+                value={searchQuery}
+                onChange={(value) => setSearchQuery(value)}
+                placeholder="Search for jobs, companies, or keywords"
+              />
+            </div>
+          )}
           
           <div className={styles.headerActions}>
             <button 
@@ -418,6 +477,12 @@ const Dashboard: React.FC = () => {
           {renderContent()}
         </div>
       </main>
+
+      <FilterModal 
+        isOpen={showFilterModal}
+        onClose={() => setShowFilterModal(false)}
+        onApply={handleApplyFilters}
+      />
 
       {/* Mobile Bottom Navigation - Removed for now */}
 
