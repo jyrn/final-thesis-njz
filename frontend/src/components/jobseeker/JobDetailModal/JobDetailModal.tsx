@@ -15,6 +15,9 @@ interface JobDetailModalProps {
 
 const JobDetailModal: React.FC<JobDetailModalProps> = ({ job, isOpen, onClose, onApply }) => {
   if (!isOpen || !job) return null
+  
+  // Debug logging to check job data
+  console.log('JobDetailModal job data:', job)
 
   const getCompanyLogo = (company: string) => {
     switch (company.toLowerCase()) {
@@ -69,18 +72,18 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ job, isOpen, onClose, o
           <div className={styles.jobDescription}>
             <h3>Job Description</h3>
             <p>
-              Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit.
+              {job.description}
             </p>
-            <button className={styles.readMoreButton}>Read more</button>
           </div>
 
           <div className={styles.requirements}>
             <h3>Requirements</h3>
             <ul>
-              <li>Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem.</li>
-              <li>Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit.</li>
-              <li>Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur.</li>
-              <li>Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequatur. Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur.</li>
+              {job.requirements?.map((req, index) => (
+                <li key={index}>{req}</li>
+              )) || (
+                <li>No specific requirements listed</li>
+              )}
             </ul>
           </div>
 
@@ -88,7 +91,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ job, isOpen, onClose, o
             <h3>Location</h3>
             <div className={styles.locationInfo}>
               <FiMapPin className={styles.locationIcon} />
-              <span>Overlook Avenue, Belleville, NJ, USA</span>
+              <span>{job.location}</span>
             </div>
             <div className={styles.mapPlaceholder}>
               {/* Map would go here */}
@@ -97,41 +100,45 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ job, isOpen, onClose, o
           </div>
 
           <div className={styles.information}>
-            <h3>Informations</h3>
+            <h3>Job Information</h3>
             <div className={styles.infoGrid}>
               <div className={styles.infoItem}>
                 <span className={styles.infoLabel}>Position</span>
-                <span className={styles.infoValue}>Senior Designer</span>
+                <span className={styles.infoValue}>{job.title}</span>
               </div>
               <div className={styles.infoItem}>
-                <span className={styles.infoLabel}>Qualification</span>
-                <span className={styles.infoValue}>Bachelor's Degree</span>
-              </div>
-              <div className={styles.infoItem}>
-                <span className={styles.infoLabel}>Experience</span>
-                <span className={styles.infoValue}>3 Years</span>
+                <span className={styles.infoLabel}>Experience Level</span>
+                <span className={styles.infoValue}>{job.level || job.experienceLevel}</span>
               </div>
               <div className={styles.infoItem}>
                 <span className={styles.infoLabel}>Job Type</span>
-                <span className={styles.infoValue}>Full Time</span>
+                <span className={styles.infoValue}>{job.type}</span>
               </div>
               <div className={styles.infoItem}>
-                <span className={styles.infoLabel}>Specialisation</span>
-                <span className={styles.infoValue}>Design</span>
+                <span className={styles.infoLabel}>Workplace Type</span>
+                <span className={styles.infoValue}>{job.workplaceType || (job.isRemote ? 'Remote' : job.isHybrid ? 'Hybrid' : 'On-site')}</span>
+              </div>
+              <div className={styles.infoItem}>
+                <span className={styles.infoLabel}>Salary</span>
+                <span className={styles.infoValue}>₱{job.salary.toLocaleString('en-PH')}/month</span>
+              </div>
+              <div className={styles.infoItem}>
+                <span className={styles.infoLabel}>Posted Date</span>
+                <span className={styles.infoValue}>{job.postedDate}</span>
               </div>
             </div>
           </div>
 
           <div className={styles.facilities}>
-            <h3>Facilities and Others</h3>
+            <h3>Benefits & Perks</h3>
             <div className={styles.facilitiesList}>
-              <span className={styles.facilityTag}>Medical</span>
-              <span className={styles.facilityTag}>Dental</span>
-              <span className={styles.facilityTag}>Technical Certification</span>
-              <span className={styles.facilityTag}>Meal Allowance</span>
-              <span className={styles.facilityTag}>Transport Allowance</span>
-              <span className={styles.facilityTag}>Regular Hours</span>
-              <span className={styles.facilityTag}>Mondays-Fridays</span>
+              <span className={styles.facilityTag}>Health Insurance</span>
+              <span className={styles.facilityTag}>Dental Coverage</span>
+              <span className={styles.facilityTag}>Professional Development</span>
+              <span className={styles.facilityTag}>Flexible Hours</span>
+              <span className={styles.facilityTag}>Work from Home</span>
+              <span className={styles.facilityTag}>13th Month Pay</span>
+              <span className={styles.facilityTag}>Performance Bonus</span>
             </div>
           </div>
         </div>

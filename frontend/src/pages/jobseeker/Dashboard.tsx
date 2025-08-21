@@ -291,7 +291,7 @@ const Dashboard: React.FC = () => {
     setHasSkippedResume(true);
     setShowInitialResumePrompt(false);
     setShowResumeUpload(false);
-    setActiveTab('dashboard');
+    // Don't change the active tab, just close the modal
   };
 
   // Job matching logic based on resume skills
