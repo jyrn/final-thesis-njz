@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import styles from './Dashboard.module.css'
-import { FiHome, FiBriefcase, FiFileText, FiUser, FiBookmark, FiMapPin, FiDollarSign, FiClock, FiBell, FiMenu, FiX, FiFilter, FiSliders } from 'react-icons/fi'
+import { FiHome, FiBriefcase, FiFileText, FiUser, FiBookmark, FiMapPin, FiDollarSign, FiClock, FiBell, FiMenu, FiX, FiFilter, FiSliders, FiLogOut } from 'react-icons/fi'
 import FilterModal from '../../components/jobseeker/FilterModal/FilterModal'
 import SearchBar from '../../components/jobseeker/SearchBar/SearchBar'
 import ResumeUploadPrompt from '../../components/ResumeUploadPrompt';
@@ -110,6 +110,15 @@ const Dashboard: React.FC = () => {
       max: 50000
     }
   })
+
+  // Handle user logout
+  const handleLogout = () => {
+    // Clear user session data
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    // Redirect to jobseeker auth page
+    navigate('/auth/jobseeker')
+  }
 
   // Filter jobs based on search query and filters
   useEffect(() => {
@@ -442,6 +451,13 @@ const Dashboard: React.FC = () => {
         >
           <FiUser />
           <span>Profile</span>
+        </button>
+        <button
+          className={styles.navItem}
+          onClick={handleLogout}
+        >
+          <FiLogOut />
+          <span>Logout</span>
         </button>
       </nav>
     </aside>
