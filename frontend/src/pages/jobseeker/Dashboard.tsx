@@ -58,9 +58,10 @@ const Dashboard: React.FC = () => {
   const [showJobDetail, setShowJobDetail] = useState(false)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [filteredJobs, setFilteredJobs] = useState<Job[]>([])
   const [showResumeUpload, setShowResumeUpload] = useState(false)
   const [resume, setResume] = useState<ParsedResume | null>(null)
-  const [jobs, setJobs] = useState<Job[]>([])
   const [applications, setApplications] = useState<Application[]>([])
   const [savedJobs, setSavedJobs] = useState<Set<number>>(new Set())
   const [notifications, setNotifications] = useState<number>(3)
@@ -70,6 +71,28 @@ const Dashboard: React.FC = () => {
   const [hasSkippedResume, setHasSkippedResume] = useState(false)
   const [showInitialResumePrompt, setShowInitialResumePrompt] = useState(false)
   const [attemptedJobId, setAttemptedJobId] = useState<number | null>(null)
+
+  // Filter jobs based on search query
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredJobs(jobs);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = jobs.filter(
+        job => {
+          const titleMatch = job.title?.toLowerCase().includes(query) || false;
+          const companyMatch = job.company?.toLowerCase().includes(query) || false;
+          const descMatch = job.description?.toLowerCase().includes(query) || false;
+          const reqsMatch = job.requirements?.some(
+            req => req && req.toLowerCase().includes(query)
+          ) || false;
+          
+          return titleMatch || companyMatch || descMatch || reqsMatch;
+        }
+      );
+      setFilteredJobs(filtered);
+    }
+  }, [searchQuery, jobs]);
 
   // Mock data loading
   useEffect(() => {
@@ -235,17 +258,19 @@ const Dashboard: React.FC = () => {
 
   // Job matching logic based on resume skills
   const getMatchedJobs = () => {
-    if (!resume || !resume.skills.length) {
-      return jobs // Return all jobs if no resume
+    if (!resume || !resume.skills?.length) {
+      return jobs // Return all jobs if no resume or skills
     }
 
-    const userSkills = resume.skills.map(skill => skill.toLowerCase())
+    const userSkills = resume.skills.map(skill => skill?.toLowerCase() || '')
     
     return jobs
       .map(job => {
         const jobRequirements = job.requirements || []
         const matchingSkills = jobRequirements.filter(req => 
-          userSkills.some(skill => skill.includes(req.toLowerCase()) || req.toLowerCase().includes(skill))
+          req && userSkills.some(skill => 
+            skill && req.toLowerCase().includes(skill.toLowerCase())
+          )
         )
         
         return {
@@ -258,11 +283,17 @@ const Dashboard: React.FC = () => {
   }
 
   const getJobsToDisplay = () => {
+    // If search is active, show filtered results
+    if (searchQuery.trim() !== '') {
+      return filteredJobs;
+    }
+    
+    // If user has a resume, show matched jobs first
     if (resume && !hasSkippedResume) {
       return getMatchedJobs()
     }
-    // Show latest jobs (sorted by posted date) when no resume
-    return [...jobs].sort((a, b) => new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime())
+    
+    return jobs;
   }
 
   const handleSaveJob = (jobId: number) => {
@@ -427,8 +458,8 @@ const Dashboard: React.FC = () => {
           <div className={styles.headerSearch}>
             <SearchBar 
               value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder="Search jobs..."
+              onChange={(value) => setSearchQuery(value)}
+              placeholder="Search for jobs, companies, or keywords"
             />
           </div>
           
