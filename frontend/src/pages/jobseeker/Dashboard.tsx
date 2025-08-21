@@ -150,49 +150,55 @@ const Dashboard: React.FC = () => {
     
     // Apply additional filters only if search returned results or no search query
     const finalFiltered = filtered.filter(job => {
-      // Only apply filters if there are active filters set
-      const hasActiveFilters = 
-        activeFilters.jobType?.length > 0 ||
-        activeFilters.workplaceType ||
-        activeFilters.positionLevel?.length > 0 ||
-        activeFilters.salary?.min !== 20000 ||
-        activeFilters.salary?.max !== 50000 ||
-        activeFilters.location?.remote ||
-        activeFilters.location?.nearMe ||
-        activeFilters.location?.withinCountry ||
-        activeFilters.location?.international;
-      
-      if (!hasActiveFilters) {
-        return true;
-      }
+      // Always apply filters - let each filter decide if it should be active
+      // This way filters work immediately when set
       
       // Filter matching with proper type checking
-      const matchesFilters = 
-        // Job type filter
-        (!activeFilters.jobType?.length || 
-          activeFilters.jobType.some(filterType => 
-            job.type?.toLowerCase() === filterType.toLowerCase()
-          )
-        ) &&
-        // Workplace type filter
-        (!activeFilters.workplaceType || 
-          (activeFilters.workplaceType === 'Remote' && (job.isRemote || job.workplaceType === 'Remote')) ||
-          (activeFilters.workplaceType === 'Hybrid' && (job.isHybrid || job.workplaceType === 'Hybrid')) ||
-          (activeFilters.workplaceType === 'On-site' && (!job.isRemote && !job.isHybrid && job.workplaceType !== 'Remote' && job.workplaceType !== 'Hybrid'))
-        ) &&
-        // Position level filter
-        (!activeFilters.positionLevel?.length || 
-          activeFilters.positionLevel.some((level: string) => 
-            (job.title?.toLowerCase() || '').includes(level.toLowerCase()) ||
-            (job.level?.toLowerCase() === level.toLowerCase()) ||
-            (job.experienceLevel?.toLowerCase() === level.toLowerCase())
-          )
-        ) &&
-        // Salary filter
-        (job.salary >= (activeFilters.salary?.min || 0) && 
-         job.salary <= (activeFilters.salary?.max || Number.MAX_SAFE_INTEGER)) &&
-        // Location filters
-        (!activeFilters.location?.remote || job.isRemote || job.workplaceType === 'Remote');
+      const jobTypeMatch = !activeFilters.jobType?.length || 
+        activeFilters.jobType.some(filterType => 
+          job.type?.toLowerCase() === filterType.toLowerCase()
+        );
+      
+      const workplaceTypeMatch = !activeFilters.workplaceType || 
+        (activeFilters.workplaceType === 'Remote' && (job.isRemote || job.workplaceType === 'Remote')) ||
+        (activeFilters.workplaceType === 'Hybrid' && (job.isHybrid || job.workplaceType === 'Hybrid')) ||
+        (activeFilters.workplaceType === 'On-site' && (!job.isRemote && !job.isHybrid));
+      
+      const positionLevelMatch = !activeFilters.positionLevel?.length || 
+        activeFilters.positionLevel.some((level: string) => 
+          (job.title?.toLowerCase() || '').includes(level.toLowerCase()) ||
+          (job.level?.toLowerCase() || '').includes(level.toLowerCase()) ||
+          (job.experienceLevel?.toLowerCase() || '').includes(level.toLowerCase())
+        );
+      
+      const salaryMatch = job.salary >= (activeFilters.salary?.min || 0) && 
+        job.salary <= (activeFilters.salary?.max || Number.MAX_SAFE_INTEGER);
+      
+      const locationMatch = 
+        (!activeFilters.location?.remote || job.isRemote || job.workplaceType === 'Remote') &&
+        (!activeFilters.location?.withinCountry || job.location?.toLowerCase().includes('metro manila')) &&
+        (!activeFilters.location?.international || !job.location?.toLowerCase().includes('metro manila'));
+      
+      const matchesFilters = jobTypeMatch && workplaceTypeMatch && positionLevelMatch && salaryMatch && locationMatch;
+      
+      // Debug logging for filters
+      if (activeFilters.jobType?.length > 0 || activeFilters.workplaceType || activeFilters.positionLevel?.length > 0) {
+        console.log(`Filter check for ${job.title}:`, {
+          jobTypeMatch, workplaceTypeMatch, positionLevelMatch, salaryMatch, locationMatch,
+          activeFilters: {
+            jobType: activeFilters.jobType,
+            workplaceType: activeFilters.workplaceType,
+            positionLevel: activeFilters.positionLevel
+          },
+          jobData: {
+            type: job.type,
+            isRemote: job.isRemote,
+            isHybrid: job.isHybrid,
+            level: job.level,
+            experienceLevel: job.experienceLevel
+          }
+        });
+      }
       
       return matchesFilters;
     });
@@ -315,17 +321,32 @@ const Dashboard: React.FC = () => {
   }
 
   const getJobsToDisplay = () => {
-    // If search is active, show filtered results
-    if (searchQuery.trim() !== '') {
-      return filteredJobs;
+    // Always use filteredJobs as the base (includes both search and filter results)
+    let jobsToShow = filteredJobs;
+    
+    // If no search query and user has resume, apply skill matching to filtered results
+    if (searchQuery.trim() === '' && resume && !hasSkippedResume) {
+      const userSkills = resume.skills?.map(skill => skill?.toLowerCase() || '') || [];
+      
+      jobsToShow = filteredJobs
+        .map(job => {
+          const jobRequirements = job.requirements || []
+          const matchingSkills = jobRequirements.filter(req => 
+            req && userSkills.some(skill => 
+              skill && req.toLowerCase().includes(skill.toLowerCase())
+            )
+          )
+          
+          return {
+            ...job,
+            matchScore: matchingSkills.length,
+            matchingSkills
+          }
+        })
+        .sort((a, b) => b.matchScore - a.matchScore)
     }
     
-    // If user has a resume, show matched jobs first
-    if (resume && !hasSkippedResume) {
-      return getMatchedJobs()
-    }
-    
-    return jobs;
+    return jobsToShow;
   }
 
   const handleSaveJob = (jobId: number) => {
