@@ -113,38 +113,91 @@ const Dashboard: React.FC = () => {
 
   // Filter jobs based on search query and filters
   useEffect(() => {
-    const query = searchQuery.toLowerCase();
+    const query = searchQuery.toLowerCase().trim();
     
     const filtered = jobs.filter(job => {
-      // Search query matching with null checks
-      const matchesSearch = 
-        query === '' ||
-        (job.title?.toLowerCase() || '').includes(query) ||
-        (job.company?.toLowerCase() || '').includes(query) ||
-        (job.description?.toLowerCase() || '').includes(query) ||
-        (job.requirements || []).some(req => req && req.toLowerCase().includes(query));
+      // Search query matching - check all relevant fields
+      if (query === '') {
+        return true; // No search query, show all jobs (subject to filters)
+      }
+      
+      // Check each field individually for better debugging
+      const titleMatch = job.title?.toLowerCase().includes(query);
+      const companyMatch = job.company?.toLowerCase().includes(query);
+      const locationMatch = job.location?.toLowerCase().includes(query);
+      const descriptionMatch = job.description?.toLowerCase().includes(query);
+      const typeMatch = job.type?.toLowerCase().includes(query);
+      const levelMatch = job.level?.toLowerCase().includes(query);
+      const experienceLevelMatch = job.experienceLevel?.toLowerCase().includes(query);
+      const requirementsMatch = job.requirements?.some(req => 
+        req && req.toLowerCase().includes(query)
+      );
+      
+      const matchesSearch = titleMatch || companyMatch || locationMatch || 
+                           descriptionMatch || typeMatch || levelMatch || 
+                           experienceLevelMatch || requirementsMatch;
+      
+      // Debug logging (remove in production)
+      if (query && matchesSearch) {
+        console.log(`Search "${query}" matched job: ${job.title} at ${job.company}`, {
+          titleMatch, companyMatch, locationMatch, descriptionMatch, 
+          typeMatch, levelMatch, experienceLevelMatch, requirementsMatch
+        });
+      }
+      
+      return matchesSearch;
+    });
+    
+    // Apply additional filters only if search returned results or no search query
+    const finalFiltered = filtered.filter(job => {
+      // Only apply filters if there are active filters set
+      const hasActiveFilters = 
+        activeFilters.jobType?.length > 0 ||
+        activeFilters.workplaceType ||
+        activeFilters.positionLevel?.length > 0 ||
+        activeFilters.salary?.min !== 20000 ||
+        activeFilters.salary?.max !== 50000 ||
+        activeFilters.location?.remote ||
+        activeFilters.location?.nearMe ||
+        activeFilters.location?.withinCountry ||
+        activeFilters.location?.international;
+      
+      if (!hasActiveFilters) {
+        return true;
+      }
       
       // Filter matching with proper type checking
       const matchesFilters = 
-        (!activeFilters.jobType?.length || (job.type && activeFilters.jobType.includes(job.type))) &&
-        (!activeFilters.workplaceType || 
-          (activeFilters.workplaceType === 'Remote' && job.isRemote) ||
-          (activeFilters.workplaceType === 'Hybrid' && job.isHybrid) ||
-          (activeFilters.workplaceType === 'On-site' && !job.isRemote && !job.isHybrid)
+        // Job type filter
+        (!activeFilters.jobType?.length || 
+          activeFilters.jobType.some(filterType => 
+            job.type?.toLowerCase() === filterType.toLowerCase()
+          )
         ) &&
+        // Workplace type filter
+        (!activeFilters.workplaceType || 
+          (activeFilters.workplaceType === 'Remote' && (job.isRemote || job.workplaceType === 'Remote')) ||
+          (activeFilters.workplaceType === 'Hybrid' && (job.isHybrid || job.workplaceType === 'Hybrid')) ||
+          (activeFilters.workplaceType === 'On-site' && (!job.isRemote && !job.isHybrid && job.workplaceType !== 'Remote' && job.workplaceType !== 'Hybrid'))
+        ) &&
+        // Position level filter
         (!activeFilters.positionLevel?.length || 
           activeFilters.positionLevel.some((level: string) => 
             (job.title?.toLowerCase() || '').includes(level.toLowerCase()) ||
-            (job.level && job.level === level)
+            (job.level?.toLowerCase() === level.toLowerCase()) ||
+            (job.experienceLevel?.toLowerCase() === level.toLowerCase())
           )
         ) &&
+        // Salary filter
         (job.salary >= (activeFilters.salary?.min || 0) && 
-         job.salary <= (activeFilters.salary?.max || Number.MAX_SAFE_INTEGER));
+         job.salary <= (activeFilters.salary?.max || Number.MAX_SAFE_INTEGER)) &&
+        // Location filters
+        (!activeFilters.location?.remote || job.isRemote || job.workplaceType === 'Remote');
       
-      return matchesSearch && matchesFilters;
+      return matchesFilters;
     });
     
-    setFilteredJobs(filtered);
+    setFilteredJobs(finalFiltered);
   }, [searchQuery, jobs, activeFilters]);
   
   const handleApplyFilters = (filters: ActiveFilters) => {
@@ -386,6 +439,7 @@ const Dashboard: React.FC = () => {
       onSaveJob: handleSaveJob,
       onApplyJob: handleApplyJob,
       onJobClick: handleJobClick,
+      onOpenFilters: () => setShowFilterModal(true),
     };
 
     switch (activeTab) {

@@ -11,6 +11,7 @@ const JobsTab: React.FC<any> = ({
   onApplyJob,
   onJobClick,
   savedJobs,
+  onOpenFilters,
 }) => {
   return (
     <div className={styles.pageContent}>
@@ -29,6 +30,7 @@ const JobsTab: React.FC<any> = ({
         onApplyJob={onApplyJob}
         onJobClick={onJobClick}
         savedJobs={savedJobs}
+        onOpenFilters={onOpenFilters}
       />
     </div>
   );

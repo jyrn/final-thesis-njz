@@ -1,6 +1,5 @@
-import React, { useState } from 'react'
+import React from 'react'
 import JobCard from '../JobCard/JobCard'
-import FilterModal from '../FilterModal/FilterModal'
 import { FiFilter } from 'react-icons/fi'
 import styles from './JobsList.module.css'
 import { Job } from '../../../types/Job'
@@ -12,6 +11,7 @@ interface JobsListProps {
   onApplyJob?: (jobId: number) => void
   onJobClick?: (job: Job) => void
   savedJobs?: Set<number>
+  onOpenFilters?: () => void
 }
 
 const JobsList: React.FC<JobsListProps> = ({
@@ -20,49 +20,24 @@ const JobsList: React.FC<JobsListProps> = ({
   onSaveJob,
   onApplyJob,
   onJobClick,
-  savedJobs = new Set()
+  savedJobs = new Set(),
+  onOpenFilters
 }) => {
-  const [showFilters, setShowFilters] = useState(false)
-  const [filters, setFilters] = useState({
-    lastUpdate: 'Any time',
-    workplaceType: 'On-site',
-    jobType: ['Full-time'],
-    positionLevel: ['Senior'],
-    location: {
-      withinKm: 10,
-      nearMe: true,
-      withinCountry: false,
-      international: false,
-      remote: false
-    },
-    salary: {
-      min: 15000,
-      max: 25000
-    }
-  })
   return (
     <div className={styles.jobsSection}>
       <div className={styles.sectionHeader}>
         <h3 className={styles.sectionTitle}>{title}</h3>
-        <button 
-          className={styles.filterButton}
-          onClick={() => setShowFilters(true)}
-          aria-label="Filter jobs"
-        >
-          <FiFilter className={styles.filterIcon} />
-          <span>Filters</span>
-        </button>
+        {onOpenFilters && (
+          <button 
+            className={styles.filterButton}
+            onClick={onOpenFilters}
+            aria-label="Filter jobs"
+          >
+            <FiFilter className={styles.filterIcon} />
+            <span>Filters</span>
+          </button>
+        )}
       </div>
-      
-      <FilterModal 
-        isOpen={showFilters}
-        onClose={() => setShowFilters(false)}
-        onApply={(newFilters) => {
-          setFilters(newFilters);
-          // Here you would typically filter the jobs based on the new filters
-          // For example: filterJobs(newFilters);
-        }}
-      />
       
       <div className={styles.jobsList}>
         {jobs.map((job) => (
