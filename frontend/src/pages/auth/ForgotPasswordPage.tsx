@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import styles from './ForgotPasswordPage.module.css';
-import authService from '../../services/authService';
+import firebaseAuthService from '../../services/firebaseAuthService';
 
 const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -26,7 +26,7 @@ const ForgotPasswordPage: React.FC = () => {
     setIsLoading(true);
     
     try {
-      const response = await authService.forgotPassword(email);
+      const response = await firebaseAuthService.sendPasswordResetEmail(email);
       
       if (response.success) {
         setIsSubmitted(true);

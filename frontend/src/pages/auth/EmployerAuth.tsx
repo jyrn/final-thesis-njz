@@ -10,7 +10,8 @@ import SuccessModal from '../../components/SuccessModal'
 import VerificationModal from '../../components/VerificationModal'
 import { FormErrors, EmployerFormData, EmployerDocuments } from "./shared/authTypes"
 import { validateEmail, validatePassword, validateName, validateCompanyName, validateConfirmPassword } from './shared/authValidation'
-import { loadGoogleOAuthScript, initializeGoogleOAuth, parseJwt, handleGoogleAuthSuccess, handleGoogleSignIn } from "./shared/authUtils"
+import firebaseAuthService from "../../services/firebaseAuthService"
+import { apiService } from "../../services/apiService"
 
 const EmployerAuth: React.FC = () => {
   const navigate = useNavigate()
@@ -21,7 +22,9 @@ const EmployerAuth: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false)
   
   const [errors, setErrors] = useState<FormErrors>({})
+  const [loginErrors, setLoginErrors] = useState<FormErrors>({})
   const [successMessage, setSuccessMessage] = useState("")
+  const [loginData, setLoginData] = useState({ email: "", password: "" })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [fieldTouched, setFieldTouched] = useState<{ [key: string]: boolean }>({})
@@ -48,19 +51,110 @@ const EmployerAuth: React.FC = () => {
   })
 
   useEffect(() => {
-    loadGoogleOAuthScript(() => initializeGoogleOAuth(handleGoogleResponse))
+    // No need to load Google OAuth script as Firebase handles this
   }, [])
 
-  const handleGoogleResponse = async (response: any) => {
+  const handleGoogleSignIn = async (role: string, isLogin: boolean) => {
     setIsUploading(true)
     try {
-      const userInfo = parseJwt(response.credential)
-      const userData = await handleGoogleAuthSuccess(userInfo, "employer")
-      setFormData(prev => ({ ...prev, email: userData.email, companyName: userInfo.name }))
-      // Removed alert modal - direct navigation instead
-    } catch (error) {
-      console.error("Google sign-in error:", error)
-      setErrors(prev => ({ ...prev, general: "Google authentication failed. Please try again." }))
+      // For registration, check if email already exists before proceeding
+      if (!isLogin) {
+        // We need to get the user's email first to check if it exists
+        // This is a bit tricky with Google OAuth, so we'll handle it after the OAuth response
+        const response = await firebaseAuthService.signInWithGoogle("employer")
+        
+        if (response.success && response.user) {
+          // Check if this email is already registered (with role-based conflict detection)
+          const emailCheck = await apiService.checkEmailExists(response.user.email!, 'employer')
+          
+          // Check if account exists - backend returns exists:true when account found
+          if (emailCheck.data?.exists) {
+            // Account already exists, sign out the user and show error
+            await firebaseAuthService.signOut()
+            
+            if (emailCheck.data.crossRoleConflict) {
+              setErrors(prev => ({ 
+                ...prev, 
+                general: `This Google email is already registered as a ${emailCheck.data.user.role}. Each email can only be used for one role. Please use a different email or login with the existing ${emailCheck.data.user.role} account.` 
+              }))
+              return
+            }
+            
+            const userData = emailCheck.data?.user || emailCheck.data
+            if (userData?.emailVerified) {
+              setErrors(prev => ({ 
+                ...prev, 
+                general: "An account with this Google email already exists. Please use the 'Sign in with Google' button instead." 
+              }))
+            } else {
+              setErrors(prev => ({ 
+                ...prev, 
+                general: "An account with this Google email exists but is not verified. Please check your email for the verification link." 
+              }))
+            }
+            return
+          }
+          
+          // New account, show verification message
+          setSuccessMessage(`Registration successful! We've sent a verification email to ${response.user.email}. Please check your inbox and click the verification link to activate your account. You can then log in to access your dashboard.`)
+          
+          // Create user profile in backend
+          const profileResponse = await apiService.createUserProfile({
+            uid: response.user.uid,
+            email: response.user.email!,
+            role: "employer",
+            companyName: response.user.displayName || "Company",
+            emailVerified: response.user.emailVerified
+          })
+          
+          if (!profileResponse.success) {
+            throw new Error(profileResponse.error || "Failed to create user profile")
+          }
+          
+          // Redirect to email verification page
+          navigate(`/auth/verify-email?email=${encodeURIComponent(response.user.email!)}&role=employer`)
+        } else {
+          throw new Error(response.error || "Failed to sign up with Google")
+        }
+      } else {
+        // For login, check role conflicts first
+        const tempResponse = await firebaseAuthService.signInWithGoogle("employer")
+        
+        if (tempResponse.success && tempResponse.user) {
+          // Check if this email has role conflicts
+          const emailCheck = await apiService.checkEmailExists(tempResponse.user.email!, 'employer')
+          
+          if (emailCheck.success && emailCheck.data.exists && emailCheck.data.crossRoleConflict) {
+            await firebaseAuthService.signOut()
+            setErrors(prev => ({ 
+              ...prev, 
+              general: `This Google email is registered as a ${emailCheck.data.user.role}. Please use the ${emailCheck.data.user.role} login page or use a different email.` 
+            }))
+            return
+          }
+          
+          // Check if user is verified
+          if (!tempResponse.user.emailVerified) {
+            await firebaseAuthService.signOut()
+            setErrors(prev => ({ 
+              ...prev, 
+              general: "Please verify your email before logging in. Check your inbox for the verification link." 
+            }))
+            return
+          }
+          
+          // Navigate to dashboard
+          navigate("/employer/dashboard")
+        } else {
+          setErrors(prev => ({ 
+            ...prev, 
+            general: tempResponse.error || "Google sign-in failed. Please try again." 
+          }))
+        }
+      }
+    } catch (error: any) {
+      console.error("Google authentication error:", error)
+      setErrors(prev => ({ ...prev, general: error.message || "Google authentication failed. Please try again." }))
     } finally {
       setIsUploading(false)
     }
@@ -153,20 +247,68 @@ const EmployerAuth: React.FC = () => {
     validateField(name, value)
   }
 
+  const validateLoginForm = () => {
+    const newErrors: FormErrors = {}
+    
+    if (!formData.email) {
+      newErrors.email = "Email is required"
+    } else if (!validateEmail(formData.email)) {
+      newErrors.email = "Please enter a valid email address"
+    }
+    
+    if (!formData.password) {
+      newErrors.password = "Password is required"
+    }
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validateForm()) return
-
+    if (!validateLoginForm()) return
+    
     setIsUploading(true)
     try {
-      // Simulate login process
-      await new Promise(resolve => setTimeout(resolve, 1500))
+      // Check if email exists and validate role before attempting login
+      const emailCheck = await apiService.checkEmailExists(formData.email, 'employer')
       
-      // Show success modal for login
-      setSuccessMessage("Login successful! Welcome back.")
-      setShowSuccessModal(true)
-    } catch (error) {
-      setErrors(prev => ({ ...prev, general: "Login failed. Please try again." }))
+      if (emailCheck.success && emailCheck.data.exists) {
+        if (emailCheck.data.crossRoleConflict) {
+          setErrors(prev => ({ 
+            ...prev, 
+            general: `This email is registered as a ${emailCheck.data.user.role}. Please use the ${emailCheck.data.user.role} login page or use a different email.` 
+          }))
+          return
+        }
+      }
+      
+      const response = await firebaseAuthService.signInWithEmailPassword(
+        formData.email, 
+        formData.password
+      )
+      
+      if (response.success && response.user) {
+        // Check if user is verified before allowing login
+        if (!response.user.emailVerified) {
+          await firebaseAuthService.signOut()
+          setErrors(prev => ({ 
+            ...prev, 
+            general: "Please verify your email before logging in. Check your inbox for the verification link." 
+          }))
+          return
+        }
+        
+        // Navigate to dashboard
+        navigate("/employer/dashboard")
+      } else {
+        setErrors(prev => ({ 
+          ...prev, 
+          general: response.error || "Login failed. Please try again." 
+        }))
+      }
+    } catch (error: any) {
+      setErrors(prev => ({ ...prev, general: error.message || "Login failed. Please try again." }))
     } finally {
       setIsUploading(false)
     }
@@ -183,22 +325,57 @@ const EmployerAuth: React.FC = () => {
 
     setIsUploading(true)
     try {
-      // Mock registration for now - replace with actual API call when backend is ready
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate API delay
+      // Check if email already exists (with role-based conflict detection)
+      const emailCheck = await apiService.checkEmailExists(formData.email, 'employer')
       
-      // Simulate successful registration
-      console.log('Mock employer registration:', {
-        email: formData.email,
-        companyName: formData.companyName
-      });
+      if (emailCheck.success && emailCheck.data.exists) {
+        if (emailCheck.data.crossRoleConflict) {
+          throw new Error(`This email is already registered as a ${emailCheck.data.user.role}. Each email can only be used for one role. Please use a different email or login with the existing ${emailCheck.data.user.role} account.`)
+        }
+        
+        if (emailCheck.data.emailVerified) {
+          throw new Error("An account with this email already exists. Please login instead.")
+        } else {
+          throw new Error("An account with this email exists but is not verified. Please check your email for verification link.")
+        }
+      }
 
-      // Redirect to verification page with email parameter
-      navigate(`/auth/verify-email?email=${encodeURIComponent(formData.email)}`);
-    } catch (error) {
+      // Create Firebase user first
+      const firebaseResponse = await firebaseAuthService.registerWithEmailPassword(
+        formData.email, 
+        formData.password,
+        {
+          role: 'employer',
+          companyName: formData.companyName,
+          emailVerified: false
+        }
+      )
+      
+      if (!firebaseResponse.success || !firebaseResponse.user) {
+        throw new Error(firebaseResponse.error || "Failed to create account")
+      }
+
+      // Create user profile in backend
+      const profileResponse = await apiService.createUserProfile({
+        uid: firebaseResponse.user.uid,
+        email: formData.email,
+        role: "employer",
+        companyName: formData.companyName,
+        emailVerified: false
+      })
+      
+      if (!profileResponse.success) {
+        throw new Error(profileResponse.error || "Failed to create user profile")
+      }
+      
+      // Redirect to email verification page
+      navigate(`/auth/verify-email?email=${encodeURIComponent(formData.email)}&role=employer`)
+
+    } catch (error: any) {
       console.error('Registration error:', error);
       setErrors(prev => ({
         ...prev,
-        general: error instanceof Error ? error.message : 'Registration failed. Please try again.'
+        general: error.message || 'Registration failed. Please try again.'
       }));
     } finally {
       setIsUploading(false);
@@ -394,6 +571,15 @@ const EmployerAuth: React.FC = () => {
                   <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
                 {errors.general}
+              </div>
+            )}
+
+            {successMessage && (
+              <div className={styles.successMessage}>
+                <svg className={styles.messageIcon} viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                </svg>
+                {successMessage}
               </div>
             )}
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import authService from '../../services/authService';
+import firebaseAuthService from '../../services/firebaseAuthService';
 import styles from './AuthPage.module.css';
 
 const EmailVerificationPage: React.FC = () => {
@@ -14,9 +14,11 @@ const EmailVerificationPage: React.FC = () => {
   const [resendLoading, setResendLoading] = useState(false);
   const [resendSuccess, setResendSuccess] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [isPolling, setIsPolling] = useState(false);
 
   const token = searchParams.get('token');
   const emailParam = searchParams.get('email');
+  const role = searchParams.get('role');
 
   useEffect(() => {
     if (emailParam) {
@@ -28,6 +30,8 @@ const EmailVerificationPage: React.FC = () => {
       verifyEmailToken(token);
     } else {
       setIsLoading(false);
+      // Start polling for email verification status
+      startPollingForVerification();
     }
   }, [token, emailParam]);
 
@@ -39,18 +43,75 @@ const EmailVerificationPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [countdown]);
 
+  // Polling effect to check verification status
+  useEffect(() => {
+    let pollInterval: NodeJS.Timeout;
+    
+    if (isPolling) {
+      pollInterval = setInterval(async () => {
+        await checkVerificationStatus();
+      }, 3000); // Check every 3 seconds
+    }
+    
+    return () => {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
+    };
+  }, [isPolling]);
+
+  const startPollingForVerification = () => {
+    setIsPolling(true);
+  };
+
+  const stopPollingForVerification = () => {
+    setIsPolling(false);
+  };
+
+  const checkVerificationStatus = async () => {
+    try {
+      // Reload the current user to get updated verification status
+      const currentUser = firebaseAuthService.getCurrentUser();
+      if (currentUser) {
+        await firebaseAuthService.reloadUser();
+        const updatedUser = firebaseAuthService.getCurrentUser();
+        
+        if (updatedUser && updatedUser.emailVerified) {
+          stopPollingForVerification();
+          setIsVerified(true);
+          toast.success('Email verified successfully!');
+          
+          // Auto-redirect after 2 seconds based on role
+          setTimeout(() => {
+            if (role === 'employer') {
+              navigate('/auth/employer/documents');
+            } else {
+              navigate('/auth');
+            }
+          }, 2000);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking verification status:', error);
+    }
+  };
+
   const verifyEmailToken = async (token: string) => {
     try {
       setIsLoading(true);
-      const response = await authService.verifyEmail(token);
+      const response = await firebaseAuthService.verifyEmail(token);
       
       if (response.success) {
         setIsVerified(true);
         toast.success('Email verified successfully!');
-        // Auto-redirect after 3 seconds
+        // Auto-redirect after 2 seconds based on role
         setTimeout(() => {
-          navigate('/auth');
-        }, 3000);
+          if (role === 'employer') {
+            navigate('/auth/employer/documents');
+          } else {
+            navigate('/auth');
+          }
+        }, 2000);
       } else {
         setError(response.error || 'Failed to verify email. The link may be invalid or expired.');
       }
@@ -68,7 +129,7 @@ const EmailVerificationPage: React.FC = () => {
     try {
       setResendLoading(true);
       setResendSuccess(false);
-      const response = await authService.resendVerificationEmail(email);
+      const response = await firebaseAuthService.sendEmailVerification(email);
       
       if (response.success) {
         setResendSuccess(true);
