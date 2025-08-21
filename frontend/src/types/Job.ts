@@ -8,7 +8,7 @@ export interface Job {
   level: string
   postedDate: string
   description: string
-  requirements?: string[]
+  requirements: string[]
   matchScore?: number
   matchingSkills?: string[]
 }

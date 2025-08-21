@@ -58,6 +58,12 @@ const Dashboard: React.FC = () => {
   const [showJobDetail, setShowJobDetail] = useState(false)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [filters, setFilters] = useState({
+    location: '',
+    jobType: '',
+    minSalary: '',
+    experienceLevel: ''
+  })
   const [showResumeUpload, setShowResumeUpload] = useState(false)
   const [resume, setResume] = useState<ParsedResume | null>(null)
   const [jobs, setJobs] = useState<Job[]>([])
@@ -258,11 +264,71 @@ const Dashboard: React.FC = () => {
   }
 
   const getJobsToDisplay = () => {
-    if (resume && !hasSkippedResume) {
-      return getMatchedJobs()
+    let filteredJobs = [...jobs];
+    const searchTerm = searchQuery.toLowerCase().trim();
+
+    // Apply search term across relevant fields
+    if (searchTerm) {
+      filteredJobs = filteredJobs.filter(job => 
+        job.title.toLowerCase().includes(searchTerm) ||
+        job.company.toLowerCase().includes(searchTerm) ||
+        job.description.toLowerCase().includes(searchTerm) ||
+        job.requirements.some(req => req.toLowerCase().includes(searchTerm)) ||
+        job.location.toLowerCase().includes(searchTerm) ||
+        job.type.toLowerCase().includes(searchTerm) ||
+        job.level.toLowerCase().includes(searchTerm)
+      );
     }
+
+    // Apply filters
+    filteredJobs = filteredJobs.filter(job => {
+      // Location filter (case-insensitive partial match)
+      if (filters.location && !job.location.toLowerCase().includes(filters.location.toLowerCase().trim())) {
+        return false;
+      }
+      
+      // Job type filter (exact match after trimming and case-insensitive comparison)
+      if (filters.jobType && job.type.toLowerCase().trim() !== filters.jobType.toLowerCase().trim()) {
+        return false;
+      }
+      
+      // Minimum salary filter
+      if (filters.minSalary) {
+        const jobSalary = parseInt(job.salary.replace(/[^0-9]/g, ''));
+        const minSalary = parseInt(filters.minSalary);
+        if (!isNaN(jobSalary) && !isNaN(minSalary) && jobSalary < minSalary) {
+          return false;
+        }
+      }
+      
+      // Experience level filter (check if job level includes the selected experience level)
+      if (filters.experienceLevel) {
+        const jobLevel = job.level.toLowerCase().trim();
+        const expLevel = filters.experienceLevel.toLowerCase().trim();
+        if (!jobLevel.includes(expLevel)) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+
+    // In a real app, you would add more filters here
+    // For example: job type, location, salary range, etc.
+
+    if (resume && !hasSkippedResume) {
+      return filteredJobs.filter(job => {
+        const userSkills = resume.skills.map(skill => skill.toLowerCase())
+        const jobRequirements = job.requirements || []
+        const matchingSkills = jobRequirements.filter(req => 
+          userSkills.some(skill => skill.includes(req.toLowerCase()) || req.toLowerCase().includes(skill))
+        )
+        return matchingSkills.length > 0
+      })
+    }
+
     // Show latest jobs (sorted by posted date) when no resume
-    return [...jobs].sort((a, b) => new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime())
+    return filteredJobs.sort((a, b) => new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime())
   }
 
   const handleSaveJob = (jobId: number) => {
@@ -307,9 +373,12 @@ const Dashboard: React.FC = () => {
     setShowJobDetail(true)
   }
 
-  const handleFilterApply = (filters: any) => {
-    console.log('Applying filters:', filters)
-    setShowFilters(false)
+  const handleFilterApply = (newFilters: any) => {
+    setFilters(prev => ({
+      ...prev,
+      ...newFilters
+    }));
+    setShowFilters(false);
   }
 
   const renderDesktopSidebar = () => (
@@ -468,13 +537,19 @@ const Dashboard: React.FC = () => {
 
       {/* Mobile Bottom Navigation - Removed for now */}
 
-      {/* Modals - Filter modal removed for now */}
-
+      {/* Modals */}
       <JobDetailModal
         job={selectedJob}
         isOpen={showJobDetail}
         onClose={() => setShowJobDetail(false)}
         onApply={handleApplyJob}
+      />
+
+      <FilterModal 
+        isOpen={showFilters} 
+        onClose={() => setShowFilters(false)} 
+        onApply={handleFilterApply}
+        initialFilters={filters}
       />
 
       {showResumeUpload && (
