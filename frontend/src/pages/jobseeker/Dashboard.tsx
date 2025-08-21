@@ -12,6 +12,7 @@ import ApplicationsTab from '../../components/jobseeker/Dashboard/tabs/Applicati
 import ProfileTab from '../../components/jobseeker/Dashboard/tabs/ProfileTab';
 import { parseResume } from '../../utils/resumeParser'
 import { Job } from '../../types/Job'
+import { mockJobs, mockApplications } from '../../data/mockJobs'
 
 // Types
 interface PersonalInfo {
@@ -94,91 +95,12 @@ const Dashboard: React.FC = () => {
     }
   }, [searchQuery, jobs]);
 
-  // Mock data loading
+  // Load mock data
   useEffect(() => {
     const loadData = async () => {
       try {
-        const mockJobs: Job[] = [
-          {
-            id: 1,
-            title: "UI/UX Designer",
-            company: "Google",
-            location: "California, USA",
-            salary: "15K/Mo",
-            type: "Full time",
-            level: "Senior designer",
-            postedDate: "1 day ago",
-            description: "We are looking for a Senior UI/UX Designer...",
-            requirements: ["Figma", "Adobe Creative Suite", "User Research", "Prototyping"]
-          },
-          {
-            id: 2,
-            title: "Product Designer",
-            company: "Apple",
-            location: "California, USA",
-            salary: "15K/Mo",
-            type: "Full time",
-            level: "Senior designer",
-            postedDate: "2 days ago",
-            description: "Join our design team as a Product Designer...",
-            requirements: ["Sketch", "Design Systems", "User Testing", "Wireframing"]
-          },
-          {
-            id: 3,
-            title: "Frontend Developer",
-            company: "Microsoft",
-            location: "Washington, USA",
-            salary: "18K/Mo",
-            type: "Full time",
-            level: "Mid-level",
-            postedDate: "3 days ago",
-            description: "We need a Frontend Developer to build amazing web experiences...",
-            requirements: ["React", "TypeScript", "CSS", "JavaScript"]
-          },
-          {
-            id: 4,
-            title: "Full Stack Developer",
-            company: "Netflix",
-            location: "California, USA",
-            salary: "20K/Mo",
-            type: "Full time",
-            level: "Senior",
-            postedDate: "4 days ago",
-            description: "Join our engineering team as a Full Stack Developer...",
-            requirements: ["Node.js", "React", "MongoDB", "AWS"]
-          },
-          {
-            id: 5,
-            title: "Marketing Specialist",
-            company: "Spotify",
-            location: "New York, USA",
-            salary: "12K/Mo",
-            type: "Full time",
-            level: "Junior",
-            postedDate: "5 days ago",
-            description: "We're looking for a creative Marketing Specialist...",
-            requirements: ["Digital Marketing", "SEO", "Content Creation", "Analytics"]
-          }
-        ]
-        setJobs(mockJobs)
-
-        const mockApplications: Application[] = [
-          {
-            id: 1,
-            jobId: 1,
-            status: 'review',
-            appliedDate: '2023-06-15',
-            updatedAt: '2023-06-15T10:30:00Z'
-          },
-          {
-            id: 2,
-            jobId: 2,
-            status: 'interview',
-            appliedDate: '2023-06-10',
-            updatedAt: '2023-06-12T14:20:00Z'
-          }
-        ]
-        setApplications(mockApplications)
+        setJobs(mockJobs);
+        setApplications(mockApplications);
 
         // Check if this is first visit and no resume
         const hasVisited = localStorage.getItem('hasVisitedDashboard')

@@ -69,10 +69,15 @@ const JobCard: React.FC<JobCardProps> = ({
             <FiMapPin className={styles.detailIcon} />
             <span>{job.location}</span>
           </div>
-          <div className={styles.detailItem}>
-            <FiDollarSign className={styles.detailIcon} />
-            <span>${job.salary}/year</span>
-          </div>
+          {job.salary ? (
+            <div className={`${styles.detailItem} ${styles.salaryItem}`}>
+              <span>₱{job.salary}</span>
+            </div>
+          ) : (
+            <div className={styles.detailItem}>
+              <span className={styles.noSalary}>Salary not specified</span>
+            </div>
+          )}
           <div className={styles.detailItem}>
             <FiClock className={styles.detailIcon} />
             <span>{job.type}</span>
