@@ -86,7 +86,7 @@ const EmailVerificationPage: React.FC = () => {
             if (role === 'employer') {
               navigate('/auth/employer/documents');
             } else {
-              navigate('/auth');
+              navigate('/auth/jobseeker');
             }
           }, 2000);
         }
@@ -109,7 +109,7 @@ const EmailVerificationPage: React.FC = () => {
           if (role === 'employer') {
             navigate('/auth/employer/documents');
           } else {
-            navigate('/auth');
+            navigate('/auth/jobseeker');
           }
         }, 2000);
       } else {

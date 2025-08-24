@@ -1,15 +1,16 @@
 import { 
   createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword,
-  signOut,
-  sendPasswordResetEmail,
-  sendEmailVerification,
-  GoogleAuthProvider,
+  signInWithEmailAndPassword, 
+  signOut, 
+  sendEmailVerification, 
+  sendPasswordResetEmail, 
+  onAuthStateChanged, 
+  User, 
+  GoogleAuthProvider, 
   signInWithPopup,
-  UserCredential,
-  updateProfile,
-  User,
-  reload
+  reload,
+  fetchSignInMethodsForEmail,
+  updateProfile
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 
@@ -176,6 +177,24 @@ const firebaseAuthService = {
     }
   },
   
+  // Check what sign-in methods exist for an email
+  async checkSignInMethods(email: string): Promise<{ success: boolean; methods: string[]; error?: string }> {
+    try {
+      const methods = await fetchSignInMethodsForEmail(auth, email);
+      return {
+        success: true,
+        methods
+      };
+    } catch (error: any) {
+      console.error('Check sign-in methods error:', error);
+      return {
+        success: false,
+        methods: [],
+        error: error.message || 'Failed to check sign-in methods'
+      };
+    }
+  },
+
   // Sign in with Google
   async signInWithGoogle(role: 'jobseeker' | 'employer'): Promise<AuthResponse> {
     try {
@@ -231,16 +250,39 @@ const firebaseAuthService = {
   // Send password reset email
   async sendPasswordResetEmail(email: string): Promise<AuthResponse> {
     try {
+      console.log('Firebase auth service: Sending password reset email to:', email);
+      
+      // Try without action code settings first to see if that's the issue
       await sendPasswordResetEmail(auth, email);
+      
+      console.log('Firebase auth service: Password reset email sent successfully');
       return {
         success: true,
         message: 'Password reset email sent!'
       };
     } catch (error: any) {
-      console.error('Password reset error:', error);
+      console.error('Firebase auth service - Password reset error:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      
+      // Handle specific Firebase errors
+      let errorMessage = 'Failed to send password reset email';
+      
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email address.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Please enter a valid email address.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMessage = 'Too many requests. Please try again later.';
+      } else if (error.code === 'auth/missing-email') {
+        errorMessage = 'Email address is required.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
       return {
         success: false,
-        error: error.message || 'Failed to send password reset email'
+        error: errorMessage
       };
     }
   },
