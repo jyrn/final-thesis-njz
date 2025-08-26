@@ -718,66 +718,174 @@ const EmployerDashboard: React.FC = () => {
               </div>
 
               {/* Job Posts Section */}
-              <div className={cardStyles.sectionCard}>
-                <div className={cardStyles.sectionHeader}>
-                  <h3>
-                    <FiBriefcase className={cardStyles.sectionIcon} />
+              <div style={{ marginBottom: '2rem' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  marginBottom: '1.5rem' 
+                }}>
+                  <h2 style={{ 
+                    fontSize: '1.5rem', 
+                    fontWeight: '600', 
+                    color: '#1e293b',
+                    margin: 0 
+                  }}>
                     Active Job Posts
-                  </h3>
+                  </h2>
                   <button 
-                    className={buttonStyles.createButton}
-                    onClick={handleCreateJob}
+                    className={buttonStyles.viewAllButton}
+                    onClick={() => setActiveTab('jobs')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#3b82f6',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      padding: '0.5rem 0'
+                    }}
                   >
-                    <FiPlus />
-                    Create Job
+                    View All
                   </button>
                 </div>
 
-                <div className={layoutStyles.jobPostsGrid}>
-                  {enhancedJobPostings.map((job) => (
-                    <div key={job.id} className={cardStyles.jobCard}>
-                      <div className={cardStyles.jobHeader}>
-                        <h4 className={cardStyles.jobTitle}>{job.title}</h4>
-                        <div className={cardStyles.jobMeta}>
-                          <span className={cardStyles.jobMetaItem}>
+                <div style={{ 
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 1fr)',
+                  gap: '1rem'
+                }}>
+                  {enhancedJobPostings.slice(0, 4).map((job) => (
+                    <div 
+                      key={job.id} 
+                      style={{
+                        background: 'white',
+                        borderRadius: '12px',
+                        border: '1px solid #e2e8f0',
+                        padding: '1.5rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#3b82f6';
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.15)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#e2e8f0';
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    >
+                      <div style={{ marginBottom: '1rem' }}>
+                        <h4 style={{ 
+                          fontSize: '1.125rem', 
+                          fontWeight: '600', 
+                          color: '#1e293b',
+                          margin: '0 0 0.5rem 0'
+                        }}>
+                          {job.title}
+                        </h4>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                          <span style={{ 
+                            fontSize: '0.875rem', 
+                            color: '#64748b',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem'
+                          }}>
                             <FiBriefcase size={14} />
                             {job.type}
                           </span>
-                          {job.remote && <span className={cardStyles.requirementTag}>Remote</span>}
+                          {job.remote && (
+                            <span style={{
+                              padding: '0.125rem 0.5rem',
+                              borderRadius: '12px',
+                              fontSize: '0.75rem',
+                              fontWeight: '500',
+                              backgroundColor: '#dbeafe',
+                              color: '#1e40af'
+                            }}>
+                              Remote
+                            </span>
+                          )}
                         </div>
                       </div>
                       
-                      <div className={cardStyles.jobMeta}>
-                        <p className={cardStyles.jobMetaItem}>
+                      <div style={{ marginBottom: '1rem' }}>
+                        <p style={{ 
+                          fontSize: '0.875rem', 
+                          color: '#64748b',
+                          margin: '0 0 0.5rem 0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
+                        }}>
                           <FiMapPin size={14} />
                           {job.location}
                         </p>
-                        <p className={cardStyles.jobSalary}>
+                        <p style={{ 
+                          fontSize: '1rem', 
+                          fontWeight: '600',
+                          color: '#1e293b',
+                          margin: '0 0 0.5rem 0'
+                        }}>
                           ₱{job.salary}
                         </p>
-                        <p className={cardStyles.jobMetaItem}>
-                          <FiClock size={14} />
+                        <p style={{ 
+                          fontSize: '0.75rem', 
+                          color: '#94a3b8',
+                          margin: '0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem'
+                        }}>
+                          <FiClock size={12} />
                           Posted {formatDate(job.postedDate)}
                         </p>
                       </div>
 
-                      <div className={cardStyles.jobRequirements}>
-                        {job.requirements.slice(0, 3).map((req, index) => (
-                          <span key={index} className={cardStyles.requirementTag}>
-                            {req}
-                          </span>
-                        ))}
+                      <div style={{ marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          {job.requirements.slice(0, 3).map((req, index) => (
+                            <span 
+                              key={index} 
+                              style={{
+                                padding: '0.25rem 0.5rem',
+                                borderRadius: '12px',
+                                fontSize: '0.75rem',
+                                fontWeight: '500',
+                                backgroundColor: '#f1f5f9',
+                                color: '#475569'
+                              }}
+                            >
+                              {req}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                       
-                      <div style={{ 
-                        padding: '0.5rem 1rem',
-                        background: 'rgba(59, 130, 246, 0.1)',
-                        borderRadius: '12px',
-                        color: '#3b82f6',
-                        fontSize: '0.875rem',
-                        fontWeight: '600'
-                      }}>
-                        {job.applicantCount} Applications
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{
+                          padding: '0.25rem 0.75rem',
+                          borderRadius: '20px',
+                          fontSize: '0.75rem',
+                          fontWeight: '500',
+                          backgroundColor: job.status === 'active' ? '#dcfce7' : '#fee2e2',
+                          color: job.status === 'active' ? '#166534' : '#991b1b'
+                        }}>
+                          {job.status === 'active' ? 'Active' : 'Inactive'}
+                        </span>
+                        <div style={{
+                          padding: '0.25rem 0.75rem',
+                          borderRadius: '20px',
+                          fontSize: '0.75rem',
+                          fontWeight: '500',
+                          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                          color: '#3b82f6'
+                        }}>
+                          {job.applicantCount} Applications
+                        </div>
                       </div>
                     </div>
                   ))}
