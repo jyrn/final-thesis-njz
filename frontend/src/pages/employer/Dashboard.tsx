@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   FiHome,
   FiUsers,
@@ -49,9 +49,10 @@ const EmployerDashboard: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [applicantFilters, setApplicantFilters] = useState<{ status: string; sortBy: string }>({ status: '', sortBy: 'newest' });
+  const [applicantFilters, setApplicantFilters] = useState<{ status: string; sortBy: string; jobId: string }>({ status: '', sortBy: 'newest', jobId: '' });
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+
 
   // Enhanced applicants using centralized mock data
   const enhancedApplicants: Applicant[] = mockApplicants.map(applicant => ({
@@ -82,6 +83,16 @@ const EmployerDashboard: React.FC = () => {
     posted: job.posted,
     applicants: job.applicants
   }));
+
+  // Reset job filter if selected job no longer exists
+  useEffect(() => {
+    if (applicantFilters.jobId) {
+      const jobExists = enhancedJobPostings.some(job => job.id.toString() === applicantFilters.jobId);
+      if (!jobExists) {
+        setApplicantFilters(prev => ({ ...prev, jobId: '' }));
+      }
+    }
+  }, [enhancedJobPostings, applicantFilters.jobId]);
 
   // Real-time stats with enhanced calculations
   const realTimeStats = {
@@ -199,7 +210,8 @@ const EmployerDashboard: React.FC = () => {
     const matchesSearch = applicant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          applicant.position.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = !applicantFilters.status || applicant.status === applicantFilters.status;
-    return matchesSearch && matchesStatus;
+    const matchesJob = !applicantFilters.jobId || applicant.position === enhancedJobPostings.find(job => job.id.toString() === applicantFilters.jobId)?.title;
+    return matchesSearch && matchesStatus && matchesJob;
   }).sort((a, b) => {
     const dateA = new Date(a.appliedDate).getTime();
     const dateB = new Date(b.appliedDate).getTime();
@@ -924,9 +936,32 @@ const EmployerDashboard: React.FC = () => {
                   color: '#1e293b',
                   margin: 0 
                 }}>
-                  All Applicants
+                  {applicantFilters.jobId ? 
+                    `Applicants for ${enhancedJobPostings.find(job => job.id.toString() === applicantFilters.jobId)?.title}` : 
+                    'All Applicants'
+                  }
                 </h1>
                 <div style={{ display: 'flex', gap: '1rem' }}>
+                  <select 
+                    value={applicantFilters.jobId}
+                    onChange={(e) => setApplicantFilters(prev => ({...prev, jobId: e.target.value}))}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      borderRadius: '8px',
+                      border: '1px solid #e2e8f0',
+                      fontSize: '0.875rem',
+                      backgroundColor: 'white',
+                      cursor: 'pointer',
+                      minWidth: '200px'
+                    }}
+                  >
+                    <option value="">All Job Posts</option>
+                    {enhancedJobPostings.map((job) => (
+                      <option key={job.id} value={job.id.toString()}>
+                        {job.title}
+                      </option>
+                    ))}
+                  </select>
                   <select 
                     value={applicantFilters.status}
                     onChange={(e) => setApplicantFilters(prev => ({...prev, status: e.target.value}))}
@@ -1100,14 +1135,15 @@ const EmployerDashboard: React.FC = () => {
                       style={{ 
                         display: 'flex', 
                         gap: '0.5rem',
-                        paddingTop: '1rem',
-                        borderTop: '1px solid #f1f5f9'
+                        paddingTop: '1rem'
                       }}
-                      onClick={(e) => e.stopPropagation()}
                     >
                       <button 
-                        onClick={() => handleViewResume(applicant.id)}
-                        title="View Resume"
+                        onClick={() => {
+                          setSelectedApplicant(applicant);
+                          setIsModalOpen(true);
+                        }}
+                        title="View Details"
                         style={{
                           padding: '0.5rem',
                           borderRadius: '8px',
@@ -1161,64 +1197,68 @@ const EmployerDashboard: React.FC = () => {
                       >
                         <FiDownload size={16} />
                       </button>
-                      <button 
-                        onClick={() => handleApproveApplicant(applicant.id)}
-                        title="Approve"
-                        style={{
-                          padding: '0.5rem 1rem',
-                          borderRadius: '8px',
-                          border: 'none',
-                          backgroundColor: '#10b981',
-                          color: 'white',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '0.25rem',
-                          fontSize: '0.875rem',
-                          fontWeight: '500',
-                          transition: 'all 0.2s',
-                          flex: 1
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#059669';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#10b981';
-                        }}
-                      >
-                        <FiCheck size={16} />
-                        Approve
-                      </button>
-                      <button 
-                        onClick={() => handleRejectApplicant(applicant.id)}
-                        title="Reject"
-                        style={{
-                          padding: '0.5rem 1rem',
-                          borderRadius: '8px',
-                          border: 'none',
-                          backgroundColor: '#ef4444',
-                          color: 'white',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '0.25rem',
-                          fontSize: '0.875rem',
-                          fontWeight: '500',
-                          transition: 'all 0.2s',
-                          flex: 1
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#dc2626';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#ef4444';
-                        }}
-                      >
-                        <FiXCircle size={16} />
-                        Reject
-                      </button>
+                      {applicant.status !== 'hired' && (
+                        <>
+                          <button 
+                            onClick={() => handleApproveApplicant(applicant.id)}
+                            title="Approve"
+                            style={{
+                              padding: '0.5rem 1rem',
+                              borderRadius: '8px',
+                              border: 'none',
+                              backgroundColor: '#10b981',
+                              color: 'white',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.25rem',
+                              fontSize: '0.875rem',
+                              fontWeight: '500',
+                              transition: 'all 0.2s',
+                              flex: 1
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#059669';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = '#10b981';
+                            }}
+                          >
+                            <FiCheck size={16} />
+                            Approve
+                          </button>
+                          <button 
+                            onClick={() => handleRejectApplicant(applicant.id)}
+                            title="Reject"
+                            style={{
+                              padding: '0.5rem 1rem',
+                              borderRadius: '8px',
+                              border: 'none',
+                              backgroundColor: '#ef4444',
+                              color: 'white',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: '0.25rem',
+                              fontSize: '0.875rem',
+                              fontWeight: '500',
+                              transition: 'all 0.2s',
+                              flex: 1
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = '#dc2626';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = '#ef4444';
+                            }}
+                          >
+                            <FiXCircle size={16} />
+                            Reject
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}

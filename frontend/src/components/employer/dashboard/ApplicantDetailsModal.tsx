@@ -259,20 +259,30 @@ export const ApplicantDetailsModal: React.FC<ApplicantDetailsModalProps> = ({
 
         {/* Action Buttons */}
         <div className={styles.actionButtons}>
-          <button 
-            className={styles.rejectButton}
-            onClick={() => onReject(applicant.id)}
-          >
-            <FiXCircle size={16} />
-            Reject Application
-          </button>
-          <button 
-            className={styles.approveButton}
-            onClick={() => onApprove(applicant.id)}
-          >
-            <FiCheck size={16} />
-            Move to Interview
-          </button>
+          {applicant.status !== 'hired' && (
+            <>
+              <button 
+                className={styles.rejectButton}
+                onClick={() => onReject(applicant.id)}
+              >
+                <FiXCircle size={16} />
+                Reject Application
+              </button>
+              <button 
+                className={styles.approveButton}
+                onClick={() => onApprove(applicant.id)}
+              >
+                <FiCheck size={16} />
+                Move to Interview
+              </button>
+            </>
+          )}
+          {applicant.status === 'hired' && (
+            <div className={styles.hiredMessage}>
+              <FiCheck size={20} />
+              <span>This candidate has been hired</span>
+            </div>
+          )}
         </div>
       </div>
     </div>
