@@ -53,153 +53,16 @@ const EmployerDashboard: React.FC = () => {
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
 
-  // Enhanced mock data with realistic applicant information
-  const enhancedApplicants: Applicant[] = [
-    {
-      id: 1,
-      name: 'Sarah Chen',
-      position: 'Senior Frontend Developer',
-      status: 'pending',
-      date: new Date().toISOString(),
-      appliedDate: '2024-01-15T10:30:00Z',
-      experience: '5 years',
-      skills: ['React', 'TypeScript', 'Next.js'],
-      match: 95,
-      matchPercentage: 95,
-      matchScore: 95,
-      location: 'San Francisco, CA',
-      salary: '₱120,000',
-      expectedSalary: '₱120,000 - ₱150,000',
-      resumeUrl: '/resumes/sarah-chen.pdf',
-      jobTitle: 'Senior Frontend Developer'
-    },
-    {
-      id: 2,
-      name: 'Marcus Johnson',
-      position: 'Full Stack Developer',
-      status: 'interview',
-      date: new Date().toISOString(),
-      appliedDate: '2024-01-14T14:20:00Z',
-      experience: '4 years',
-      skills: ['React', 'Node.js', 'MongoDB'],
-      match: 88,
-      matchPercentage: 88,
-      matchScore: 88,
-      location: 'New York, NY',
-      salary: '₱110,000',
-      expectedSalary: '₱100,000 - ₱130,000',
-      resumeUrl: '/resumes/marcus-johnson.pdf',
-      jobTitle: 'Full Stack Developer'
-    },
-    {
-      id: 3,
-      name: 'Emily Rodriguez',
-      position: 'UI/UX Designer',
-      status: 'reviewed',
-      date: new Date().toISOString(),
-      appliedDate: '2024-01-13T09:15:00Z',
-      experience: '3 years',
-      skills: ['Figma', 'Adobe XD', 'User Research'],
-      match: 92,
-      matchPercentage: 92,
-      matchScore: 92,
-      location: 'Austin, TX',
-      salary: '₱85,000',
-      expectedSalary: '₱80,000 - ₱100,000',
-      resumeUrl: '/resumes/emily-rodriguez.pdf',
-      jobTitle: 'UI/UX Designer'
-    },
-    {
-      id: 4,
-      name: 'David Kim',
-      position: 'Senior Backend Developer',
-      status: 'hired',
-      date: new Date().toISOString(),
-      appliedDate: '2024-01-12T16:45:00Z',
-      experience: '6 years',
-      skills: ['Python', 'Django', 'PostgreSQL'],
-      match: 97,
-      matchPercentage: 97,
-      matchScore: 97,
-      location: 'Seattle, WA',
-      salary: '₱130,000',
-      expectedSalary: '₱120,000 - ₱150,000',
-      resumeUrl: '/resumes/david-kim.pdf',
-      jobTitle: 'Senior Backend Developer'
-    },
-    {
-      id: 5,
-      name: 'Lisa Thompson',
-      position: 'DevOps Engineer',
-      status: 'pending',
-      date: new Date().toISOString(),
-      appliedDate: '2024-01-11T11:30:00Z',
-      experience: '4 years',
-      skills: ['AWS', 'Docker', 'Kubernetes'],
-      match: 89,
-      matchPercentage: 89,
-      matchScore: 89,
-      location: 'Chicago, IL',
-      salary: '₱115,000',
-      expectedSalary: '₱100,000 - ₱130,000',
-      resumeUrl: '/resumes/lisa-thompson.pdf',
-      jobTitle: 'DevOps Engineer'
-    },
-    {
-      id: 6,
-      name: 'Alex Wong',
-      position: 'Product Manager',
-      status: 'interview',
-      date: new Date().toISOString(),
-      appliedDate: '2024-01-10T13:45:00Z',
-      experience: '5 years',
-      skills: ['Agile', 'Scrum', 'Product Strategy'],
-      match: 91,
-      matchPercentage: 91,
-      matchScore: 91,
-      location: 'Boston, MA',
-      salary: '₱125,000',
-      expectedSalary: '₱110,000 - ₱140,000',
-      resumeUrl: '/resumes/alex-wong.pdf',
-      jobTitle: 'Product Manager'
-    },
-    {
-      id: 7,
-      name: 'Maria Garcia',
-      position: 'Data Scientist',
-      status: 'reviewed',
-      date: new Date().toISOString(),
-      appliedDate: '2024-01-09T09:20:00Z',
-      experience: '4 years',
-      skills: ['Python', 'Machine Learning', 'Data Analysis'],
-      match: 94,
-      matchPercentage: 94,
-      matchScore: 94,
-      location: 'Denver, CO',
-      salary: '₱120,000',
-      expectedSalary: '₱110,000 - ₱140,000',
-      resumeUrl: '/resumes/maria-garcia.pdf',
-      jobTitle: 'Data Scientist'
-    },
-    {
-      id: 8,
-      name: 'Michael Brown',
-      position: 'Mobile Developer',
-      status: 'pending',
-      date: new Date().toISOString(),
-      appliedDate: '2024-01-08T15:10:00Z',
-      experience: '4 years',
-      skills: ['React Native', 'Swift', 'Kotlin'],
-      match: 87,
-      matchPercentage: 87,
-      matchScore: 87,
-      location: 'Los Angeles, CA',
-      salary: '₱95,000',
-      expectedSalary: '₱80,000 - ₱110,000',
-      resumeUrl: '/resumes/michael-brown.pdf',
-      jobTitle: 'Mobile Developer'
-    }
-  ].sort((a, b) => b.matchPercentage - a.matchPercentage);
+  // Enhanced applicants using centralized mock data
+  const enhancedApplicants: Applicant[] = mockApplicants.map(applicant => ({
+    ...applicant,
+    matchPercentage: applicant.match,
+    matchScore: applicant.match,
+    location: 'Metro Manila',
+    salary: '₱80,000',
+    expectedSalary: '₱70,000 - ₱90,000',
+    jobTitle: applicant.position
+  })).sort((a, b) => b.matchPercentage - a.matchPercentage);
 
   // Enhanced job postings mock data
   const enhancedJobPostings: JobPosting[] = mockJobPostings.map((job, index) => ({
@@ -231,10 +94,11 @@ const EmployerDashboard: React.FC = () => {
     ).length
   };
 
-  // Recent applicants (last 5)
+  // Recent applicants (oldest pending first)
   const recentApplicants = enhancedApplicants
-    .sort((a, b) => new Date(b.appliedDate).getTime() - new Date(a.appliedDate).getTime())
-    .slice(0, 5);
+    .filter(applicant => applicant.status === 'pending')
+    .sort((a, b) => new Date(a.appliedDate).getTime() - new Date(b.appliedDate).getTime())
+    .slice(0, 4);
 
   // Handle tab change
   const handleTabChange = (tab: TabType) => {
@@ -349,7 +213,7 @@ const EmployerDashboard: React.FC = () => {
     switch (status) {
       case 'hired': return { backgroundColor: '#10b981', color: 'white' };
       case 'interview': return { backgroundColor: '#3b82f6', color: 'white' };
-      case 'reviewed': return { backgroundColor: '#f59e0b', color: 'white' };
+      case 'pending': return { backgroundColor: '#f59e0b', color: 'white' };
       case 'rejected': return { backgroundColor: '#ef4444', color: 'white' };
       default: return { backgroundColor: '#6b7280', color: 'white' };
     }
@@ -532,70 +396,321 @@ const EmployerDashboard: React.FC = () => {
               </div>
 
               {/* Quick Actions Section */}
-              <div className={cardStyles.sectionCard}>
-                <div className={cardStyles.sectionHeader}>
-                  <h3>Quick Actions</h3>
-                </div>
-                <div className={layoutStyles.quickActionsGrid}>
-                  <div className={cardStyles.actionCard}>
-                    <div className={cardStyles.actionIcon}>
-                      <FiSearch size={24} />
+              <div style={{ marginBottom: '2rem' }}>
+                <h2 style={{ 
+                  fontSize: '1.5rem', 
+                  fontWeight: '600', 
+                  color: '#1e293b',
+                  margin: '0 0 1.5rem 0' 
+                }}>
+                  Quick Actions
+                </h2>
+                <div style={{ 
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gap: '1rem'
+                }}>
+                  <div 
+                    style={{
+                      background: 'white',
+                      borderRadius: '12px',
+                      border: '1px solid #e2e8f0',
+                      padding: '2rem 1rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      minHeight: '120px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#6366f1';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                    onClick={handleCreateJob}
+                  >
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      color: '#6366f1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: '1rem'
+                    }}>
+                      <FiPlus size={32} />
                     </div>
-                    <h4>Find Jobs</h4>
+                    <h4 style={{ 
+                      fontSize: '0.875rem', 
+                      fontWeight: '600', 
+                      color: '#1e293b',
+                      margin: '0'
+                    }}>
+                      Post Jobs
+                    </h4>
                   </div>
-                  <div className={cardStyles.actionCard}>
-                    <div className={cardStyles.actionIcon}>
-                      <FiPlus size={24} />
+
+                  <div 
+                    style={{
+                      background: 'white',
+                      borderRadius: '12px',
+                      border: '1px solid #e2e8f0',
+                      padding: '2rem 1rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      minHeight: '120px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#6366f1';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                    onClick={() => setActiveTab('jobs')}
+                  >
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      color: '#6366f1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: '1rem'
+                    }}>
+                      <FiEye size={32} />
                     </div>
-                    <h4>Post New Job</h4>
+                    <h4 style={{ 
+                      fontSize: '0.875rem', 
+                      fontWeight: '600', 
+                      color: '#1e293b',
+                      margin: '0'
+                    }}>
+                      View Job Posts
+                    </h4>
                   </div>
-                  <div className={cardStyles.actionCard}>
-                    <div className={cardStyles.actionIcon}>
-                      <FiUsers size={24} />
+
+                  <div 
+                    style={{
+                      background: 'white',
+                      borderRadius: '12px',
+                      border: '1px solid #e2e8f0',
+                      padding: '2rem 1rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      minHeight: '120px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#6366f1';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                    onClick={() => setActiveTab('applicants')}
+                  >
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      color: '#6366f1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: '1rem'
+                    }}>
+                      <FiBriefcase size={32} />
                     </div>
-                    <h4>View Applications</h4>
+                    <h4 style={{ 
+                      fontSize: '0.875rem', 
+                      fontWeight: '600', 
+                      color: '#1e293b',
+                      margin: '0'
+                    }}>
+                      View Applications
+                    </h4>
                   </div>
-                  <div className={cardStyles.actionCard}>
-                    <div className={cardStyles.actionIcon}>
-                      <FiSettings size={24} />
+
+                  <div 
+                    style={{
+                      background: 'white',
+                      borderRadius: '12px',
+                      border: '1px solid #e2e8f0',
+                      padding: '2rem 1rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      minHeight: '120px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#6366f1';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.15)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                    onClick={() => setActiveTab('settings')}
+                  >
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      color: '#6366f1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginBottom: '1rem'
+                    }}>
+                      <FiSettings size={32} />
                     </div>
-                    <h4>Edit Profile</h4>
+                    <h4 style={{ 
+                      fontSize: '0.875rem', 
+                      fontWeight: '600', 
+                      color: '#1e293b',
+                      margin: '0'
+                    }}>
+                      Edit Profile
+                    </h4>
                   </div>
                 </div>
               </div>
 
               {/* Recent Applicants Section */}
-              <div className={cardStyles.sectionCard}>
-                <div className={cardStyles.sectionHeader}>
-                  <h3>
-                    <FiUsers className={cardStyles.sectionIcon} />
+              <div style={{ marginBottom: '2rem' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center', 
+                  marginBottom: '1.5rem' 
+                }}>
+                  <h2 style={{ 
+                    fontSize: '1.5rem', 
+                    fontWeight: '600', 
+                    color: '#1e293b',
+                    margin: 0 
+                  }}>
                     Recent Applicants
-                  </h3>
-                  <button className={buttonStyles.viewAllButton}>
+                  </h2>
+                  <button 
+                    className={buttonStyles.viewAllButton}
+                    onClick={() => setActiveTab('applicants')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#3b82f6',
+                      fontSize: '0.875rem',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      padding: '0.5rem 0'
+                    }}
+                  >
                     View All
                   </button>
                 </div>
-                <div className={layoutStyles.applicantGrid}>
-                  {recentApplicants.map((applicant) => (
+                <div style={{ 
+                  background: 'white',
+                  borderRadius: '12px',
+                  border: '1px solid #e2e8f0',
+                  overflow: 'hidden'
+                }}>
+                  {recentApplicants.map((applicant, index) => (
                     <div 
                       key={applicant.id} 
-                      className={cardStyles.applicantCard}
                       onClick={() => handleViewApplicantDetails(applicant)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '1rem 1.5rem',
+                        borderBottom: index < recentApplicants.length - 1 ? '1px solid #f1f5f9' : 'none',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                     >
-                      <div className={cardStyles.applicantAvatar}>
-                        {applicant.name.charAt(0)}
-                      </div>
-                      <div className={cardStyles.applicantInfo}>
-                        <h4 className={cardStyles.applicantName}>{applicant.name}</h4>
-                        <p className={cardStyles.applicantRole}>{applicant.position}</p>
-                        <div className={cardStyles.applicantMeta}>
-                          <span className={`${cardStyles.applicantStatus} ${cardStyles[applicant.status]}`}>
-                            {applicant.status}
-                          </span>
-                          <span className={cardStyles.matchScore}>
-                            {applicant.match}% match
-                          </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1 }}>
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '8px',
+                          background: '#3b82f6',
+                          color: 'white',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '1rem',
+                          fontWeight: '600'
+                        }}>
+                          <FiUsers size={20} />
                         </div>
+                        <div style={{ flex: 1 }}>
+                          <h3 style={{ 
+                            fontSize: '1rem', 
+                            fontWeight: '600', 
+                            color: '#1e293b',
+                            margin: '0 0 0.25rem 0'
+                          }}>
+                            Applied to {applicant.position}
+                          </h3>
+                          <p style={{ 
+                            fontSize: '0.875rem', 
+                            color: '#64748b',
+                            margin: '0'
+                          }}>
+                            {applicant.name}
+                          </p>
+                          <p style={{ 
+                            fontSize: '0.75rem', 
+                            color: '#94a3b8',
+                            margin: '0.25rem 0 0 0'
+                          }}>
+                            {new Date(applicant.appliedDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <span style={{
+                          padding: '0.25rem 0.75rem',
+                          borderRadius: '20px',
+                          fontSize: '0.75rem',
+                          fontWeight: '500',
+                          backgroundColor: applicant.status === 'hired' ? '#dcfce7' : 
+                                          applicant.status === 'interview' ? '#dbeafe' : 
+                                          applicant.status === 'pending' ? '#fef3c7' : '#fee2e2',
+                          color: applicant.status === 'hired' ? '#166534' : 
+                                 applicant.status === 'interview' ? '#1e40af' : 
+                                 applicant.status === 'pending' ? '#92400e' : '#991b1b'
+                        }}>
+                          {applicant.status === 'interview' ? 'Interview' : 
+                           applicant.status === 'hired' ? 'Hired' : 
+                           applicant.status === 'pending' ? 'Review' : applicant.status}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -700,21 +815,34 @@ const EmployerDashboard: React.FC = () => {
                       key={applicant.id} 
                       className={cardStyles.applicantCard}
                       onClick={() => handleViewApplicantDetails(applicant)}
-                      style={{ cursor: 'pointer' }}
                     >
-                      <div className={cardStyles.applicantAvatar}>
-                        {applicant.name.split(' ').map(n => n[0]).join('')}
-                      </div>
-                      <div className={cardStyles.applicantInfo}>
-                        <h3 className={cardStyles.applicantName}>{applicant.name}</h3>
-                        <p className={cardStyles.applicantRole}>{applicant.position}</p>
-                        <div className={cardStyles.applicantMeta}>
-                          <span className={`${cardStyles.applicantStatus} ${cardStyles[applicant.status]}`}>
+                      <div className={cardStyles.applicantHeader}>
+                        <div className={cardStyles.applicantLeft}>
+                          <div className={cardStyles.applicantAvatar}>
+                            {applicant.name.charAt(0)}
+                          </div>
+                          <div className={cardStyles.applicantInfo}>
+                            <h4 className={cardStyles.applicantName}>{applicant.name}</h4>
+                            <p className={cardStyles.applicantPosition}>Applied for: {applicant.position}</p>
+                            <p className={cardStyles.applicantMeta}>
+                              Applied on {new Date(applicant.appliedDate).toLocaleDateString()} • {applicant.experience}
+                            </p>
+                          </div>
+                        </div>
+                        <div className={cardStyles.applicantRight}>
+                          <div className={cardStyles.matchScore}>{applicant.match}%</div>
+                          <div className={cardStyles.matchLabel}>Match Score</div>
+                          <span className={`${cardStyles.applicantStatus} ${cardStyles[applicant.status.toLowerCase().replace(/\s+/g, '')]}`}>
                             {applicant.status}
                           </span>
-                          <span className={cardStyles.matchScore}>
-                            {applicant.matchPercentage}% Match
-                          </span>
+                        </div>
+                      </div>
+                      <div className={cardStyles.skillsSection}>
+                        <div className={cardStyles.skillsLabel}>Skills:</div>
+                        <div className={cardStyles.skillsList}>
+                          {applicant.skills.slice(0, 4).map((skill, index) => (
+                            <span key={index} className={cardStyles.skillTag}>{skill}</span>
+                          ))}
                         </div>
                       </div>
                       <div className={cardStyles.jobActions} onClick={(e) => e.stopPropagation()}>

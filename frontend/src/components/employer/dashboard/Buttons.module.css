@@ -218,32 +218,23 @@
 
 /* Action Buttons - Better space usage */
 .viewAllButton {
-  padding: var(--space-4) var(--space-6);
-  background: var(--primary-subtle);
+  padding: 8px 16px;
+  background: transparent;
   color: var(--primary);
-  border: 1px solid rgba(102, 126, 234, 0.2);
-  border-radius: var(--radius-lg);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all var(--transition-normal);
-  display: flex;
+  transition: all 0.2s ease;
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 0.5rem;
   text-decoration: none;
-  white-space: nowrap;
-  letter-spacing: 0.025em;
-  box-shadow: var(--shadow-sm);
-  min-height: 44px;
-  flex: 1;
-  justify-content: center;
 }
 
 .viewAllButton:hover {
-  background: var(--primary-100);
-  border-color: var(--primary-300);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
+  background: var(--gray-100);
 }
 
 .createButton {

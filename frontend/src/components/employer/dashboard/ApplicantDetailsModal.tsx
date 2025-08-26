@@ -47,7 +47,7 @@ export const ApplicantDetailsModal: React.FC<ApplicantDetailsModalProps> = ({
     switch (status) {
       case 'hired': return '#10b981';
       case 'interview': return '#3b82f6';
-      case 'reviewed': return '#f59e0b';
+      case 'pending': return '#f59e0b';
       case 'rejected': return '#ef4444';
       default: return '#6b7280';
     }
