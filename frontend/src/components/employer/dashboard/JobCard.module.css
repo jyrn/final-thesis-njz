@@ -1,0 +1,133 @@
+.jobCard {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  padding: 1.5rem;
+  transition: box-shadow 0.2s ease;
+}
+
+.jobCard:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.jobHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.jobTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.5rem 0;
+}
+
+.jobMeta {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.jobLocation,
+.jobSalary {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.jobSalary {
+  color: #059669;
+  font-weight: 500;
+}
+
+.statusBadge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.statusBadge.open {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.statusBadge.closed {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.statusBadge.draft {
+  background-color: #e5e7eb;
+  color: #4b5563;
+}
+
+.jobStats {
+  display: flex;
+  gap: 1.5rem;
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 1rem 0;
+}
+
+.statItem {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.requirements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 1rem 0;
+}
+
+.requirementTag {
+  background-color: #eff6ff;
+  color: #1e40af;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.moreTag {
+  color: #6b7280;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+}
+
+.jobActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.actionGroup {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.deleteButton {
+  color: #dc2626;
+}
+
+.deleteButton:hover {
+  background-color: #fee2e2;
+}
+
+.icon {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.375rem;
+}

@@ -1007,8 +1007,11 @@ body {
   }
 
   .statsGrid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  
+  .statsGrid > * {
+    flex: 1 1 calc(50% - 0.5rem);
   }
 
   .statCard {
@@ -1123,8 +1126,11 @@ body {
   }
 
   .statsGrid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  
+  .statsGrid > * {
+    flex: 1 1 calc(50% - 0.5rem);
   }
 
   .actionGrid {
@@ -1163,8 +1169,13 @@ body {
   }
 
   .statsGrid {
-    grid-template-columns: repeat(4, 1fr);
+    display: flex;
     gap: 1rem;
+  }
+  
+  .statsGrid > * {
+    flex: 1;
+    min-width: 0;
   }
 
   .actionGrid {
@@ -2391,10 +2402,14 @@ body {
 
 /* Dashboard Stats */
 .statsGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 1.25rem;
+  display: flex;
+  gap: 1rem;
   margin-bottom: 1.5rem;
+}
+
+.statsGrid > * {
+  flex: 1;
+  min-width: 0;
 }
 
 .statCard {
