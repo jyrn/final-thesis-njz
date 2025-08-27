@@ -246,14 +246,15 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
 
             <div className={styles.formGroup}>
               <label className={styles.label}>
-                Salary Range <span className={styles.required}>*</span>
+                Salary Range
               </label>
               <input
                 type="text"
-                className={`${styles.input} ${errors.salary ? styles.inputError : ''}`}
+                name="salary"
                 value={formData.salary}
                 onChange={(e) => handleInputChange('salary', e.target.value)}
-                placeholder="e.g. ₱120,000 - ₱150,000"
+                className={`${styles.input} ${errors.salary ? styles.inputError : ''}`}
+                placeholder="e.g., ₱80,000 - ₱120,000"
               />
               {errors.salary && <span className={styles.errorText}>{errors.salary}</span>}
             </div>
