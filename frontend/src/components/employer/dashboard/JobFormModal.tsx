@@ -19,6 +19,8 @@ const defaultJobData = {
   salary: '',
   description: '',
   requirements: [''],
+  responsibilities: [''],
+  benefits: [''],
   department: 'Engineering',
   remote: false,
   status: 'active'
@@ -44,6 +46,8 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
           salary: job.salary || '',
           description: job.description || '',
           requirements: job.requirements && job.requirements.length > 0 ? job.requirements : [''],
+          responsibilities: job.responsibilities && job.responsibilities.length > 0 ? job.responsibilities : [''],
+          benefits: job.benefits && job.benefits.length > 0 ? job.benefits : [''],
           department: job.department || 'Engineering',
           remote: job.remote || false,
           status: job.status || 'active'
@@ -68,6 +72,18 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
     setFormData(prev => ({ ...prev, requirements: newRequirements }));
   };
 
+  const handleResponsibilityChange = (index: number, value: string) => {
+    const newResponsibilities = [...formData.responsibilities];
+    newResponsibilities[index] = value;
+    setFormData(prev => ({ ...prev, responsibilities: newResponsibilities }));
+  };
+
+  const handleBenefitChange = (index: number, value: string) => {
+    const newBenefits = [...formData.benefits];
+    newBenefits[index] = value;
+    setFormData(prev => ({ ...prev, benefits: newBenefits }));
+  };
+
   const addRequirement = () => {
     setFormData(prev => ({
       ...prev,
@@ -75,10 +91,38 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
     }));
   };
 
+  const addResponsibility = () => {
+    setFormData(prev => ({
+      ...prev,
+      responsibilities: [...prev.responsibilities, '']
+    }));
+  };
+
+  const addBenefit = () => {
+    setFormData(prev => ({
+      ...prev,
+      benefits: [...prev.benefits, '']
+    }));
+  };
+
   const removeRequirement = (index: number) => {
     if (formData.requirements.length > 1) {
       const newRequirements = formData.requirements.filter((_, i) => i !== index);
       setFormData(prev => ({ ...prev, requirements: newRequirements }));
+    }
+  };
+
+  const removeResponsibility = (index: number) => {
+    if (formData.responsibilities.length > 1) {
+      const newResponsibilities = formData.responsibilities.filter((_, i) => i !== index);
+      setFormData(prev => ({ ...prev, responsibilities: newResponsibilities }));
+    }
+  };
+
+  const removeBenefit = (index: number) => {
+    if (formData.benefits.length > 1) {
+      const newBenefits = formData.benefits.filter((_, i) => i !== index);
+      setFormData(prev => ({ ...prev, benefits: newBenefits }));
     }
   };
 
@@ -90,9 +134,6 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
     }
     if (!formData.location.trim()) {
       newErrors.location = 'Location is required';
-    }
-    if (!formData.salary.trim()) {
-      newErrors.salary = 'Salary range is required';
     }
     if (!formData.description.trim()) {
       newErrors.description = 'Job description is required';
@@ -113,10 +154,14 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
     }
 
     const filteredRequirements = formData.requirements.filter(req => req.trim());
+    const filteredResponsibilities = formData.responsibilities.filter(resp => resp.trim());
+    const filteredBenefits = formData.benefits.filter(ben => ben.trim());
     
     const jobData: Partial<JobPosting> = {
       ...formData,
       requirements: filteredRequirements,
+      responsibilities: filteredResponsibilities,
+      benefits: filteredBenefits,
       ...(isEditing && job ? { id: job.id } : {})
     };
 
@@ -283,6 +328,72 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
               onClick={addRequirement}
             >
               <FiPlus /> Add Requirement
+            </button>
+          </div>
+
+          <div className={styles.formGroup}>
+            <label className={styles.label}>
+              Key Responsibilities
+            </label>
+            {formData.responsibilities.map((responsibility, index) => (
+              <div key={index} className={styles.requirementRow}>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={responsibility}
+                  onChange={(e) => handleResponsibilityChange(index, e.target.value)}
+                  placeholder="e.g. Design and develop user interfaces"
+                />
+                {formData.responsibilities.length > 1 && (
+                  <button
+                    type="button"
+                    className={styles.removeButton}
+                    onClick={() => removeResponsibility(index)}
+                  >
+                    <FiMinus />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              className={styles.addButton}
+              onClick={addResponsibility}
+            >
+              <FiPlus /> Add Responsibility
+            </button>
+          </div>
+
+          <div className={styles.formGroup}>
+            <label className={styles.label}>
+              What We Offer
+            </label>
+            {formData.benefits.map((benefit, index) => (
+              <div key={index} className={styles.requirementRow}>
+                <input
+                  type="text"
+                  className={styles.input}
+                  value={benefit}
+                  onChange={(e) => handleBenefitChange(index, e.target.value)}
+                  placeholder="e.g. Competitive salary package"
+                />
+                {formData.benefits.length > 1 && (
+                  <button
+                    type="button"
+                    className={styles.removeButton}
+                    onClick={() => removeBenefit(index)}
+                  >
+                    <FiMinus />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              type="button"
+              className={styles.addButton}
+              onClick={addBenefit}
+            >
+              <FiPlus /> Add Benefit
             </button>
           </div>
 

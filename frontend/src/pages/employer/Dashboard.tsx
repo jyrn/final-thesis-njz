@@ -40,6 +40,7 @@ import {
   Applicant
 } from '../../types/dashboard';
 import { ApplicantDetailsModal } from '../../components/employer/dashboard/ApplicantDetailsModal';
+import { JobDetailsModal } from '../../components/employer/dashboard/JobDetailsModal';
 
 // Tab types
 type TabType = 'overview' | 'applicants' | 'jobs' | 'settings';
@@ -54,6 +55,8 @@ const EmployerDashboard: React.FC = () => {
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
+  const [isJobDetailsModalOpen, setIsJobDetailsModalOpen] = useState(false);
 
 
   // Enhanced applicants using centralized mock data
@@ -185,9 +188,8 @@ const EmployerDashboard: React.FC = () => {
   };
 
   const handleDownloadResume = (applicantId: number) => {
-    const applicant = enhancedApplicants.find(app => app.id === applicantId);
-    if (applicant?.resumeUrl) {
-      // Create a temporary link to trigger download
+    const applicant = enhancedApplicants.find(a => a.id === applicantId);
+    if (applicant && applicant.resumeUrl) {
       const link = document.createElement('a');
       link.href = applicant.resumeUrl;
       link.download = `${applicant.name.replace(/\s+/g, '_')}_Resume.pdf`;
@@ -198,6 +200,7 @@ const EmployerDashboard: React.FC = () => {
       alert('Resume not available for download.');
     }
   };
+
 
   const handleCreateJob = (jobData: Partial<JobPosting>) => {
     const newJob: JobPosting = {
@@ -236,6 +239,27 @@ const EmployerDashboard: React.FC = () => {
     setJobPostings(prev => prev.filter(job => job.id !== jobId));
     // In a real app, you would also update applicant statuses based on hiredApplicantIds
     console.log('Job deleted:', jobId, 'Hired applicants:', hiredApplicantIds);
+  };
+
+  const handleJobClick = (job: JobPosting) => {
+    setSelectedJob(job);
+    setIsJobDetailsModalOpen(true);
+  };
+
+  const handleEditJobFromModal = (job: JobPosting) => {
+    setIsJobDetailsModalOpen(false);
+    // This would open the edit form modal - for now just log
+    console.log('Edit job:', job);
+  };
+
+  const handleDeleteJobFromModal = (job: JobPosting) => {
+    setIsJobDetailsModalOpen(false);
+    handleDeleteJob(job.id || 0);
+  };
+
+  const closeJobDetailsModal = () => {
+    setIsJobDetailsModalOpen(false);
+    setSelectedJob(null);
   };
 
   // Filter and sort applicants based on search and filters
@@ -830,6 +854,7 @@ const EmployerDashboard: React.FC = () => {
                         cursor: 'pointer',
                         transition: 'all 0.2s'
                       }}
+                      onClick={() => handleJobClick(job)}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.borderColor = '#3b82f6';
                         e.currentTarget.style.transform = 'translateY(-2px)';
@@ -1364,13 +1389,24 @@ const EmployerDashboard: React.FC = () => {
         <ApplicantDetailsModal
           applicant={selectedApplicant}
           isOpen={isModalOpen}
-          onClose={handleCloseModal}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedApplicant(null);
+          }}
+          onDownloadResume={handleDownloadResume}
           onApprove={handleApproveApplicant}
           onReject={handleRejectApplicant}
           onViewResume={handleViewResume}
-          onDownloadResume={handleDownloadResume}
         />
       )}
+
+      <JobDetailsModal
+        job={selectedJob}
+        isOpen={isJobDetailsModalOpen}
+        onClose={closeJobDetailsModal}
+        onEdit={handleEditJobFromModal}
+        onDelete={handleDeleteJobFromModal}
+      />
     </div>
   );
 };

@@ -211,10 +211,13 @@
 @media (max-width: 768px) {
   .overlay {
     padding: 0.5rem;
+    align-items: flex-start;
+    padding-top: 2rem;
   }
 
   .modal {
     max-height: 95vh;
+    margin: 0;
   }
 
   .header {
@@ -230,18 +233,57 @@
     gap: 1rem;
   }
 
+  .requirementRow {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .requirementRow .input {
+    margin-bottom: 0;
+  }
+
+  .removeButton {
+    align-self: flex-end;
+    width: fit-content;
+    padding: 0.5rem 1rem;
+  }
+
   .formActions {
     flex-direction: column-reverse;
+    gap: 0.75rem;
   }
 
   .formActions button {
     width: 100%;
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  .addButton {
+    width: 100%;
+    justify-content: center;
+    padding: 0.75rem 1rem;
   }
 }
 
 @media (max-width: 480px) {
+  .overlay {
+    padding: 0.25rem;
+    padding-top: 1rem;
+  }
+
   .header {
     padding: 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .closeButton {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
   }
 
   .form {
@@ -250,5 +292,21 @@
 
   .title {
     font-size: 1.125rem;
+    padding-right: 2rem;
+  }
+
+  .input,
+  .select,
+  .textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  .requirementRow {
+    gap: 0.5rem;
+  }
+
+  .removeButton {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
   }
 }

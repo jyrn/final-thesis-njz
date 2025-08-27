@@ -14,6 +14,8 @@ export interface JobPosting {
   views?: number;
   description?: string;
   requirements?: string[];
+  responsibilities?: string[];
+  benefits?: string[];
   urgency?: PriorityUrgency;
   matchQuality?: number;
   department: string;
