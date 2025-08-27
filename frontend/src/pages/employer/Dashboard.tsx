@@ -42,17 +42,18 @@ import {
 import { ApplicantDetailsModal } from '../../components/employer/dashboard/ApplicantDetailsModal';
 
 // Tab types
-type TabType = 'dashboard' | 'applicants' | 'jobs' | 'settings';
+type TabType = 'overview' | 'applicants' | 'jobs' | 'settings';
 
 const EmployerDashboard: React.FC = () => {
   // State management
-  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [jobPostings, setJobPostings] = useState(mockJobPostings);
   const [applicantFilters, setApplicantFilters] = useState<{ status: string; sortBy: string; jobId: string }>({ status: '', sortBy: 'newest', jobId: '' });
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
 
   // Enhanced applicants using centralized mock data
@@ -66,15 +67,15 @@ const EmployerDashboard: React.FC = () => {
     jobTitle: applicant.position
   })).sort((a, b) => b.matchPercentage - a.matchPercentage);
 
-  // Enhanced job postings mock data
-  const enhancedJobPostings: JobPosting[] = mockJobPostings.map((job, index) => ({
+  // Enhanced job postings from state
+  const enhancedJobPostings: JobPosting[] = jobPostings.map((job, index) => ({
     ...job,
-    views: [450, 320, 280, 390][index % 4],
-    id: index + 1,
+    views: job.views || [450, 320, 280, 390][index % 4],
+    id: job.id || index + 1,
     title: job.title,
     location: job.location,
     salary: job.salary,
-    postedDate: job.posted,
+    postedDate: job.postedDate || job.posted,
     applicantCount: job.applicants,
     status: job.status,
     requirements: job.requirements || [],
@@ -198,9 +199,43 @@ const EmployerDashboard: React.FC = () => {
     }
   };
 
-  const handleCreateJob = () => {
-    // In a real app, this would navigate to job creation form
-    alert('Job creation form would open here. This feature will be implemented in the next phase.');
+  const handleCreateJob = (jobData: Partial<JobPosting>) => {
+    const newJob: JobPosting = {
+      id: Math.max(...jobPostings.map(j => j.id || 0)) + 1,
+      title: jobData.title || '',
+      location: jobData.location || '',
+      type: jobData.type || 'Full-time',
+      applicants: 0,
+      posted: 'Just now',
+      status: jobData.status || 'active',
+      salary: jobData.salary || '',
+      views: 0,
+      description: jobData.description || '',
+      requirements: jobData.requirements || [],
+      urgency: 'medium',
+      matchQuality: 85,
+      department: jobData.department || 'Engineering',
+      postedDate: new Date().toISOString(),
+      remote: jobData.remote || false
+    };
+    
+    setJobPostings(prev => [newJob, ...prev]);
+  };
+
+  const handleUpdateJob = (jobData: Partial<JobPosting>) => {
+    if (!jobData.id) return;
+    
+    setJobPostings(prev => prev.map(job => 
+      job.id === jobData.id 
+        ? { ...job, ...jobData }
+        : job
+    ));
+  };
+
+  const handleDeleteJob = (jobId: number, hiredApplicantIds?: number[]) => {
+    setJobPostings(prev => prev.filter(job => job.id !== jobId));
+    // In a real app, you would also update applicant statuses based on hiredApplicantIds
+    console.log('Job deleted:', jobId, 'Hired applicants:', hiredApplicantIds);
   };
 
   // Filter and sort applicants based on search and filters
@@ -357,7 +392,7 @@ const EmployerDashboard: React.FC = () => {
         </div>
 
         <div className={layoutStyles.content}>
-          {activeTab === 'dashboard' && (
+          {activeTab === 'overview' && (
             <>
               {/* Welcome Section */}
               <WelcomeSection 
@@ -1270,6 +1305,7 @@ const EmployerDashboard: React.FC = () => {
           {activeTab === 'jobs' && (
             <JobsTab
               jobs={enhancedJobPostings}
+              applicants={mockApplicants}
               searchTerm={searchQuery}
               filters={{ status: filterStatus, department: '', location: '' }}
               onSearchChange={setSearchQuery}
@@ -1280,8 +1316,9 @@ const EmployerDashboard: React.FC = () => {
               }}
               onViewJob={(job) => console.log('View job:', job)}
               onEditJob={(job) => console.log('Edit job:', job)}
-              onDeleteJob={(jobId) => console.log('Delete job:', jobId)}
+              onDeleteJob={handleDeleteJob}
               onCreateJob={handleCreateJob}
+              onUpdateJob={handleUpdateJob}
             />
           )}
 

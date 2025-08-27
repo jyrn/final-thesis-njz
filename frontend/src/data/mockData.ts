@@ -62,7 +62,7 @@ export const mockJobPostings: JobPosting[] = [
     urgency: "high",
     matchQuality: 92,
     department: "Engineering",
-    postedDate: "2024-01-15T10:30:00Z",
+    postedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
     remote: false
   },
   {
@@ -80,7 +80,7 @@ export const mockJobPostings: JobPosting[] = [
     urgency: "medium",
     matchQuality: 85,
     department: "Design",
-    postedDate: "2024-01-08T14:20:00Z",
+    postedDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     remote: true
   },
   {
@@ -98,7 +98,7 @@ export const mockJobPostings: JobPosting[] = [
     urgency: "high",
     matchQuality: 88,
     department: "Engineering",
-    postedDate: "2024-01-13T09:15:00Z",
+    postedDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     remote: false
   },
   {
@@ -116,7 +116,7 @@ export const mockJobPostings: JobPosting[] = [
     urgency: "high",
     matchQuality: 90,
     department: "Engineering",
-    postedDate: "2024-01-11T16:45:00Z",
+    postedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     remote: false
   },
   {
@@ -134,7 +134,7 @@ export const mockJobPostings: JobPosting[] = [
     urgency: "medium",
     matchQuality: 86,
     department: "Engineering",
-    postedDate: "2024-01-16T08:20:00Z",
+    postedDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
     remote: true
   },
   {
@@ -152,7 +152,7 @@ export const mockJobPostings: JobPosting[] = [
     urgency: "high",
     matchQuality: 89,
     department: "Product",
-    postedDate: "2024-01-12T11:30:00Z",
+    postedDate: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
     remote: false
   },
   {
@@ -170,7 +170,7 @@ export const mockJobPostings: JobPosting[] = [
     urgency: "medium",
     matchQuality: 87,
     department: "Data",
-    postedDate: "2024-01-10T13:15:00Z",
+    postedDate: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
     remote: true
   },
   {
@@ -188,7 +188,7 @@ export const mockJobPostings: JobPosting[] = [
     urgency: "medium",
     matchQuality: 84,
     department: "Engineering",
-    postedDate: "2024-01-09T15:00:00Z",
+    postedDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     remote: false
   }
 ];
