@@ -314,10 +314,10 @@ const EmployerDashboard: React.FC = () => {
         <nav className={sidebarStyles.sidebarNav}>
           <a 
             href="#" 
-            className={`${sidebarStyles.navItem} ${activeTab === 'dashboard' ? sidebarStyles.active : ''}`}
+            className={`${sidebarStyles.navItem} ${activeTab === 'overview' ? sidebarStyles.active : ''}`}
             onClick={(e) => {
               e.preventDefault();
-              setActiveTab('dashboard');
+              setActiveTab('overview');
             }}
           >
             <FiHome className={sidebarStyles.navIcon} size={20} />
