@@ -1,9 +1,8 @@
 import React from 'react';
 import { JobCard } from './JobCard';
-import { SearchAndFilter } from './SearchAndFilter';
-import Button from '../ui/Button';
-import { FiPlus } from 'react-icons/fi';
+import { FiPlus, FiBriefcase } from 'react-icons/fi';
 import { JobPosting } from '@/types/dashboard';
+import styles from './JobsTab.module.css';
 
 interface JobsTabProps {
   jobs: JobPosting[];
@@ -19,6 +18,7 @@ interface JobsTabProps {
   onEditJob: (job: JobPosting) => void;
   onDeleteJob: (jobId: number) => void;
   onCreateJob?: () => void;
+  isLoading?: boolean;
 }
 
 export const JobsTab: React.FC<JobsTabProps> = ({
@@ -31,27 +31,69 @@ export const JobsTab: React.FC<JobsTabProps> = ({
   onEditJob,
   onDeleteJob,
   onCreateJob,
+  isLoading = false,
 }) => {
+  const filteredJobs = jobs.filter(job => {
+    const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = !filters.status || filters.status === 'all' || job.status === filters.status;
+    return matchesSearch && matchesStatus;
+  });
+
+  const renderEmptyState = () => (
+    <div className={styles.emptyState}>
+      <FiBriefcase className={styles.emptyStateIcon} />
+      <h3 className={styles.emptyStateTitle}>
+        {searchTerm || filters.status ? 'No jobs found' : 'No job postings yet'}
+      </h3>
+      <p className={styles.emptyStateDescription}>
+        {searchTerm || filters.status 
+          ? 'Try adjusting your search criteria or filters to find what you\'re looking for.'
+          : 'Start building your team by creating your first job posting. Attract top talent with detailed job descriptions and competitive offers.'
+        }
+      </p>
+      {(!searchTerm && !filters.status) && (
+        <button className={styles.emptyStateButton} onClick={onCreateJob}>
+          <FiPlus />
+          Create Your First Job
+        </button>
+      )}
+    </div>
+  );
+
+  const renderLoadingState = () => (
+    <div className={styles.loadingState}>
+      <div className={styles.spinner}></div>
+      <p className={styles.loadingText}>Loading job postings...</p>
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-gray-900">Job Postings</h2>
-        <Button onClick={onCreateJob}>
-          <FiPlus className="mr-2 h-4 w-4" />
-          Post New Job
-        </Button>
+    <div className={styles.jobsTab}>
+      <div className={styles.header}>
+        <h1 className={styles.title}>All Job Posts</h1>
+        <div className={styles.headerControls}>
+          <select 
+            className={styles.filterSelect}
+            value={filters.status}
+            onChange={(e) => onFilterChange('status', e.target.value)}
+          >
+            <option value="all">All Jobs</option>
+            <option value="active">Active</option>
+            <option value="paused">Paused</option>
+            <option value="closed">Closed</option>
+          </select>
+          <button className={styles.createJobButton} onClick={onCreateJob}>
+            <FiPlus />
+            Post New Job
+          </button>
+        </div>
       </div>
 
-      <SearchAndFilter
-        searchTerm={searchTerm}
-        onSearchChange={onSearchChange}
-        onFilterChange={onFilterChange}
-        filters={filters}
-      />
-
-      <div className="space-y-4">
-        {jobs.length > 0 ? (
-          jobs.map((job) => (
+      {isLoading ? (
+        renderLoadingState()
+      ) : filteredJobs.length > 0 ? (
+        <div className={styles.jobsGrid}>
+          {filteredJobs.map((job) => (
             <JobCard
               key={job.id}
               job={job}
@@ -59,13 +101,11 @@ export const JobsTab: React.FC<JobsTabProps> = ({
               onEdit={onEditJob}
               onDelete={onDeleteJob}
             />
-          ))
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500">No jobs found matching your criteria.</p>
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      ) : (
+        renderEmptyState()
+      )}
     </div>
   );
 };

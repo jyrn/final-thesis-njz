@@ -28,6 +28,7 @@ import cardStyles from '../../components/employer/dashboard/Cards.module.css';
 import sidebarStyles from '../../components/employer/dashboard/Sidebar.module.css';
 import buttonStyles from '../../components/employer/dashboard/Buttons.module.css';
 import { WelcomeSection } from '../../components/employer/dashboard/WelcomeSection';
+import { JobsTab } from '../../components/employer/dashboard/JobsTab';
 import { 
   mockEmployer, 
   mockJobPostings, 
@@ -1267,74 +1268,21 @@ const EmployerDashboard: React.FC = () => {
           )}
 
           {activeTab === 'jobs' && (
-            <div className={cardStyles.sectionCard}>
-              <div className={cardStyles.sectionHeader}>
-                <h2>
-                  <FiBriefcase className={cardStyles.sectionIcon} />
-                  All Job Posts
-                </h2>
-                <div className={cardStyles.sectionActions}>
-                  <select 
-                    className={buttonStyles.filterSelect}
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                  >
-                    <option value="all">All Jobs</option>
-                    <option value="active">Active</option>
-                    <option value="paused">Paused</option>
-                    <option value="closed">Closed</option>
-                  </select>
-                  <button className={buttonStyles.primaryButton}>
-                    <FiPlus size={16} />
-                    Post New Job
-                  </button>
-                </div>
-              </div>
-              <div className={cardStyles.sectionContent}>
-                <div className={layoutStyles.jobPostsGrid}>
-                  {filteredJobs.map((job) => (
-                    <div key={job.id} className={cardStyles.jobCard}>
-                      <div className={cardStyles.jobHeader}>
-                        <h3 className={cardStyles.jobTitle}>{job.title}</h3>
-                        <span className={`${cardStyles.statusBadge} ${cardStyles[job.status]}`}>
-                          {job.status}
-                        </span>
-                      </div>
-                      <div className={cardStyles.jobMeta}>
-                        <p className={cardStyles.jobMetaItem}>
-                          <FiBriefcase size={14} />
-                          {job.type} • {job.location}
-                        </p>
-                        <p className={cardStyles.jobSalary}>
-                          ₱{job.salary}
-                        </p>
-                        <p className={cardStyles.jobMetaItem}>
-                          <FiClock size={14} />
-                          Posted {formatDate(job.postedDate)}
-                        </p>
-                      </div>
-                      <div className={cardStyles.jobRequirements}>
-                        {job.requirements.slice(0, 3).map((req, index) => (
-                          <span key={index} className={cardStyles.requirementTag}>
-                            {req}
-                          </span>
-                        ))}
-                      </div>
-                      <div className={cardStyles.jobStats}>
-                        <div className={cardStyles.jobStat}>
-                          <span className={cardStyles.statNumber}>{job.applicantCount}</span>
-                          <span className={cardStyles.statLabel}>Applications</span>
-                        </div>
-                        <div className={cardStyles.jobStat}>
-                          <span className={cardStyles.statNumber}>{job.views || Math.floor(Math.random() * 500) + 100}</span>
-                          <span className={cardStyles.statLabel}>Views</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <JobsTab
+              jobs={enhancedJobPostings}
+              searchTerm={searchQuery}
+              filters={{ status: filterStatus, department: '', location: '' }}
+              onSearchChange={setSearchQuery}
+              onFilterChange={(filterType, value) => {
+                if (filterType === 'status') {
+                  setFilterStatus(value);
+                }
+              }}
+              onViewJob={(job) => console.log('View job:', job)}
+              onEditJob={(job) => console.log('Edit job:', job)}
+              onDeleteJob={(jobId) => console.log('Delete job:', jobId)}
+              onCreateJob={handleCreateJob}
+            />
           )}
 
           {activeTab === 'settings' && (
