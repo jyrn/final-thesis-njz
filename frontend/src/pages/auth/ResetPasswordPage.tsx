@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import styles from './ForgotPasswordPage.module.css';
-import authService from '../../services/authService';
+import firebaseAuthService from '../../services/firebaseAuthService';
 
 const ResetPasswordPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -39,7 +39,7 @@ const ResetPasswordPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await authService.resetPassword(token, password);
+      const response = await firebaseAuthService.confirmPasswordReset(token, password);
       
       if (response.success) {
         setIsSuccess(true);
