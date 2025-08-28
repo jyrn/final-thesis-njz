@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { 
   FiX, 
-  FiAlertTriangle, 
+  FiAlertCircle, 
   FiUsers, 
   FiCheck,
   FiUser
@@ -71,7 +71,7 @@ export const DeleteJobModal: React.FC<DeleteJobModalProps> = ({
           <>
             <div className={styles.modalHeader}>
               <div className={styles.warningIcon}>
-                <FiAlertTriangle />
+                <FiAlertCircle />
               </div>
               <button className={styles.closeButton} onClick={handleClose}>
                 <FiX />
@@ -85,7 +85,7 @@ export const DeleteJobModal: React.FC<DeleteJobModalProps> = ({
               </p>
               
               <div className={styles.warningBox}>
-                <FiAlertTriangle className={styles.warningBoxIcon} />
+                <FiAlertCircle className={styles.warningBoxIcon} />
                 <div>
                   <p className={styles.warningText}>
                     This action cannot be undone. The job posting will be permanently removed.

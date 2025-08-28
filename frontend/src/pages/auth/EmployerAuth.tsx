@@ -823,6 +823,7 @@ const EmployerAuth: React.FC = () => {
           setShowTermsModal(false)
         }}
         type="terms"
+        userRole="employer"
       />
 
       <SuccessModal
@@ -846,6 +847,7 @@ const EmployerAuth: React.FC = () => {
           setShowPrivacyModal(false)
         }}
         type="privacy"
+        userRole="employer"
       />
     </div>
   )

@@ -735,6 +735,7 @@ const JobseekerAuth: React.FC = () => {
           setShowTermsModal(false)
         }}
         type="terms"
+        userRole="jobseeker"
       />
 
       <SuccessModal
@@ -753,6 +754,7 @@ const JobseekerAuth: React.FC = () => {
           setShowPrivacyModal(false)
         }}
         type="privacy"
+        userRole="jobseeker"
       />
     </div>
   )

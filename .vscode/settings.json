@@ -1,0 +1,5 @@
+{
+  "json.validate.enable": true,
+  "problems.decorations.enabled": true,
+  "json.schemaDownload.enable": false
+}
