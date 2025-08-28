@@ -1,25 +1,15 @@
-import React from 'react';
-import { 
-  FiX, 
-  FiMapPin, 
-  FiBriefcase, 
-  FiCalendar, 
-  FiUsers, 
-  FiClock, 
-  FiTag,
-  FiEdit2,
-  FiTrash2,
-  FiDollarSign
-} from 'react-icons/fi';
+import React, { useState } from 'react';
 import { JobPosting } from '@/types/dashboard';
+import { FiX, FiMapPin, FiClock, FiUsers, FiCalendar, FiBriefcase, FiTag, FiEdit3, FiSave, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import styles from './JobDetailsModal.module.css';
 
 interface JobDetailsModalProps {
-  job: JobPosting | null;
+  job: JobPosting;
   isOpen: boolean;
   onClose: () => void;
   onEdit: (job: JobPosting) => void;
   onDelete: (job: JobPosting) => void;
+  onUpdateJob?: (jobData: Partial<JobPosting>) => void;
 }
 
 export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
@@ -27,8 +17,19 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
   isOpen,
   onClose,
   onEdit,
-  onDelete
+  onDelete,
+  onUpdateJob
 }) => {
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [editedDescription, setEditedDescription] = useState('');
+  
+  // Update edited description when job changes
+  React.useEffect(() => {
+    if (job?.description) {
+      setEditedDescription(job.description);
+    }
+  }, [job]);
+  
   if (!isOpen || !job) return null;
 
   const formatDate = (dateString: string) => {
@@ -109,20 +110,7 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           <h3 className={styles.sectionTitle}>Job Description</h3>
           <div className={styles.description}>
             <div className={styles.descriptionContent}>
-              <p>
-                We are looking for a talented <strong>{job.title}</strong> to join our dynamic team. 
-                This is an excellent opportunity to work on exciting projects and grow your career 
-                in a collaborative and innovative environment.
-              </p>
-              <p>
-                The successful candidate will be responsible for developing and maintaining 
-                high-quality software solutions, collaborating with cross-functional teams, 
-                and contributing to our cutting-edge products that serve the Filipino market.
-              </p>
-              <p>
-                Join us in building technology solutions that make a real impact in the Philippines 
-                while advancing your professional development in a supportive workplace.
-              </p>
+              <p>{job.description || 'No description available.'}</p>
             </div>
           </div>
         </div>
@@ -140,35 +128,34 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
           </div>
         )}
 
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Key Responsibilities</h3>
-          <ul className={styles.responsibilities}>
-            <li>Develop and maintain software applications using modern technologies</li>
-            <li>Collaborate with designers and product managers to implement features</li>
-            <li>Write clean, maintainable, and well-documented code</li>
-            <li>Participate in code reviews and contribute to team knowledge sharing</li>
-            <li>Stay updated with industry trends and best practices</li>
-          </ul>
-        </div>
+        {job.responsibilities && job.responsibilities.length > 0 && (
+          <div className={styles.section}>
+            <h3 className={styles.sectionTitle}>Key Responsibilities</h3>
+            <ul className={styles.responsibilities}>
+              {job.responsibilities.map((resp, index) => (
+                <li key={index}>{resp}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>What We Offer</h3>
-          <ul className={styles.benefits}>
-            <li>Competitive salary package in Philippine Peso (₱)</li>
-            <li>Comprehensive health and wellness benefits</li>
-            <li>Flexible working arrangements and remote options</li>
-            <li>Professional development and training opportunities</li>
-            <li>13th month pay and performance bonuses</li>
-            <li>Collaborative and inclusive work environment</li>
-          </ul>
-        </div>
+        {job.benefits && job.benefits.length > 0 && (
+          <div className={styles.section}>
+            <h3 className={styles.sectionTitle}>What We Offer</h3>
+            <ul className={styles.benefits}>
+              {job.benefits.map((benefit, index) => (
+                <li key={index}>{benefit}</li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <div className={styles.modalActions}>
           <button 
             className={styles.editButton}
             onClick={() => onEdit(job)}
           >
-            <FiEdit2 />
+            <FiEdit3 />
             Edit Job
           </button>
           <button 

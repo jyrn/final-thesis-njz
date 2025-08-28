@@ -47,7 +47,7 @@ type TabType = 'overview' | 'applicants' | 'jobs' | 'settings';
 
 const EmployerDashboard: React.FC = () => {
   // State management
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [jobPostings, setJobPostings] = useState(mockJobPostings);
@@ -215,6 +215,8 @@ const EmployerDashboard: React.FC = () => {
       views: 0,
       description: jobData.description || '',
       requirements: jobData.requirements || [],
+      responsibilities: jobData.responsibilities || [],
+      benefits: jobData.benefits || [],
       urgency: 'medium',
       matchQuality: 85,
       department: jobData.department || 'Engineering',
@@ -225,14 +227,41 @@ const EmployerDashboard: React.FC = () => {
     setJobPostings(prev => [newJob, ...prev]);
   };
 
+  const [showEditConfirm, setShowEditConfirm] = useState(false);
+  const [pendingJobUpdate, setPendingJobUpdate] = useState<Partial<JobPosting> | null>(null);
+
   const handleUpdateJob = (jobData: Partial<JobPosting>) => {
     if (!jobData.id) return;
     
-    setJobPostings(prev => prev.map(job => 
-      job.id === jobData.id 
-        ? { ...job, ...jobData }
-        : job
-    ));
+    // Set the pending update and show confirmation
+    setPendingJobUpdate(jobData);
+    setShowEditConfirm(true);
+  };
+
+  const confirmUpdateJob = () => {
+    if (!pendingJobUpdate?.id) return;
+    
+    setJobPostings(prev => prev.map(job => {
+      if (job.id === pendingJobUpdate.id) {
+        // Ensure arrays are properly handled and not lost during update
+        return {
+          ...job,
+          ...pendingJobUpdate,
+          requirements: pendingJobUpdate.requirements || [],
+          responsibilities: pendingJobUpdate.responsibilities || [],
+          benefits: pendingJobUpdate.benefits || []
+        };
+      }
+      return job;
+    }));
+    
+    setShowEditConfirm(false);
+    setPendingJobUpdate(null);
+  };
+
+  const cancelUpdateJob = () => {
+    setShowEditConfirm(false);
+    setPendingJobUpdate(null);
   };
 
   const handleDeleteJob = (jobId: number, hiredApplicantIds?: number[]) => {
@@ -1400,13 +1429,88 @@ const EmployerDashboard: React.FC = () => {
         />
       )}
 
-      <JobDetailsModal
-        job={selectedJob}
-        isOpen={isJobDetailsModalOpen}
-        onClose={closeJobDetailsModal}
-        onEdit={handleEditJobFromModal}
-        onDelete={handleDeleteJobFromModal}
-      />
+      {selectedJob && (
+        <JobDetailsModal
+          job={selectedJob}
+          isOpen={isJobDetailsModalOpen}
+          onClose={closeJobDetailsModal}
+          onEdit={handleEditJobFromModal}
+          onDelete={handleDeleteJobFromModal}
+        />
+      )}
+      {/* Edit Confirmation Modal */}
+      {showEditConfirm && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '2rem',
+            borderRadius: '8px',
+            maxWidth: '500px',
+            width: '90%',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Confirm Changes</h3>
+            <p>Are you sure you want to update this job posting?</p>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '1rem',
+              marginTop: '1.5rem'
+            }}>
+              <button
+                onClick={cancelUpdateJob}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '4px',
+                  border: '1px solid #d1d5db',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f3f4f6';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmUpdateJob}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '4px',
+                  border: 'none',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#2563eb';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#3b82f6';
+                }}
+              >
+                Confirm Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
