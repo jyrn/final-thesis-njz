@@ -58,6 +58,11 @@ export const JobsTab: React.FC<JobsTabProps> = ({
     setIsDetailsModalOpen(true);
   };
 
+  const handleViewJobApplicants = (job: JobPosting) => {
+    // Pass the job to the parent component to handle the tab change and filtering
+    onViewJob?.(job);
+  };
+
   const handleEditJob = (job: JobPosting) => {
     setJobToEdit(job);
     setIsDetailsModalOpen(false);
@@ -162,8 +167,8 @@ export const JobsTab: React.FC<JobsTabProps> = ({
               key={job.id}
               job={job}
               onClick={handleJobCardClick}
-              onView={onViewJob}
-              onEdit={onEditJob}
+              onView={handleJobCardClick}
+              onEdit={handleEditJob}
               onDelete={(jobId) => {
                 const job = jobs.find(j => j.id === jobId);
                 if (job) handleDeleteJob(job);
@@ -181,6 +186,7 @@ export const JobsTab: React.FC<JobsTabProps> = ({
         onClose={closeModals}
         onEdit={handleEditJob}
         onDelete={handleDeleteJob}
+        onViewApplicants={handleViewJobApplicants}
       />
       
       <DeleteJobModal

@@ -27,8 +27,11 @@ import layoutStyles from '../../components/employer/dashboard/Layout.module.css'
 import cardStyles from '../../components/employer/dashboard/Cards.module.css';
 import sidebarStyles from '../../components/employer/dashboard/Sidebar.module.css';
 import buttonStyles from '../../components/employer/dashboard/Buttons.module.css';
-import { WelcomeSection } from '../../components/employer/dashboard/WelcomeSection';
 import { JobsTab } from '../../components/employer/dashboard/JobsTab';
+import { ApplicantsTab } from '../../components/employer/dashboard/ApplicantsTab';
+import { OverviewTab } from '../../components/employer/dashboard/OverviewTab';
+import { SettingsTab } from '../../components/employer/dashboard/SettingsTab';
+import { WelcomeSection } from '../../components/employer/dashboard/WelcomeSection';
 import { 
   mockEmployer, 
   mockJobPostings, 
@@ -40,20 +43,76 @@ import {
   Applicant
 } from '../../types/dashboard';
 import { ApplicantDetailsModal } from '../../components/employer/dashboard/ApplicantDetailsModal';
+import { JobDetailsModal } from '../../components/employer/dashboard/JobDetailsModal';
+import { CompanyProfileModal } from '../../components/employer/dashboard/CompanyProfileModal';
+import { NotificationPreferencesModal } from '../../components/employer/dashboard/NotificationPreferencesModal';
+import { TeamManagementModal } from '../../components/employer/dashboard/TeamManagementModal';
+import { DocumentsModal } from '../../components/employer/dashboard/DocumentsModal';
+
+// Modal data types
+interface CompanyProfileData {
+  companyName: string;
+  industry: string;
+  website: string;
+  description: string;
+  address: string;
+  phone: string;
+  email: string;
+}
+
+interface NotificationPreferences {
+  email: {
+    newApplications: boolean;
+    applicationUpdates: boolean;
+    interviewReminders: boolean;
+    weeklyReports: boolean;
+  };
+  push: {
+    newApplications: boolean;
+    urgentUpdates: boolean;
+    systemAlerts: boolean;
+  };
+  sms: {
+    urgentOnly: boolean;
+    interviewReminders: boolean;
+  };
+}
+
+interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'recruiter' | 'viewer';
+  status: 'active' | 'pending' | 'inactive';
+  joinDate: string;
+}
+
+interface TeamData {
+  members: TeamMember[];
+}
 
 // Tab types
 type TabType = 'overview' | 'applicants' | 'jobs' | 'settings';
 
 const EmployerDashboard: React.FC = () => {
   // State management
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [jobPostings, setJobPostings] = useState(mockJobPostings);
   const [applicantFilters, setApplicantFilters] = useState<{ status: string; sortBy: string; jobId: string }>({ status: '', sortBy: 'newest', jobId: '' });
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Settings modal states
+  const [isCompanyProfileModalOpen, setIsCompanyProfileModalOpen] = useState(false);
+  const [isNotificationPreferencesModalOpen, setIsNotificationPreferencesModalOpen] = useState(false);
+  const [isTeamManagementModalOpen, setIsTeamManagementModalOpen] = useState(false);
+  const [isDocumentsModalOpen, setIsDocumentsModalOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
+  const [isJobDetailsModalOpen, setIsJobDetailsModalOpen] = useState(false);
+  const [applicantStatuses, setApplicantStatuses] = useState<Record<number, string>>({});
 
 
   // Enhanced applicants using centralized mock data
@@ -64,8 +123,52 @@ const EmployerDashboard: React.FC = () => {
     location: 'Metro Manila',
     salary: '₱80,000',
     expectedSalary: '₱70,000 - ₱90,000',
-    jobTitle: applicant.position
+    jobTitle: applicant.position,
+    jobId: applicant.jobId || '1' // Ensure jobId is set for filtering
   })).sort((a, b) => b.matchPercentage - a.matchPercentage);
+
+
+  // Filter and sort applicants based on search and filters
+  const filteredApplicants = enhancedApplicants
+    .map(applicant => ({
+      ...applicant,
+      status: (applicantStatuses[applicant.id] || applicant.status || '').toLowerCase()
+    }))
+    .filter(applicant => {
+      // Check search query match
+      const matchesSearch = !searchQuery || 
+        applicant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (applicant.position && applicant.position.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      // Check status match - if no status filter or status is empty, show all
+      const matchesStatus = !applicantFilters.status || 
+        applicantFilters.status === '' || 
+        applicant.status === applicantFilters.status.toLowerCase();
+      
+      // Check job ID match - if no job filter or jobId is empty, show all
+      const jobMatch = !applicantFilters.jobId || 
+        applicantFilters.jobId === '' ||
+        applicant.jobId === applicantFilters.jobId ||
+        (applicant.jobId || '').toString() === applicantFilters.jobId.toString();
+      
+      return matchesSearch && matchesStatus && jobMatch;
+  }).sort((a, b) => {
+    const dateA = new Date(a.appliedDate).getTime();
+    const dateB = new Date(b.appliedDate).getTime();
+    
+    switch (applicantFilters.sortBy) {
+      case 'oldest':
+        return dateA - dateB;
+      case 'newest':
+        return dateB - dateA;
+      case 'match-high':
+        return b.match - a.match;
+      case 'match-low':
+        return a.match - b.match;
+      default:
+        return dateB - dateA; // Default to newest first
+    }
+  });
 
   // Enhanced job postings from state
   const enhancedJobPostings: JobPosting[] = jobPostings.map((job, index) => ({
@@ -118,9 +221,20 @@ const EmployerDashboard: React.FC = () => {
     setActiveTab(tab);
   };
 
-  // Handle search
-  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSearchQuery(e.target.value);
+  // Handle filter changes for job status
+  const handleFilterChange = (filterType: string, value: string) => {
+    if (filterType === 'status') {
+      setFilterStatus(value);
+    } else if (filterType === 'search') {
+      setSearchQuery(value);
+    }
+  };
+
+  // Handle editing a job
+  const handleEditJob = (job: JobPosting) => {
+    setSelectedJob(job);
+    // In a real implementation, you would open an edit form modal here
+    console.log('Edit job:', job);
   };
 
   const handleApplicantFilter = (status: string) => {
@@ -139,9 +253,6 @@ const EmployerDashboard: React.FC = () => {
       [filterType]: value
     }));
   };
-
-  // State for managing applicant updates
-  const [applicantStatuses, setApplicantStatuses] = useState<Record<number, string>>({});
 
   // Handle applicant actions
   const handleApproveApplicant = (applicantId: number) => {
@@ -185,9 +296,8 @@ const EmployerDashboard: React.FC = () => {
   };
 
   const handleDownloadResume = (applicantId: number) => {
-    const applicant = enhancedApplicants.find(app => app.id === applicantId);
-    if (applicant?.resumeUrl) {
-      // Create a temporary link to trigger download
+    const applicant = enhancedApplicants.find(a => a.id === applicantId);
+    if (applicant && applicant.resumeUrl) {
       const link = document.createElement('a');
       link.href = applicant.resumeUrl;
       link.download = `${applicant.name.replace(/\s+/g, '_')}_Resume.pdf`;
@@ -198,6 +308,7 @@ const EmployerDashboard: React.FC = () => {
       alert('Resume not available for download.');
     }
   };
+
 
   const handleCreateJob = (jobData: Partial<JobPosting>) => {
     const newJob: JobPosting = {
@@ -212,6 +323,8 @@ const EmployerDashboard: React.FC = () => {
       views: 0,
       description: jobData.description || '',
       requirements: jobData.requirements || [],
+      responsibilities: jobData.responsibilities || [],
+      benefits: jobData.benefits || [],
       urgency: 'medium',
       matchQuality: 85,
       department: jobData.department || 'Engineering',
@@ -222,14 +335,41 @@ const EmployerDashboard: React.FC = () => {
     setJobPostings(prev => [newJob, ...prev]);
   };
 
+  const [showEditConfirm, setShowEditConfirm] = useState(false);
+  const [pendingJobUpdate, setPendingJobUpdate] = useState<Partial<JobPosting> | null>(null);
+
   const handleUpdateJob = (jobData: Partial<JobPosting>) => {
     if (!jobData.id) return;
     
-    setJobPostings(prev => prev.map(job => 
-      job.id === jobData.id 
-        ? { ...job, ...jobData }
-        : job
-    ));
+    // Set the pending update and show confirmation
+    setPendingJobUpdate(jobData);
+    setShowEditConfirm(true);
+  };
+
+  const confirmUpdateJob = () => {
+    if (!pendingJobUpdate?.id) return;
+    
+    setJobPostings(prev => prev.map(job => {
+      if (job.id === pendingJobUpdate.id) {
+        // Ensure arrays are properly handled and not lost during update
+        return {
+          ...job,
+          ...pendingJobUpdate,
+          requirements: pendingJobUpdate.requirements || [],
+          responsibilities: pendingJobUpdate.responsibilities || [],
+          benefits: pendingJobUpdate.benefits || []
+        };
+      }
+      return job;
+    }));
+    
+    setShowEditConfirm(false);
+    setPendingJobUpdate(null);
+  };
+
+  const cancelUpdateJob = () => {
+    setShowEditConfirm(false);
+    setPendingJobUpdate(null);
   };
 
   const handleDeleteJob = (jobId: number, hiredApplicantIds?: number[]) => {
@@ -238,33 +378,54 @@ const EmployerDashboard: React.FC = () => {
     console.log('Job deleted:', jobId, 'Hired applicants:', hiredApplicantIds);
   };
 
-  // Filter and sort applicants based on search and filters
-  const filteredApplicants = enhancedApplicants.map(applicant => ({
-    ...applicant,
-    status: applicantStatuses[applicant.id] || applicant.status
-  })).filter(applicant => {
-    const matchesSearch = applicant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         applicant.position.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = !applicantFilters.status || applicant.status === applicantFilters.status;
-    const matchesJob = !applicantFilters.jobId || applicant.position === enhancedJobPostings.find(job => job.id.toString() === applicantFilters.jobId)?.title;
-    return matchesSearch && matchesStatus && matchesJob;
-  }).sort((a, b) => {
-    const dateA = new Date(a.appliedDate).getTime();
-    const dateB = new Date(b.appliedDate).getTime();
-    
-    switch (applicantFilters.sortBy) {
-      case 'oldest':
-        return dateA - dateB;
-      case 'newest':
-        return dateB - dateA;
-      case 'match-high':
-        return b.match - a.match;
-      case 'match-low':
-        return a.match - b.match;
-      default:
-        return dateB - dateA; // Default to newest first
-    }
-  });
+  const handleJobClick = (job: JobPosting) => {
+    setSelectedJob(job);
+    setApplicantFilters(prev => ({
+      ...prev,
+      jobId: job.id.toString(),
+      status: ''
+    }));
+    setActiveTab('applicants');
+    setIsJobDetailsModalOpen(true);
+  };
+
+  const handleViewJobDetails = (job: JobPosting) => {
+    setSelectedJob(job);
+    setIsJobDetailsModalOpen(true);
+  };
+
+  // Handle viewing applicants for a specific job
+  const handleViewJobApplicants = (job: JobPosting) => {
+    setActiveTab('applicants');
+    setApplicantFilters(prev => ({
+      ...prev,
+      jobId: job.id.toString(),
+      status: '' // Reset status filter to show all applicants for this job
+    }));
+  };
+
+  const handleEditJobFromModal = (job: JobPosting) => {
+    const handleEditJob = (job: JobPosting) => {
+      setSelectedJob(job);
+      // Here you would typically open an edit form modal
+      // For now, we'll just log it
+      console.log('Edit job:', job);
+    };
+    handleEditJob(job);
+    setIsJobDetailsModalOpen(false);
+  };
+
+  const handleDeleteJobFromModal = (job: JobPosting) => {
+    setIsJobDetailsModalOpen(false);
+    handleDeleteJob(job.id || 0);
+  };
+
+  const closeJobDetailsModal = () => {
+    setIsJobDetailsModalOpen(false);
+    setSelectedJob(null);
+  };
+
+  // This has been consolidated into the filteredApplicants definition above
 
   // Filter jobs based on status
   const filteredJobs = enhancedJobPostings.filter(job => {
@@ -314,10 +475,10 @@ const EmployerDashboard: React.FC = () => {
         <nav className={sidebarStyles.sidebarNav}>
           <a 
             href="#" 
-            className={`${sidebarStyles.navItem} ${activeTab === 'dashboard' ? sidebarStyles.active : ''}`}
+            className={`${sidebarStyles.navItem} ${activeTab === 'overview' ? sidebarStyles.active : ''}`}
             onClick={(e) => {
               e.preventDefault();
-              setActiveTab('dashboard');
+              setActiveTab('overview');
             }}
           >
             <FiHome className={sidebarStyles.navIcon} size={20} />
@@ -745,7 +906,7 @@ const EmployerDashboard: React.FC = () => {
                           <p style={{ 
                             fontSize: '0.875rem', 
                             color: '#64748b',
-                            margin: '0'
+                            margin: '0 0 0.25rem 0'
                           }}>
                             {applicant.name}
                           </p>
@@ -830,6 +991,7 @@ const EmployerDashboard: React.FC = () => {
                         cursor: 'pointer',
                         transition: 'all 0.2s'
                       }}
+                      onClick={() => handleJobClick(job)}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.borderColor = '#3b82f6';
                         e.currentTarget.style.transform = 'translateY(-2px)';
@@ -940,14 +1102,31 @@ const EmployerDashboard: React.FC = () => {
                         }}>
                           {job.status === 'active' ? 'Active' : 'Inactive'}
                         </span>
-                        <div style={{
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: '20px',
-                          fontSize: '0.75rem',
-                          fontWeight: '500',
-                          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                          color: '#3b82f6'
-                        }}>
+                        <div 
+                          style={{
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '20px',
+                            fontSize: '0.75rem',
+                            fontWeight: '500',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            color: '#3b82f6',
+                            cursor: 'pointer'
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            console.log('Clicked on applications for job ID:', job.id, 'type:', typeof job.id);
+                            const newFilters = {
+                              ...applicantFilters,
+                              jobId: job.id.toString(),
+                              status: ''
+                            };
+                            console.log('Setting new filters:', newFilters);
+                            setApplicantFilters(newFilters);
+                            setActiveTab('applicants');
+                            // Force a re-render to ensure the filter is applied
+                            setSearchQuery('');
+                          }}
+                        >
                           {job.applicantCount} Applications
                         </div>
                       </div>
@@ -977,7 +1156,34 @@ const EmployerDashboard: React.FC = () => {
                     'All Applicants'
                   }
                 </h1>
-                <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <div style={{ position: 'relative', minWidth: '200px' }}>
+                    <FiSearch style={{
+                      position: 'absolute',
+                      left: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: '#64748b',
+                      fontSize: '14px',
+                      pointerEvents: 'none'
+                    }} />
+                    <input
+                      type="text"
+                      placeholder="Search applicants..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{
+                        padding: '0.5rem 1rem 0.5rem 2.25rem',
+                        borderRadius: '8px',
+                        border: '1px solid #e2e8f0',
+                        fontSize: '0.875rem',
+                        backgroundColor: 'white',
+                        width: '100%',
+                        outline: 'none',
+                        cursor: 'text'
+                      }}
+                    />
+                  </div>
                   <select 
                     value={applicantFilters.jobId}
                     onChange={(e) => setApplicantFilters(prev => ({...prev, jobId: e.target.value}))}
@@ -1305,17 +1511,13 @@ const EmployerDashboard: React.FC = () => {
           {activeTab === 'jobs' && (
             <JobsTab
               jobs={enhancedJobPostings}
-              applicants={mockApplicants}
+              applicants={enhancedApplicants}
               searchTerm={searchQuery}
               filters={{ status: filterStatus, department: '', location: '' }}
               onSearchChange={setSearchQuery}
-              onFilterChange={(filterType, value) => {
-                if (filterType === 'status') {
-                  setFilterStatus(value);
-                }
-              }}
-              onViewJob={(job) => console.log('View job:', job)}
-              onEditJob={(job) => console.log('Edit job:', job)}
+              onFilterChange={handleFilterChange}
+              onViewJob={handleViewJobApplicants}
+              onEditJob={handleEditJob}
               onDeleteJob={handleDeleteJob}
               onCreateJob={handleCreateJob}
               onUpdateJob={handleUpdateJob}
@@ -1323,53 +1525,154 @@ const EmployerDashboard: React.FC = () => {
           )}
 
           {activeTab === 'settings' && (
-            <div className={cardStyles.sectionCard}>
-              <div className={cardStyles.sectionHeader}>
-                <h2>
-                  <FiSettings className={cardStyles.sectionIcon} />
-                  Account Settings
-                </h2>
-              </div>
-              <div className={cardStyles.sectionContent}>
-                <div className={layoutStyles.settingsGrid}>
-                  <div className={cardStyles.settingCard}>
-                    <h3>Company Profile</h3>
-                    <p>Update your company information and branding</p>
-                    <button className={buttonStyles.secondaryButton}>Edit Profile</button>
-                  </div>
-                  <div className={cardStyles.settingCard}>
-                    <h3>Notification Preferences</h3>
-                    <p>Manage how you receive updates about applications</p>
-                    <button className={buttonStyles.secondaryButton}>Configure</button>
-                  </div>
-                  <div className={cardStyles.settingCard}>
-                    <h3>Billing & Subscription</h3>
-                    <p>View your current plan and billing information</p>
-                    <button className={buttonStyles.secondaryButton}>Manage Billing</button>
-                  </div>
-                  <div className={cardStyles.settingCard}>
-                    <h3>Team Management</h3>
-                    <p>Add or remove team members and set permissions</p>
-                    <button className={buttonStyles.secondaryButton}>Manage Team</button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <SettingsTab 
+              onOpenCompanyProfile={() => setIsCompanyProfileModalOpen(true)}
+              onOpenNotifications={() => setIsNotificationPreferencesModalOpen(true)}
+              onOpenTeamManagement={() => setIsTeamManagementModalOpen(true)}
+              onOpenDocuments={() => setIsDocumentsModalOpen(true)}
+              onLogout={() => {
+                // Clear any stored authentication data
+                localStorage.removeItem('authToken');
+                sessionStorage.clear();
+                // Redirect to employer auth page
+                window.location.href = '/auth/employer';
+              }}
+            />
           )}
         </div>
       </div>
 
-      {/* Applicant Details Modal */}
-      {selectedApplicant && (
-        <ApplicantDetailsModal
-          applicant={selectedApplicant}
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-          onApprove={handleApproveApplicant}
-          onReject={handleRejectApplicant}
-          onViewResume={handleViewResume}
-          onDownloadResume={handleDownloadResume}
+      {/* Job Details Modal */}
+      {selectedJob && (
+        <JobDetailsModal
+          job={selectedJob}
+          isOpen={isJobDetailsModalOpen}
+          onClose={() => {
+            setIsJobDetailsModalOpen(false);
+            setSelectedJob(null);
+          }}
+          onEdit={() => {
+            // Handle edit job
+            console.log('Edit job:', selectedJob);
+          }}
+          onDelete={() => {
+            // Handle delete job
+            console.log('Delete job:', selectedJob);
+          }}
+          onViewApplicants={() => {
+            // Handle view applicants
+            console.log('View applicants for job:', selectedJob);
+          }}
         />
+      )}
+
+      {/* Settings Modals */}
+      <CompanyProfileModal
+        isOpen={isCompanyProfileModalOpen}
+        onClose={() => setIsCompanyProfileModalOpen(false)}
+        onSave={(data: CompanyProfileData) => {
+          console.log('Company profile updated:', data);
+          // Handle save company profile
+        }}
+      />
+
+      <NotificationPreferencesModal
+        isOpen={isNotificationPreferencesModalOpen}
+        onClose={() => setIsNotificationPreferencesModalOpen(false)}
+        onSave={(preferences: NotificationPreferences) => {
+          console.log('Notification preferences updated:', preferences);
+          // Handle save notification preferences
+        }}
+      />
+
+      <TeamManagementModal
+        isOpen={isTeamManagementModalOpen}
+        onClose={() => setIsTeamManagementModalOpen(false)}
+        onSave={(teamData: TeamData) => {
+          console.log('Team data updated:', teamData);
+          // Handle save team data
+        }}
+      />
+
+      <DocumentsModal
+        isOpen={isDocumentsModalOpen}
+        onClose={() => setIsDocumentsModalOpen(false)}
+        onSave={(documentsData: any) => {
+          console.log('Documents updated:', documentsData);
+          // Handle save documents data
+        }}
+      />
+      {showEditConfirm && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '2rem',
+            borderRadius: '8px',
+            maxWidth: '500px',
+            width: '90%',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
+          }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>Confirm Changes</h3>
+            <p>Are you sure you want to update this job posting?</p>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '1rem',
+              marginTop: '1.5rem'
+            }}>
+              <button
+                onClick={cancelUpdateJob}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '4px',
+                  border: '1px solid #d1d5db',
+                  backgroundColor: 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f3f4f6';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmUpdateJob}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '4px',
+                  border: 'none',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#2563eb';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#3b82f6';
+                }}
+              >
+                Confirm Changes
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

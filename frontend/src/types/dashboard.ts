@@ -14,6 +14,8 @@ export interface JobPosting {
   views?: number;
   description?: string;
   requirements?: string[];
+  responsibilities?: string[];
+  benefits?: string[];
   urgency?: PriorityUrgency;
   matchQuality?: number;
   department: string;
@@ -37,6 +39,7 @@ export interface Applicant {
   statusType?: StatusType;
   priority?: PriorityUrgency;
   jobTitle?: string;
+  jobId?: string;
   appliedDate: string;
   matchScore: number;
   lastActivity?: string;

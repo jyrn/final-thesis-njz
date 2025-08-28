@@ -72,10 +72,11 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/node": "^16.11.56",
+    "@types/node": "^16.18.126",
     "@types/pdfjs-dist": "^2.10.377",
     "@types/react": "^18.0.17",
     "@types/react-dom": "^18.0.6",
+    "@types/react-icons": "^2.2.7",
     "@types/tesseract.js": "^0.0.2",
     "postcss": "^8.4.16",
     "tailwindcss": "^3.4.17",

@@ -4,6 +4,7 @@
   border: 1px solid #e5e7eb;
   padding: 1.5rem;
   transition: box-shadow 0.2s ease;
+  cursor: pointer;
 }
 
 .jobCard:hover {
@@ -79,6 +80,17 @@
   display: flex;
   align-items: center;
   gap: 0.375rem;
+}
+
+.clickableStat {
+  cursor: pointer;
+  color: #6b7280;
+  transition: color 0.2s;
+}
+
+.clickableStat:hover {
+  color: #1e40af;
+  text-decoration: underline;
 }
 
 .requirements {
