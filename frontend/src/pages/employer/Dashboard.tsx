@@ -27,8 +27,11 @@ import layoutStyles from '../../components/employer/dashboard/Layout.module.css'
 import cardStyles from '../../components/employer/dashboard/Cards.module.css';
 import sidebarStyles from '../../components/employer/dashboard/Sidebar.module.css';
 import buttonStyles from '../../components/employer/dashboard/Buttons.module.css';
-import { WelcomeSection } from '../../components/employer/dashboard/WelcomeSection';
 import { JobsTab } from '../../components/employer/dashboard/JobsTab';
+import { ApplicantsTab } from '../../components/employer/dashboard/ApplicantsTab';
+import { OverviewTab } from '../../components/employer/dashboard/OverviewTab';
+import { SettingsTab } from '../../components/employer/dashboard/SettingsTab';
+import { WelcomeSection } from '../../components/employer/dashboard/WelcomeSection';
 import { 
   mockEmployer, 
   mockJobPostings, 
@@ -41,6 +44,9 @@ import {
 } from '../../types/dashboard';
 import { ApplicantDetailsModal } from '../../components/employer/dashboard/ApplicantDetailsModal';
 import { JobDetailsModal } from '../../components/employer/dashboard/JobDetailsModal';
+import { CompanyProfileModal, CompanyProfileData } from '../../components/employer/dashboard/CompanyProfileModal';
+import { NotificationPreferencesModal, NotificationPreferences } from '../../components/employer/dashboard/NotificationPreferencesModal';
+import { TeamManagementModal, TeamData } from '../../components/employer/dashboard/TeamManagementModal';
 
 // Tab types
 type TabType = 'overview' | 'applicants' | 'jobs' | 'settings';
@@ -53,7 +59,12 @@ const EmployerDashboard: React.FC = () => {
   const [jobPostings, setJobPostings] = useState(mockJobPostings);
   const [applicantFilters, setApplicantFilters] = useState<{ status: string; sortBy: string; jobId: string }>({ status: '', sortBy: 'newest', jobId: '' });
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Settings modal states
+  const [isCompanyProfileModalOpen, setIsCompanyProfileModalOpen] = useState(false);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [isJobDetailsModalOpen, setIsJobDetailsModalOpen] = useState(false);
@@ -1470,69 +1481,67 @@ const EmployerDashboard: React.FC = () => {
           )}
 
           {activeTab === 'settings' && (
-            <div className={cardStyles.sectionCard}>
-              <div className={cardStyles.sectionHeader}>
-                <h2>
-                  <FiSettings className={cardStyles.sectionIcon} />
-                  Account Settings
-                </h2>
-              </div>
-              <div className={cardStyles.sectionContent}>
-                <div className={layoutStyles.settingsGrid}>
-                  <div className={cardStyles.settingCard}>
-                    <h3>Company Profile</h3>
-                    <p>Update your company information and branding</p>
-                    <button className={buttonStyles.secondaryButton}>Edit Profile</button>
-                  </div>
-                  <div className={cardStyles.settingCard}>
-                    <h3>Notification Preferences</h3>
-                    <p>Manage how you receive updates about applications</p>
-                    <button className={buttonStyles.secondaryButton}>Configure</button>
-                  </div>
-                  <div className={cardStyles.settingCard}>
-                    <h3>Billing & Subscription</h3>
-                    <p>View your current plan and billing information</p>
-                    <button className={buttonStyles.secondaryButton}>Manage Billing</button>
-                  </div>
-                  <div className={cardStyles.settingCard}>
-                    <h3>Team Management</h3>
-                    <p>Add or remove team members and set permissions</p>
-                    <button className={buttonStyles.secondaryButton}>Manage Team</button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <SettingsTab
+              onOpenCompanyProfile={() => setIsCompanyProfileModalOpen(true)}
+              onOpenNotifications={() => setIsNotificationModalOpen(true)}
+              onOpenTeamManagement={() => setIsTeamModalOpen(true)}
+            />
           )}
         </div>
       </div>
 
-      {/* Applicant Details Modal */}
-      {selectedApplicant && (
-        <ApplicantDetailsModal
-          applicant={selectedApplicant}
-          isOpen={isModalOpen}
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedApplicant(null);
-          }}
-          onDownloadResume={handleDownloadResume}
-          onApprove={handleApproveApplicant}
-          onReject={handleRejectApplicant}
-          onViewResume={handleViewResume}
-        />
-      )}
-
+      {/* Job Details Modal */}
       {selectedJob && (
         <JobDetailsModal
           job={selectedJob}
           isOpen={isJobDetailsModalOpen}
-          onClose={closeJobDetailsModal}
-          onEdit={handleEditJobFromModal}
-          onDelete={handleDeleteJobFromModal}
-          onViewApplicants={handleViewJobApplicants}
+          onClose={() => {
+            setIsJobDetailsModalOpen(false);
+            setSelectedJob(null);
+          }}
+          onEdit={() => {
+            // Handle edit job
+            console.log('Edit job:', selectedJob);
+          }}
+          onDelete={() => {
+            // Handle delete job
+            console.log('Delete job:', selectedJob);
+          }}
+          onViewApplicants={() => {
+            // Handle view applicants
+            console.log('View applicants for job:', selectedJob);
+          }}
         />
       )}
-      {/* Edit Confirmation Modal */}
+
+      {/* Settings Modals */}
+      <CompanyProfileModal
+        isOpen={isCompanyProfileModalOpen}
+        onClose={() => setIsCompanyProfileModalOpen(false)}
+        onSave={(data: CompanyProfileData) => {
+          console.log('Company profile updated:', data);
+          // Handle save company profile
+        }}
+      />
+
+      <NotificationPreferencesModal
+        isOpen={isNotificationModalOpen}
+        onClose={() => setIsNotificationModalOpen(false)}
+        onSave={(preferences: NotificationPreferences) => {
+          console.log('Notification preferences updated:', preferences);
+          // Handle save notification preferences
+        }}
+      />
+
+
+      <TeamManagementModal
+        isOpen={isTeamModalOpen}
+        onClose={() => setIsTeamModalOpen(false)}
+        onSave={(teamData: TeamData) => {
+          console.log('Team data updated:', teamData);
+          // Handle save team data
+        }}
+      />
       {showEditConfirm && (
         <div style={{
           position: 'fixed',
