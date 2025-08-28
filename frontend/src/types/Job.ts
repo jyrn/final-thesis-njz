@@ -1,7 +1,19 @@
+export interface Company {
+  name: string
+  description?: string
+  industry?: string
+  website?: string
+  logo?: string
+  size?: string
+  founded?: number
+  headquarters?: string
+}
+
 export interface Job {
   id: number
   title: string
   company: string
+  companyDetails?: Company
   location: string
   salary: number
   type: string
