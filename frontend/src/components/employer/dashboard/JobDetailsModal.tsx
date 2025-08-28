@@ -10,16 +10,30 @@ interface JobDetailsModalProps {
   onEdit: (job: JobPosting) => void;
   onDelete: (job: JobPosting) => void;
   onUpdateJob?: (jobData: Partial<JobPosting>) => void;
+  onViewApplicants?: (job: JobPosting) => void;
 }
 
-export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
-  job,
-  isOpen,
-  onClose,
-  onEdit,
-  onDelete,
-  onUpdateJob
-}) => {
+export const JobDetailsModal: React.FC<JobDetailsModalProps> = (props) => {
+  
+  const {
+    job,
+    isOpen,
+    onClose,
+    onEdit,
+    onDelete,
+    onUpdateJob,
+    onViewApplicants
+  } = props;
+  
+  // Create a stable reference to the onViewApplicants function
+  const handleViewApplicantsClick = React.useCallback((e: React.MouseEvent, job: JobPosting) => {
+    e.stopPropagation();
+    
+    if (onViewApplicants) {
+      onViewApplicants(job);
+      onClose(); // Close the modal after navigating to applicants
+    }
+  }, [onViewApplicants, onClose]);
   const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [editedDescription, setEditedDescription] = useState('');
   
@@ -100,7 +114,10 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = ({
             <FiCalendar className={styles.metaIcon} />
             <span>Posted {formatDate(job.postedDate || job.posted)}</span>
           </div>
-          <div className={styles.metaItem}>
+          <div 
+            className={`${styles.metaItem} ${styles.clickable}`}
+            onClick={(e) => handleViewApplicantsClick(e, job)}
+          >
             <FiUsers className={styles.metaIcon} />
             <span>{job.applicants} applicants</span>
           </div>

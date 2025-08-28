@@ -39,6 +39,7 @@ export interface Applicant {
   statusType?: StatusType;
   priority?: PriorityUrgency;
   jobTitle?: string;
+  jobId?: string;
   appliedDate: string;
   matchScore: number;
   lastActivity?: string;

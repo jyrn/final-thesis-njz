@@ -57,6 +57,7 @@ const EmployerDashboard: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [isJobDetailsModalOpen, setIsJobDetailsModalOpen] = useState(false);
+  const [applicantStatuses, setApplicantStatuses] = useState<Record<number, string>>({});
 
 
   // Enhanced applicants using centralized mock data
@@ -67,8 +68,52 @@ const EmployerDashboard: React.FC = () => {
     location: 'Metro Manila',
     salary: '₱80,000',
     expectedSalary: '₱70,000 - ₱90,000',
-    jobTitle: applicant.position
+    jobTitle: applicant.position,
+    jobId: applicant.jobId || '1' // Ensure jobId is set for filtering
   })).sort((a, b) => b.matchPercentage - a.matchPercentage);
+
+
+  // Filter and sort applicants based on search and filters
+  const filteredApplicants = enhancedApplicants
+    .map(applicant => ({
+      ...applicant,
+      status: (applicantStatuses[applicant.id] || applicant.status || '').toLowerCase()
+    }))
+    .filter(applicant => {
+      // Check search query match
+      const matchesSearch = !searchQuery || 
+        applicant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (applicant.position && applicant.position.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      // Check status match - if no status filter or status is empty, show all
+      const matchesStatus = !applicantFilters.status || 
+        applicantFilters.status === '' || 
+        applicant.status === applicantFilters.status.toLowerCase();
+      
+      // Check job ID match - if no job filter or jobId is empty, show all
+      const jobMatch = !applicantFilters.jobId || 
+        applicantFilters.jobId === '' ||
+        applicant.jobId === applicantFilters.jobId ||
+        (applicant.jobId || '').toString() === applicantFilters.jobId.toString();
+      
+      return matchesSearch && matchesStatus && jobMatch;
+  }).sort((a, b) => {
+    const dateA = new Date(a.appliedDate).getTime();
+    const dateB = new Date(b.appliedDate).getTime();
+    
+    switch (applicantFilters.sortBy) {
+      case 'oldest':
+        return dateA - dateB;
+      case 'newest':
+        return dateB - dateA;
+      case 'match-high':
+        return b.match - a.match;
+      case 'match-low':
+        return a.match - b.match;
+      default:
+        return dateB - dateA; // Default to newest first
+    }
+  });
 
   // Enhanced job postings from state
   const enhancedJobPostings: JobPosting[] = jobPostings.map((job, index) => ({
@@ -121,9 +166,20 @@ const EmployerDashboard: React.FC = () => {
     setActiveTab(tab);
   };
 
-  // Handle search
-  const handleFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSearchQuery(e.target.value);
+  // Handle filter changes for job status
+  const handleFilterChange = (filterType: string, value: string) => {
+    if (filterType === 'status') {
+      setFilterStatus(value);
+    } else if (filterType === 'search') {
+      setSearchQuery(value);
+    }
+  };
+
+  // Handle editing a job
+  const handleEditJob = (job: JobPosting) => {
+    setSelectedJob(job);
+    // In a real implementation, you would open an edit form modal here
+    console.log('Edit job:', job);
   };
 
   const handleApplicantFilter = (status: string) => {
@@ -142,9 +198,6 @@ const EmployerDashboard: React.FC = () => {
       [filterType]: value
     }));
   };
-
-  // State for managing applicant updates
-  const [applicantStatuses, setApplicantStatuses] = useState<Record<number, string>>({});
 
   // Handle applicant actions
   const handleApproveApplicant = (applicantId: number) => {
@@ -272,13 +325,39 @@ const EmployerDashboard: React.FC = () => {
 
   const handleJobClick = (job: JobPosting) => {
     setSelectedJob(job);
+    setApplicantFilters(prev => ({
+      ...prev,
+      jobId: job.id.toString(),
+      status: ''
+    }));
+    setActiveTab('applicants');
     setIsJobDetailsModalOpen(true);
   };
 
+  const handleViewJobDetails = (job: JobPosting) => {
+    setSelectedJob(job);
+    setIsJobDetailsModalOpen(true);
+  };
+
+  // Handle viewing applicants for a specific job
+  const handleViewJobApplicants = (job: JobPosting) => {
+    setActiveTab('applicants');
+    setApplicantFilters(prev => ({
+      ...prev,
+      jobId: job.id.toString(),
+      status: '' // Reset status filter to show all applicants for this job
+    }));
+  };
+
   const handleEditJobFromModal = (job: JobPosting) => {
+    const handleEditJob = (job: JobPosting) => {
+      setSelectedJob(job);
+      // Here you would typically open an edit form modal
+      // For now, we'll just log it
+      console.log('Edit job:', job);
+    };
+    handleEditJob(job);
     setIsJobDetailsModalOpen(false);
-    // This would open the edit form modal - for now just log
-    console.log('Edit job:', job);
   };
 
   const handleDeleteJobFromModal = (job: JobPosting) => {
@@ -291,33 +370,7 @@ const EmployerDashboard: React.FC = () => {
     setSelectedJob(null);
   };
 
-  // Filter and sort applicants based on search and filters
-  const filteredApplicants = enhancedApplicants.map(applicant => ({
-    ...applicant,
-    status: applicantStatuses[applicant.id] || applicant.status
-  })).filter(applicant => {
-    const matchesSearch = applicant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         applicant.position.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = !applicantFilters.status || applicant.status === applicantFilters.status;
-    const matchesJob = !applicantFilters.jobId || applicant.position === enhancedJobPostings.find(job => job.id.toString() === applicantFilters.jobId)?.title;
-    return matchesSearch && matchesStatus && matchesJob;
-  }).sort((a, b) => {
-    const dateA = new Date(a.appliedDate).getTime();
-    const dateB = new Date(b.appliedDate).getTime();
-    
-    switch (applicantFilters.sortBy) {
-      case 'oldest':
-        return dateA - dateB;
-      case 'newest':
-        return dateB - dateA;
-      case 'match-high':
-        return b.match - a.match;
-      case 'match-low':
-        return a.match - b.match;
-      default:
-        return dateB - dateA; // Default to newest first
-    }
-  });
+  // This has been consolidated into the filteredApplicants definition above
 
   // Filter jobs based on status
   const filteredJobs = enhancedJobPostings.filter(job => {
@@ -798,7 +851,7 @@ const EmployerDashboard: React.FC = () => {
                           <p style={{ 
                             fontSize: '0.875rem', 
                             color: '#64748b',
-                            margin: '0'
+                            margin: '0 0 0.25rem 0'
                           }}>
                             {applicant.name}
                           </p>
@@ -994,14 +1047,31 @@ const EmployerDashboard: React.FC = () => {
                         }}>
                           {job.status === 'active' ? 'Active' : 'Inactive'}
                         </span>
-                        <div style={{
-                          padding: '0.25rem 0.75rem',
-                          borderRadius: '20px',
-                          fontSize: '0.75rem',
-                          fontWeight: '500',
-                          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                          color: '#3b82f6'
-                        }}>
+                        <div 
+                          style={{
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '20px',
+                            fontSize: '0.75rem',
+                            fontWeight: '500',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            color: '#3b82f6',
+                            cursor: 'pointer'
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            console.log('Clicked on applications for job ID:', job.id, 'type:', typeof job.id);
+                            const newFilters = {
+                              ...applicantFilters,
+                              jobId: job.id.toString(),
+                              status: ''
+                            };
+                            console.log('Setting new filters:', newFilters);
+                            setApplicantFilters(newFilters);
+                            setActiveTab('applicants');
+                            // Force a re-render to ensure the filter is applied
+                            setSearchQuery('');
+                          }}
+                        >
                           {job.applicantCount} Applications
                         </div>
                       </div>
@@ -1031,7 +1101,34 @@ const EmployerDashboard: React.FC = () => {
                     'All Applicants'
                   }
                 </h1>
-                <div style={{ display: 'flex', gap: '1rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <div style={{ position: 'relative', minWidth: '200px' }}>
+                    <FiSearch style={{
+                      position: 'absolute',
+                      left: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      color: '#64748b',
+                      fontSize: '14px',
+                      pointerEvents: 'none'
+                    }} />
+                    <input
+                      type="text"
+                      placeholder="Search applicants..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{
+                        padding: '0.5rem 1rem 0.5rem 2.25rem',
+                        borderRadius: '8px',
+                        border: '1px solid #e2e8f0',
+                        fontSize: '0.875rem',
+                        backgroundColor: 'white',
+                        width: '100%',
+                        outline: 'none',
+                        cursor: 'text'
+                      }}
+                    />
+                  </div>
                   <select 
                     value={applicantFilters.jobId}
                     onChange={(e) => setApplicantFilters(prev => ({...prev, jobId: e.target.value}))}
@@ -1359,17 +1456,13 @@ const EmployerDashboard: React.FC = () => {
           {activeTab === 'jobs' && (
             <JobsTab
               jobs={enhancedJobPostings}
-              applicants={mockApplicants}
+              applicants={enhancedApplicants}
               searchTerm={searchQuery}
               filters={{ status: filterStatus, department: '', location: '' }}
               onSearchChange={setSearchQuery}
-              onFilterChange={(filterType, value) => {
-                if (filterType === 'status') {
-                  setFilterStatus(value);
-                }
-              }}
-              onViewJob={(job) => console.log('View job:', job)}
-              onEditJob={(job) => console.log('Edit job:', job)}
+              onFilterChange={handleFilterChange}
+              onViewJob={handleViewJobApplicants}
+              onEditJob={handleEditJob}
               onDeleteJob={handleDeleteJob}
               onCreateJob={handleCreateJob}
               onUpdateJob={handleUpdateJob}
@@ -1436,6 +1529,7 @@ const EmployerDashboard: React.FC = () => {
           onClose={closeJobDetailsModal}
           onEdit={handleEditJobFromModal}
           onDelete={handleDeleteJobFromModal}
+          onViewApplicants={handleViewJobApplicants}
         />
       )}
       {/* Edit Confirmation Modal */}

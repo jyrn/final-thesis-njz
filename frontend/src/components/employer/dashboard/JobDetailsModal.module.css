@@ -203,6 +203,15 @@
   transition: all 0.2s ease;
 }
 
+.metaItem.clickable {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.metaItem.clickable:hover {
+  color: #4f46e5;
+}
+
 .metaItem:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);

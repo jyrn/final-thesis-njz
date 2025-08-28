@@ -42,9 +42,16 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onView, onEdit, onDelete,
       </div>
       
       <div className={styles.jobStats}>
-        <span className={styles.statItem}>
+        <span 
+          className={`${styles.statItem} ${styles.clickableStat}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            // Use the onView handler for the applicants count
+            onView?.(job);
+          }}
+        >
           <FiUsers className={styles.icon} />
-          {job.applicants} applicants
+          {job.applicants} {job.applicants === 1 ? 'applicant' : 'applicants'}
         </span>
         <span className={styles.statItem}>
           <FiClock className={styles.icon} />
@@ -72,7 +79,10 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onView, onEdit, onDelete,
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => onView?.(job)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onView?.(job);
+            }}
           >
             <FiEye className={styles.icon} />
             View
@@ -80,7 +90,10 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onView, onEdit, onDelete,
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => onEdit?.(job)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit?.(job);
+            }}
           >
             <FiEdit2 className={styles.icon} />
             Edit
@@ -90,7 +103,10 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onView, onEdit, onDelete,
           variant="ghost" 
           size="sm"
           className={styles.deleteButton}
-          onClick={() => onDelete?.(job.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete?.(job.id);
+          }}
         >
           <FiTrash2 className={styles.icon} />
           Delete

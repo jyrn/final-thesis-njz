@@ -92,7 +92,11 @@ export const DeleteJobModal: React.FC<DeleteJobModalProps> = ({
                   </p>
                   {jobApplicants.length > 0 && (
                     <p className={styles.applicantInfo}>
-                      This job has <strong>{jobApplicants.length} active applicant{jobApplicants.length !== 1 ? 's' : ''}</strong>. 
+                      This job has <strong>{jobApplicants.length} active applicant{jobApplicants.length !== 1 ? 's' : ''}</strong>.
+                    </p>
+                  )}
+                  {jobApplicants.length > 0 && (
+                    <p className={styles.applicantInfo}>
                       You'll need to select which applicants (if any) you want to mark as hired before deletion.
                     </p>
                   )}
