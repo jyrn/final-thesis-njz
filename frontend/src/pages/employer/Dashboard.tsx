@@ -44,9 +44,52 @@ import {
 } from '../../types/dashboard';
 import { ApplicantDetailsModal } from '../../components/employer/dashboard/ApplicantDetailsModal';
 import { JobDetailsModal } from '../../components/employer/dashboard/JobDetailsModal';
-import { CompanyProfileModal, CompanyProfileData } from '../../components/employer/dashboard/CompanyProfileModal';
-import { NotificationPreferencesModal, NotificationPreferences } from '../../components/employer/dashboard/NotificationPreferencesModal';
-import { TeamManagementModal, TeamData } from '../../components/employer/dashboard/TeamManagementModal';
+import { CompanyProfileModal } from '../../components/employer/dashboard/CompanyProfileModal';
+import { NotificationPreferencesModal } from '../../components/employer/dashboard/NotificationPreferencesModal';
+import { TeamManagementModal } from '../../components/employer/dashboard/TeamManagementModal';
+import { DocumentsModal } from '../../components/employer/dashboard/DocumentsModal';
+
+// Modal data types
+interface CompanyProfileData {
+  companyName: string;
+  industry: string;
+  website: string;
+  description: string;
+  address: string;
+  phone: string;
+  email: string;
+}
+
+interface NotificationPreferences {
+  email: {
+    newApplications: boolean;
+    applicationUpdates: boolean;
+    interviewReminders: boolean;
+    weeklyReports: boolean;
+  };
+  push: {
+    newApplications: boolean;
+    urgentUpdates: boolean;
+    systemAlerts: boolean;
+  };
+  sms: {
+    urgentOnly: boolean;
+    interviewReminders: boolean;
+  };
+}
+
+interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'recruiter' | 'viewer';
+  status: 'active' | 'pending' | 'inactive';
+  joinDate: string;
+}
+
+interface TeamData {
+  members: TeamMember[];
+}
 
 // Tab types
 type TabType = 'overview' | 'applicants' | 'jobs' | 'settings';
@@ -63,8 +106,9 @@ const EmployerDashboard: React.FC = () => {
   
   // Settings modal states
   const [isCompanyProfileModalOpen, setIsCompanyProfileModalOpen] = useState(false);
-  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
-  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [isNotificationPreferencesModalOpen, setIsNotificationPreferencesModalOpen] = useState(false);
+  const [isTeamManagementModalOpen, setIsTeamManagementModalOpen] = useState(false);
+  const [isDocumentsModalOpen, setIsDocumentsModalOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [isJobDetailsModalOpen, setIsJobDetailsModalOpen] = useState(false);
@@ -1481,10 +1525,18 @@ const EmployerDashboard: React.FC = () => {
           )}
 
           {activeTab === 'settings' && (
-            <SettingsTab
+            <SettingsTab 
               onOpenCompanyProfile={() => setIsCompanyProfileModalOpen(true)}
-              onOpenNotifications={() => setIsNotificationModalOpen(true)}
-              onOpenTeamManagement={() => setIsTeamModalOpen(true)}
+              onOpenNotifications={() => setIsNotificationPreferencesModalOpen(true)}
+              onOpenTeamManagement={() => setIsTeamManagementModalOpen(true)}
+              onOpenDocuments={() => setIsDocumentsModalOpen(true)}
+              onLogout={() => {
+                // Clear any stored authentication data
+                localStorage.removeItem('authToken');
+                sessionStorage.clear();
+                // Redirect to employer auth page
+                window.location.href = '/auth/employer';
+              }}
             />
           )}
         </div>
@@ -1525,21 +1577,29 @@ const EmployerDashboard: React.FC = () => {
       />
 
       <NotificationPreferencesModal
-        isOpen={isNotificationModalOpen}
-        onClose={() => setIsNotificationModalOpen(false)}
+        isOpen={isNotificationPreferencesModalOpen}
+        onClose={() => setIsNotificationPreferencesModalOpen(false)}
         onSave={(preferences: NotificationPreferences) => {
           console.log('Notification preferences updated:', preferences);
           // Handle save notification preferences
         }}
       />
 
-
       <TeamManagementModal
-        isOpen={isTeamModalOpen}
-        onClose={() => setIsTeamModalOpen(false)}
+        isOpen={isTeamManagementModalOpen}
+        onClose={() => setIsTeamManagementModalOpen(false)}
         onSave={(teamData: TeamData) => {
           console.log('Team data updated:', teamData);
           // Handle save team data
+        }}
+      />
+
+      <DocumentsModal
+        isOpen={isDocumentsModalOpen}
+        onClose={() => setIsDocumentsModalOpen(false)}
+        onSave={(documentsData: any) => {
+          console.log('Documents updated:', documentsData);
+          // Handle save documents data
         }}
       />
       {showEditConfirm && (

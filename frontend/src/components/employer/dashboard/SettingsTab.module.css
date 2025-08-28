@@ -132,6 +132,16 @@
   transform: translateY(0);
 }
 
+/* Logout button styling */
+.settingCard:last-child .settingButton {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+}
+
+.settingCard:last-child .settingButton:hover {
+  background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.25);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .header {

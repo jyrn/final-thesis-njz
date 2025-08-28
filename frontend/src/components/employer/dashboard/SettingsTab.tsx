@@ -1,17 +1,21 @@
 import React from 'react';
-import { FiSettings, FiHome, FiBell, FiUsers } from 'react-icons/fi';
+import { FiSettings, FiHome, FiBell, FiUsers, FiLogOut, FiFileText } from 'react-icons/fi';
 import styles from './SettingsTab.module.css';
 
 interface SettingsTabProps {
   onOpenCompanyProfile: () => void;
   onOpenNotifications: () => void;
   onOpenTeamManagement: () => void;
+  onOpenDocuments?: () => void;
+  onLogout?: () => void;
 }
 
 export const SettingsTab: React.FC<SettingsTabProps> = ({
   onOpenCompanyProfile,
   onOpenNotifications,
   onOpenTeamManagement,
+  onOpenDocuments,
+  onLogout,
 }) => {
   const settingsOptions = [
     {
@@ -37,6 +41,22 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
       icon: FiUsers,
       action: onOpenTeamManagement,
       buttonText: 'Manage Team'
+    },
+    {
+      id: 'documents',
+      title: 'Company Documents',
+      description: 'Update business permits, certificates, and verification documents',
+      icon: FiFileText,
+      action: onOpenDocuments || (() => {}),
+      buttonText: 'Update Documents'
+    },
+    {
+      id: 'logout',
+      title: 'Logout',
+      description: 'Sign out of your account and return to login page',
+      icon: FiLogOut,
+      action: onLogout || (() => {}),
+      buttonText: 'Sign Out'
     }
   ];
 
