@@ -1,28 +1,22 @@
-const GOOGLE_CLIENT_ID = "your-google-client-id.apps.googleusercontent.com"
-const GOOGLE_REDIRECT_URI = window.location.origin + "/auth/google/callback"
+// Firebase handles Google OAuth internally, so we don't need these utilities
+// Keeping this file for other auth-related utilities
 
-export const loadGoogleOAuthScript = (callback?: () => void) => {
-  if (document.getElementById("google-oauth-script")) return
-
-  const script = document.createElement("script")
-  script.id = "google-oauth-script"
-  script.src = "https://accounts.google.com/gsi/client"
-  script.async = true
-  script.defer = true
-  script.onload = callback || (() => {})
-  document.head.appendChild(script)
-}
-
-export const initializeGoogleOAuth = (handleResponse: (response: any) => void) => {
-  if (window.google) {
-    window.google.accounts.id.initialize({
-      client_id: GOOGLE_CLIENT_ID,
-      callback: handleResponse,
-      auto_select: false,
-      cancel_on_tap_outside: true,
-    })
+// Type definitions for Google OAuth (if needed for future reference)
+declare global {
+  interface Window {
+    google?: {
+      accounts: {
+        id: {
+          initialize: (config: any) => void;
+          prompt: () => void;
+        };
+      };
+    };
   }
 }
+
+// Note: Google OAuth is handled by Firebase Auth Service
+// These functions are kept for reference but not used in the current implementation
 
 export const parseJwt = (token: string) => {
   try {
@@ -40,50 +34,57 @@ export const parseJwt = (token: string) => {
   }
 }
 
-export const handleGoogleAuthSuccess = async (userInfo: any, role: string) => {
+// Firebase Auth handles user data processing
+// This utility function parses display names for Firebase users
+export const parseDisplayName = (displayName: string | null) => {
+  if (!displayName) {
+    return { firstName: "", middleName: "", lastName: "" };
+  }
+
+  const parts = displayName.trim().split(/\s+/);
+  const firstName = parts[0] || "";
+  const middleName = parts.length > 2 ? parts.slice(1, -1).join(" ") : "";
+  const lastName = parts.length > 1 ? parts[parts.length - 1] : "";
+
+  return { firstName, middleName, lastName };
+};
+
+// Store user authentication state
+export const setAuthState = (user: any, role: string) => {
+  const userData = {
+    uid: user.uid,
+    email: user.email,
+    emailVerified: user.emailVerified,
+    displayName: user.displayName,
+    photoURL: user.photoURL,
+    role,
+    loginTime: new Date().toISOString(),
+  };
+
+  localStorage.setItem("user", JSON.stringify(userData));
+  localStorage.setItem("isAuthenticated", "true");
+  
+  return userData;
+};
+
+// Clear authentication state
+export const clearAuthState = () => {
+  localStorage.removeItem("user");
+  localStorage.removeItem("isAuthenticated");
+};
+
+// Get stored user data
+export const getStoredUser = () => {
   try {
-    const parts = userInfo.name.trim().split(/\s+/)
-    const firstName = parts[0] || ""
-    const middleName = parts.length > 2 ? parts.slice(1, -1).join(" ") : ""
-    const lastName = parts.length > 1 ? parts[parts.length - 1] : ""
-
-    const userData = {
-      id: userInfo.sub || userInfo.id,
-      email: userInfo.email,
-      picture: userInfo.picture,
-      verified_email: userInfo.email_verified || userInfo.verified_email,
-      authProvider: "google",
-      loginTime: new Date().toISOString(),
-      role,
-    }
-
-    localStorage.setItem("user", JSON.stringify(userData))
-    localStorage.setItem("isAuthenticated", "true")
-
-    return {
-      email: userInfo.email,
-      firstName,
-      middleName,
-      lastName,
-    }
+    const userData = localStorage.getItem("user");
+    return userData ? JSON.parse(userData) : null;
   } catch (error) {
-    console.error("Error processing Google auth:", error)
-    throw new Error("Failed to process Google authentication.")
+    console.error("Error parsing stored user data:", error);
+    return null;
   }
-}
+};
 
-export const handleGoogleSignIn = (role: string, isLogin: boolean) => {
-  if (window.google) {
-    window.google.accounts.id.prompt()
-  } else {
-    const authUrl =
-      `https://accounts.google.com/o/oauth2/v2/auth?` +
-      `client_id=${GOOGLE_CLIENT_ID}&` +
-      `redirect_uri=${encodeURIComponent(GOOGLE_REDIRECT_URI)}&` +
-      `response_type=code&` +
-      `scope=openid email profile&` +
-      `state=${role}_${isLogin ? "login" : "register"}`
-
-    window.location.href = authUrl
-  }
-}
+// Check if user is authenticated
+export const isAuthenticated = () => {
+  return localStorage.getItem("isAuthenticated") === "true";
+};

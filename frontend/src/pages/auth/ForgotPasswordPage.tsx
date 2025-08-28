@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import styles from './ForgotPasswordPage.module.css';
-import authService from '../../services/authService';
+import firebaseAuthService from '../../services/firebaseAuthService';
+import apiService from '../../services/apiService';
 
 const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -26,12 +27,25 @@ const ForgotPasswordPage: React.FC = () => {
     setIsLoading(true);
     
     try {
-      const response = await authService.forgotPassword(email);
+      // First check if email exists in our backend
+      const emailCheckData = await apiService.checkEmailExists(email);
+      
+      if (!emailCheckData.success || !emailCheckData.data?.exists) {
+        const errorMsg = 'No account found with this email address.';
+        setError(errorMsg);
+        toast.error(errorMsg);
+        return;
+      }
+      
+      console.log('Attempting to send password reset email to:', email);
+      const response = await firebaseAuthService.sendPasswordResetEmail(email);
+      console.log('Password reset response:', response);
       
       if (response.success) {
         setIsSubmitted(true);
         toast.success('Password reset link has been sent to your email. Please check your inbox.');
       } else {
+        console.error('Password reset failed:', response.error);
         const errorMsg = response.error || 'Failed to send password reset email. Please try again later.';
         setError(errorMsg);
         toast.error(errorMsg);
@@ -39,7 +53,17 @@ const ForgotPasswordPage: React.FC = () => {
     } catch (err) {
       const error = err as Error;
       console.error('Forgot password error:', error);
-      const errorMsg = error.message || 'An unexpected error occurred. Please try again.';
+      
+      // Handle specific API errors
+      let errorMsg = 'An unexpected error occurred. Please try again.';
+      if (error.message.includes('Failed to fetch')) {
+        errorMsg = 'Unable to connect to server. Please check if the backend is running.';
+      } else if (error.message.includes('Unexpected token')) {
+        errorMsg = 'Server error. Please try again later.';
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      
       setError(errorMsg);
       toast.error(errorMsg);
     } finally {
