@@ -10,7 +10,10 @@ import {
   signInWithPopup,
   reload,
   fetchSignInMethodsForEmail,
-  updateProfile
+  updateProfile,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 
@@ -352,6 +355,51 @@ const firebaseAuthService = {
   // Add the helper functions to the exported object
   updateUserInDatabase,
   getUserFromDatabase,
+
+  // Update password
+  async updatePassword(currentPassword: string, newPassword: string): Promise<AuthResponse> {
+    try {
+      const user = auth.currentUser;
+      
+      if (!user || !user.email) {
+        return {
+          success: false,
+          error: 'No authenticated user found'
+        };
+      }
+      
+      // Re-authenticate user with current password
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+      
+      // Update password
+      await updatePassword(user, newPassword);
+      
+      return {
+        success: true,
+        message: 'Password updated successfully!'
+      };
+    } catch (error: any) {
+      console.error('Update password error:', error);
+      
+      let errorMessage = 'Failed to update password';
+      
+      if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Current password is incorrect';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'New password is too weak';
+      } else if (error.code === 'auth/requires-recent-login') {
+        errorMessage = 'Please sign out and sign back in before changing your password';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+  },
 
   reloadUser: async (): Promise<void> => {
     try {

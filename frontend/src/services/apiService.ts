@@ -11,22 +11,41 @@ export interface ApiResponse<T = any> {
 }
 
 class ApiService {
-  private async getAuthHeaders(): Promise<HeadersInit> {
+  private async getAuthHeaders(contentType: string = 'application/json'): Promise<HeadersInit> {
     const token = await auth.currentUser?.getIdToken();
-    return {
-      'Content-Type': 'application/json',
+    const headers: HeadersInit = {
       'Authorization': `Bearer ${token}`
     };
+    
+    if (contentType) {
+      headers['Content-Type'] = contentType;
+    }
+    
+    return headers;
   }
 
   private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.error || `HTTP error! status: ${response.status}`);
+    try {
+      const data = await response.json();
+      
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || `HTTP error! status: ${response.status}`
+        };
+      }
+      
+      return {
+        success: true,
+        data: data.data || data,
+        message: data.message
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: 'Failed to parse response'
+      };
     }
-    
-    return data;
   }
 
   // Auth endpoints
@@ -133,6 +152,58 @@ class ApiService {
   async getUserByUid(uid: string): Promise<ApiResponse> {
     const headers = await this.getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/users/${uid}`, {
+      headers
+    });
+    
+    return this.handleResponse(response);
+  }
+
+  // Jobseeker-specific endpoints
+  async get(endpoint: string): Promise<ApiResponse> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      headers
+    });
+    
+    return this.handleResponse(response);
+  }
+
+  async post(endpoint: string, data?: any, options?: { headers?: HeadersInit }): Promise<ApiResponse> {
+    let headers = await this.getAuthHeaders();
+    
+    // If custom headers are provided (e.g., for file uploads), merge them
+    if (options?.headers) {
+      headers = { ...headers, ...options.headers };
+      // Remove Content-Type for FormData uploads
+      if (data instanceof FormData) {
+        delete (headers as any)['Content-Type'];
+      }
+    }
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'POST',
+      headers,
+      body: data instanceof FormData ? data : JSON.stringify(data)
+    });
+    
+    return this.handleResponse(response);
+  }
+
+  async put(endpoint: string, data: any): Promise<ApiResponse> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(data)
+    });
+    
+    return this.handleResponse(response);
+  }
+
+  async delete(endpoint: string): Promise<ApiResponse> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: 'DELETE',
       headers
     });
     

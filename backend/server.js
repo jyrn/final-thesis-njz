@@ -4,6 +4,7 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
+const jobseekerRoutes = require('./routes/jobseekerRoutes');
 
 // Initialize Express app
 const app = express();
@@ -16,9 +17,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Serve static files for uploads
+app.use('/uploads', express.static('uploads'));
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/jobseekers', jobseekerRoutes);
 
 // Basic route for testing
 app.get('/', (req, res) => {

@@ -10,7 +10,7 @@ import DashboardTab from '../../components/jobseeker/Dashboard/tabs/DashboardTab
 import JobsTab from '../../components/jobseeker/Dashboard/tabs/JobsTab';
 import SavedJobsTab from '../../components/jobseeker/Dashboard/tabs/SavedJobsTab';
 import ApplicationsTab from '../../components/jobseeker/Dashboard/tabs/ApplicationsTab';
-import ProfileTab from '../../components/jobseeker/Dashboard/tabs/ProfileTab';
+import SettingsTab from '../../components/jobseeker/Settings/SettingsTab';
 import { parseResume } from '../../utils/resumeParser'
 import { Job } from '../../types/Job'
 import { mockJobs, mockApplications } from '../../data/mockJobs'
@@ -450,14 +450,7 @@ const Dashboard: React.FC = () => {
           onClick={() => setActiveTab('profile')}
         >
           <FiUser />
-          <span>Profile</span>
-        </button>
-        <button
-          className={styles.navItem}
-          onClick={handleLogout}
-        >
-          <FiLogOut />
-          <span>Logout</span>
+          <span>Settings</span>
         </button>
       </nav>
     </aside>
@@ -489,7 +482,7 @@ const Dashboard: React.FC = () => {
       case 'applications':
         return <ApplicationsTab />;
       case 'profile':
-        return <ProfileTab />;
+        return <SettingsTab />;
       default:
         return (
           <div className={styles.pageContent}>
