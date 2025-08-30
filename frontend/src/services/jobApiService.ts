@@ -65,6 +65,8 @@ class JobApiService {
         throw new Error(response.error || 'Failed to fetch jobs');
       }
 
+      // Backend returns { success: true, data: { jobs: [...], pagination: {...} } }
+      // We need to return the data object which contains jobs and pagination
       return response.data;
     } catch (error) {
       console.error('Error fetching jobs:', error);

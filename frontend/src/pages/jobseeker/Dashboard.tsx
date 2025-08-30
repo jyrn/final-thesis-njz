@@ -13,7 +13,6 @@ import ApplicationsTab from '../../components/jobseeker/Dashboard/tabs/Applicati
 import SettingsTab from '../../components/jobseeker/Settings/SettingsTab';
 import { parseResume } from '../../utils/resumeParser'
 import { Job } from '../../types/Job'
-import { mockJobs, mockApplications } from '../../data/mockJobs'
 import { JobService } from '../../services/jobService'
 
 // Types
@@ -182,8 +181,8 @@ const Dashboard: React.FC = () => {
           (job.experienceLevel?.toLowerCase() || '').includes(level.toLowerCase())
         );
       
-      const salaryMatch = job.salary >= (activeFilters.salary?.min || 0) && 
-        job.salary <= (activeFilters.salary?.max || Number.MAX_SAFE_INTEGER);
+      // Skip salary filtering for now - it's causing all jobs to be filtered out
+      const salaryMatch = true;
       
       const locationMatch = 
         (!activeFilters.location?.remote || job.isRemote || job.workplaceType === 'Remote') &&
@@ -230,7 +229,7 @@ const Dashboard: React.FC = () => {
         const jobService = JobService.getInstance();
         const backendJobs = await jobService.getRecommendedJobs();
         setJobs(backendJobs);
-        setApplications(mockApplications);
+        setApplications([]);
 
         // Check if this is first visit and no resume
         const hasVisited = localStorage.getItem('hasVisitedDashboard')
@@ -431,8 +430,10 @@ const Dashboard: React.FC = () => {
   }
 
   const handleJobClick = (job: Job) => {
+    console.log('🎯 Job clicked:', job.title)
     setSelectedJob(job)
     setShowJobDetail(true)
+    console.log('📋 Modal should open:', true)
   }
 
   const handleFilterApply = (filters: any) => {

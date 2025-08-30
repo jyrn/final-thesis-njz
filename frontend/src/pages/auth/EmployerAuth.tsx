@@ -8,10 +8,12 @@ import RoleAgreementModal, { type UserRole } from "../../components/RoleAgreemen
 import TermsModal from '../../components/TermsModal'
 import SuccessModal from '../../components/SuccessModal'
 import VerificationModal from '../../components/VerificationModal'
+import ErrorModal from '../../components/ErrorModal'
 import { FormErrors, EmployerFormData, EmployerDocuments } from "./shared/authTypes"
 import { validateEmail, validatePassword, validateName, validateCompanyName, validateConfirmPassword } from './shared/authValidation'
 import firebaseAuthService from "../../services/firebaseAuthService"
 import { apiService } from "../../services/apiService"
+import { getAuthErrorDetails, extractErrorCode, AuthErrorDetails } from "../../utils/authErrorMessages"
 
 const EmployerAuth: React.FC = () => {
   const navigate = useNavigate()
@@ -35,6 +37,8 @@ const EmployerAuth: React.FC = () => {
   const [privacyAccepted, setPrivacyAccepted] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
+  const [showErrorModal, setShowErrorModal] = useState(false)
+  const [errorDetails, setErrorDetails] = useState<AuthErrorDetails | null>(null)
 
   const [formData, setFormData] = useState<EmployerFormData>({
     email: "",
@@ -53,6 +57,36 @@ const EmployerAuth: React.FC = () => {
   useEffect(() => {
     // No need to load Google OAuth script as Firebase handles this
   }, [])
+
+  const showError = (error: any) => {
+    const errorCode = extractErrorCode(error)
+    const details = getAuthErrorDetails(errorCode, error.message, 'employer')
+    setErrorDetails(details)
+    setShowErrorModal(true)
+  }
+
+  const handleErrorAction = (action: string) => {
+    setShowErrorModal(false)
+    switch (action) {
+      case 'signup':
+        setIsLogin(false)
+        setErrors({})
+        break
+      case 'login':
+        setIsLogin(true)
+        setErrors({})
+        break
+      case 'forgot-password':
+        navigate('/auth/forgot-password')
+        break
+      case 'verify-email':
+        // Resend verification email logic
+        break
+      case 'retry':
+        // Just close modal, user can try again
+        break
+    }
+  }
 
   const handleGoogleSignIn = async (role: string, isLogin: boolean) => {
     setIsUploading(true)
@@ -78,24 +112,24 @@ const EmployerAuth: React.FC = () => {
             }
             
             if (emailCheck.data.crossRoleConflict) {
-              setErrors(prev => ({ 
-                ...prev, 
-                general: `This email is already registered as a ${emailCheck.data.user.role}. Each email can only be used for one role. Please use a different email or login with the existing ${emailCheck.data.user.role} account.` 
-              }))
+              showError({
+                code: 'role-mismatch',
+                message: `This email is already registered as a ${emailCheck.data.user.role}. Each email can only be used for one role. Please use a different email or login with the existing ${emailCheck.data.user.role} account.`
+              })
               return
             }
             
             const userData = emailCheck.data?.user || emailCheck.data
             if (userData?.emailVerified) {
-              setErrors(prev => ({ 
-                ...prev, 
-                general: "An account with this email already exists. Please login with your email and password instead." 
-              }))
+              showError({
+                code: 'auth/email-already-in-use',
+                message: "An account with this email already exists. Please login with your email and password instead."
+              })
             } else {
-              setErrors(prev => ({ 
-                ...prev, 
-                general: "An account with this email exists but is not verified. Please check your email for the verification link or try logging in with your email and password." 
-              }))
+              showError({
+                code: 'account-not-verified',
+                message: "An account with this email exists but is not verified. Please check your email for the verification link or try logging in with your email and password."
+              })
             }
             return
           }
@@ -138,10 +172,10 @@ const EmployerAuth: React.FC = () => {
           
           if (emailCheck.success && emailCheck.data.exists && emailCheck.data.crossRoleConflict) {
             await firebaseAuthService.signOut()
-            setErrors(prev => ({ 
-              ...prev, 
-              general: `This Google email is registered as a ${emailCheck.data.user.role}. Please use the ${emailCheck.data.user.role} login page or use a different email.` 
-            }))
+            showError({
+              code: 'role-mismatch',
+              message: `This Google email is registered as a ${emailCheck.data.user.role}. Please use the ${emailCheck.data.user.role} login page or use a different email.`
+            })
             return
           }
           
@@ -152,18 +186,59 @@ const EmployerAuth: React.FC = () => {
             return
           }
           
-          // Navigate to dashboard
+          // Check employer account status before allowing dashboard access
+          try {
+            console.log('🔍 Checking employer account status...')
+            const statusResponse = await apiService.get('/employers/account-status')
+            console.log('📊 Account status response:', statusResponse)
+            
+            if (statusResponse.success && statusResponse.data) {
+              const { accountStatus } = statusResponse.data
+              console.log('🏢 Employer account status:', accountStatus)
+              
+              if (accountStatus === 'pending') {
+                console.log('⏳ Account pending - redirecting to documents')
+                // Redirect to document upload for unverified employers
+                navigate('/auth/employer/documents')
+                return
+              } else if (accountStatus === 'rejected') {
+                console.log('❌ Account rejected')
+                showError({
+                  code: 'account-rejected',
+                  message: 'Your employer account has been rejected. Please contact support for assistance.'
+                })
+                await firebaseAuthService.signOut()
+                return
+              } else if (accountStatus === 'suspended') {
+                console.log('🚫 Account suspended')
+                showError({
+                  code: 'account-suspended',
+                  message: 'Your employer account has been suspended. Please contact support for assistance.'
+                })
+                await firebaseAuthService.signOut()
+                return
+              }
+              console.log('✅ Account verified - proceeding to dashboard')
+            } else {
+              console.log('⚠️ No account status data received')
+            }
+          } catch (error) {
+            console.error('❌ Error checking account status:', error)
+            console.log('🔄 Redirecting to documents as fallback')
+            // If we can't check status, redirect to documents to be safe
+            navigate('/auth/employer/documents')
+            return
+          }
+          
+          // Only verified employers reach here
           navigate("/employer/dashboard")
         } else {
-          setErrors(prev => ({ 
-            ...prev, 
-            general: tempResponse.error || "Google sign-in failed. Please try again." 
-          }))
+          showError(tempResponse)
         }
       }
     } catch (error: any) {
       console.error("Google authentication error:", error)
-      setErrors(prev => ({ ...prev, general: error.message || "Google authentication failed. Please try again." }))
+      showError(error)
     } finally {
       setIsUploading(false)
     }
@@ -287,10 +362,10 @@ const EmployerAuth: React.FC = () => {
       
       if (emailCheck.success && emailCheck.data.exists) {
         if (emailCheck.data.crossRoleConflict) {
-          setErrors(prev => ({ 
-            ...prev, 
-            general: `This email is registered as a ${emailCheck.data.user.role}. Please use the ${emailCheck.data.user.role} login page or use a different email.` 
-          }))
+          showError({
+            code: 'role-mismatch',
+            message: `This email is registered as a ${emailCheck.data.user.role}. Please use the ${emailCheck.data.user.role} login page or use a different email.`
+          })
           return
         }
       }
@@ -304,23 +379,53 @@ const EmployerAuth: React.FC = () => {
         // Check if user is verified before allowing login
         if (!response.user.emailVerified) {
           await firebaseAuthService.signOut()
-          setErrors(prev => ({ 
-            ...prev, 
-            general: "Please verify your email before logging in. Check your inbox for the verification link." 
-          }))
+          showError({
+            code: 'account-not-verified',
+            message: "Please verify your email before logging in. Check your inbox for the verification link."
+          })
           return
         }
         
-        // Navigate to dashboard
+        // Check employer account status before allowing dashboard access
+        try {
+          const statusResponse = await apiService.get('/employers/account-status')
+          if (statusResponse.success && statusResponse.data) {
+            const { accountStatus } = statusResponse.data
+            
+            if (accountStatus === 'pending') {
+              // Redirect to document upload for unverified employers
+              navigate('/auth/employer/documents')
+              return
+            } else if (accountStatus === 'rejected') {
+              showError({
+                code: 'account-rejected',
+                message: 'Your employer account has been rejected. Please contact support for assistance.'
+              })
+              await firebaseAuthService.signOut()
+              return
+            } else if (accountStatus === 'suspended') {
+              showError({
+                code: 'account-suspended',
+                message: 'Your employer account has been suspended. Please contact support for assistance.'
+              })
+              await firebaseAuthService.signOut()
+              return
+            }
+          }
+        } catch (error) {
+          console.error('Error checking account status:', error)
+          // If we can't check status, redirect to documents to be safe
+          navigate('/auth/employer/documents')
+          return
+        }
+        
+        // Only verified employers reach here
         navigate("/employer/dashboard")
       } else {
-        setErrors(prev => ({ 
-          ...prev, 
-          general: response.error || "Login failed. Please try again." 
-        }))
+        showError(response)
       }
     } catch (error: any) {
-      setErrors(prev => ({ ...prev, general: error.message || "Login failed. Please try again." }))
+      showError(error)
     } finally {
       setIsUploading(false)
     }
@@ -385,17 +490,7 @@ const EmployerAuth: React.FC = () => {
 
     } catch (error: any) {
       console.error('Registration error:', error);
-      
-      // If Firebase throws "email already in use" error, show a more helpful message
-      let errorMessage = error.message || 'Registration failed. Please try again.'
-      if (error.code === 'auth/email-already-in-use') {
-        errorMessage = 'An account with this email already exists. Please login instead or use a different email address.'
-      }
-      
-      setErrors(prev => ({
-        ...prev,
-        general: errorMessage
-      }));
+      showError(error);
     } finally {
       setIsUploading(false);
     }
@@ -1050,6 +1145,18 @@ const EmployerAuth: React.FC = () => {
       <VerificationModal
         isOpen={showVerificationModal}
         onClose={handleVerificationModalClose}
+      />
+
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title={errorDetails?.title || 'Error'}
+        message={errorDetails?.message || 'An error occurred'}
+        type={errorDetails?.type || 'error'}
+        actionButton={errorDetails?.actionButton ? {
+          text: errorDetails.actionButton.text,
+          onClick: () => handleErrorAction(errorDetails.actionButton!.action)
+        } : undefined}
       />
 
       <TermsModal

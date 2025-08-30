@@ -230,7 +230,9 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ job, isOpen, onClose, o
               </div>
               <div className={styles.infoItem}>
                 <span className={styles.infoLabel}>Salary</span>
-                <span className={styles.infoValue}>₱{job.salary.toLocaleString('en-PH')}/month</span>
+                <span className={styles.infoValue}>
+                  {job.salary ? `₱${job.salary.toLocaleString('en-PH')}/month` : 'Salary not specified'}
+                </span>
               </div>
               <div className={styles.infoItem}>
                 <span className={styles.infoLabel}>Posted Date</span>

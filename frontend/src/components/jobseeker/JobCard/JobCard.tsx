@@ -41,10 +41,19 @@ const JobCard: React.FC<JobCardProps> = ({
     }
   }
 
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Only trigger if clicking on the card itself, not buttons
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
+    console.log(' JobCard clicked:', job.title);
+    onJobClick?.(job);
+  };
+
   return (
     <div 
       className={styles.jobCard}
-      onClick={() => onJobClick?.(job)}
+      onClick={handleCardClick}
     >
       <div className={styles.jobCardHeader}>
         <div className={styles.jobTitleRow}>

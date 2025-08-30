@@ -5,6 +5,7 @@ const connectDB = require('./config/db');
 const userRoutes = require('./routes/userRoutes');
 const authRoutes = require('./routes/authRoutes');
 const jobseekerRoutes = require('./routes/jobseekerRoutes');
+const employerRoutes = require('./routes/employerRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 
 // Initialize Express app
@@ -25,6 +26,7 @@ app.use('/uploads', express.static('uploads'));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/jobseekers', jobseekerRoutes);
+app.use('/api/employers', employerRoutes);
 app.use('/api/jobs', jobRoutes);
 
 // Basic route for testing
