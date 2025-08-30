@@ -14,13 +14,14 @@ import SettingsTab from '../../components/jobseeker/Settings/SettingsTab';
 import { parseResume } from '../../utils/resumeParser'
 import { Job } from '../../types/Job'
 import { mockJobs, mockApplications } from '../../data/mockJobs'
+import { JobService } from '../../services/jobService'
 
 // Types
 interface PersonalInfo {
   name: string
   email: string
   phone: string
-  location: string
+  address: string
 }
 
 interface Experience {
@@ -51,6 +52,7 @@ interface ParsedResume {
   experience: Experience[]
   education: Education[]
   skills: string[]
+  certifications: string[]
 }
 
 const Dashboard: React.FC = () => {
@@ -220,11 +222,14 @@ const Dashboard: React.FC = () => {
     setShowFilterModal(false);
   };
 
-  // Load mock data
+  // Load jobs from backend
   useEffect(() => {
     const loadData = async () => {
       try {
-        setJobs(mockJobs);
+        // Load jobs from backend API
+        const jobService = JobService.getInstance();
+        const backendJobs = await jobService.getRecommendedJobs();
+        setJobs(backendJobs);
         setApplications(mockApplications);
 
         // Check if this is first visit and no resume
@@ -237,14 +242,18 @@ const Dashboard: React.FC = () => {
         } else {
           setIsFirstVisit(false)
           if (storedResume) {
-            // Load stored resume data
-            try {
-              const resumeData = JSON.parse(storedResume)
-              setResume(resumeData)
-            } catch (e) {
-              console.error('Error parsing stored resume:', e)
-            }
+          // Load stored resume data
+          try {
+            const resumeData = JSON.parse(storedResume)
+            setResume(resumeData)
+            
+            // Set resume in JobService for better job matching
+            const jobService = JobService.getInstance();
+            jobService.setUserResume(resumeData);
+          } catch (e) {
+            console.error('Error parsing stored resume:', e)
           }
+        }
         }
 
         localStorage.setItem('hasVisitedDashboard', 'true')
@@ -265,7 +274,7 @@ const Dashboard: React.FC = () => {
           name: parsed.personalInfo.name,
           email: parsed.personalInfo.email,
           phone: parsed.personalInfo.phone,
-          location: parsed.personalInfo.address || 'Not specified'
+          address: parsed.personalInfo.address || 'Not specified'
         },
         summary: parsed.summary,
         experience: parsed.experience,
@@ -274,7 +283,8 @@ const Dashboard: React.FC = () => {
           degree: edu.degree || 'Not specified',
           year: edu.year || 'Not specified'
         })),
-        skills: parsed.skills
+        skills: parsed.skills,
+        certifications: parsed.certifications || []
       }
       
       setResume(resumeData)
@@ -284,6 +294,10 @@ const Dashboard: React.FC = () => {
       
       // Store resume data
       localStorage.setItem('userResume', JSON.stringify(resumeData))
+      
+      // Set resume in JobService for better job matching
+      const jobService = JobService.getInstance();
+      jobService.setUserResume(resumeData);
       
       // If user was trying to apply to a job, proceed with application
       if (attemptedJobId) {
@@ -359,6 +373,9 @@ const Dashboard: React.FC = () => {
   }
 
   const handleSaveJob = (jobId: number) => {
+    const jobService = JobService.getInstance();
+    const updatedJob = jobService.toggleSaveJob(jobId);
+    
     setSavedJobs(prev => {
       const newSet = new Set(prev)
       if (newSet.has(jobId)) {
@@ -368,6 +385,13 @@ const Dashboard: React.FC = () => {
       }
       return newSet
     })
+    
+    // Update the jobs list to reflect the saved status
+    if (updatedJob) {
+      setJobs(prev => prev.map(job => 
+        job.id === jobId ? { ...job, saved: updatedJob.saved } : job
+      ));
+    }
   }
 
   const handleApplyJob = (jobId: number) => {
@@ -377,6 +401,10 @@ const Dashboard: React.FC = () => {
       setShowResumeUpload(true)
       return
     }
+    
+    // Apply through JobService
+    const jobService = JobService.getInstance();
+    const updatedJob = jobService.applyToJob(jobId);
     
     // Proceed with application
     console.log('Applying to job:', jobId)
@@ -390,6 +418,13 @@ const Dashboard: React.FC = () => {
     
     setApplications(prev => [...prev, newApplication])
     setShowJobDetail(false)
+    
+    // Update the jobs list to reflect the applied status
+    if (updatedJob) {
+      setJobs(prev => prev.map(job => 
+        job.id === jobId ? { ...job, applied: updatedJob.applied } : job
+      ));
+    }
     
     // Show success message
     setError(null)

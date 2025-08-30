@@ -42,6 +42,8 @@ import {
   JobPosting, 
   Applicant
 } from '../../types/dashboard';
+import { jobApiService } from '../../services/jobApiService';
+import { Job } from '../../types/Job';
 import { ApplicantDetailsModal } from '../../components/employer/dashboard/ApplicantDetailsModal';
 import { JobDetailsModal } from '../../components/employer/dashboard/JobDetailsModal';
 import { CompanyProfileModal } from '../../components/employer/dashboard/CompanyProfileModal';
@@ -99,7 +101,8 @@ const EmployerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [jobPostings, setJobPostings] = useState(mockJobPostings);
+  const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(true);
   const [applicantFilters, setApplicantFilters] = useState<{ status: string; sortBy: string; jobId: string }>({ status: '', sortBy: 'newest', jobId: '' });
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -113,6 +116,48 @@ const EmployerDashboard: React.FC = () => {
   const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
   const [isJobDetailsModalOpen, setIsJobDetailsModalOpen] = useState(false);
   const [applicantStatuses, setApplicantStatuses] = useState<Record<number, string>>({});
+
+  // Load jobs from backend on component mount
+  useEffect(() => {
+    const loadJobs = async () => {
+      try {
+        setIsLoadingJobs(true);
+        const response = await jobApiService.getEmployerJobs();
+        
+        // Convert backend jobs to JobPosting format
+        const convertedJobs: JobPosting[] = response.jobs.map((job: any) => ({
+          id: job._id || job.id,
+          title: job.title,
+          location: job.location,
+          type: job.type,
+          applicants: job.applicantCount || 0,
+          posted: job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'Recently',
+          status: job.status,
+          salary: job.salary || `₱${job.salaryMin?.toLocaleString()} - ₱${job.salaryMax?.toLocaleString()}`,
+          views: job.views || 0,
+          description: job.description,
+          requirements: job.requirements || [],
+          responsibilities: job.responsibilities || [],
+          benefits: job.benefits || [],
+          urgency: 'medium',
+          matchQuality: 85,
+          department: job.department || 'General',
+          postedDate: job.createdAt || new Date().toISOString(),
+          remote: job.workplaceType === 'Remote' || job.remote
+        }));
+        
+        setJobPostings(convertedJobs);
+      } catch (error) {
+        console.error('Error loading jobs:', error);
+        // Fallback to mock data on error
+        setJobPostings(mockJobPostings);
+      } finally {
+        setIsLoadingJobs(false);
+      }
+    };
+
+    loadJobs();
+  }, []);
 
 
   // Enhanced applicants using centralized mock data
@@ -310,40 +355,107 @@ const EmployerDashboard: React.FC = () => {
   };
 
 
-  const handleCreateJob = (jobData: Partial<JobPosting>) => {
-    const newJob: JobPosting = {
-      id: Math.max(...jobPostings.map(j => j.id || 0)) + 1,
-      title: jobData.title || '',
-      location: jobData.location || '',
-      type: jobData.type || 'Full-time',
-      applicants: 0,
-      posted: 'Just now',
-      status: jobData.status || 'active',
-      salary: jobData.salary || '',
-      views: 0,
-      description: jobData.description || '',
-      requirements: jobData.requirements || [],
-      responsibilities: jobData.responsibilities || [],
-      benefits: jobData.benefits || [],
-      urgency: 'medium',
-      matchQuality: 85,
-      department: jobData.department || 'Engineering',
-      postedDate: new Date().toISOString(),
-      remote: jobData.remote || false
-    };
-    
-    setJobPostings(prev => [newJob, ...prev]);
+  const handleCreateJob = async (jobData: Partial<JobPosting>) => {
+    try {
+      setIsLoadingJobs(true);
+      
+      // Convert JobPosting data to backend format
+      const backendJobData = {
+        title: jobData.title || '',
+        description: jobData.description || '',
+        location: jobData.location || '',
+        salary: jobData.salary,
+        type: jobData.type || 'Full-time',
+        level: 'Mid-level', // Default level since it's not in JobPosting interface
+        department: jobData.department || 'General',
+        workplaceType: jobData.remote ? 'Remote' : 'On-site',
+        remote: jobData.remote || false,
+        requirements: jobData.requirements || [],
+        responsibilities: jobData.responsibilities || [],
+        benefits: jobData.benefits || [],
+        status: jobData.status || 'active'
+      };
+
+      const createdJob = await jobApiService.createJob(backendJobData);
+      
+      // Convert created job to JobPosting format and add to state
+      const newJobPosting: JobPosting = {
+        id: createdJob._id || createdJob.id || Math.random().toString(),
+        title: createdJob.title || jobData.title || '',
+        location: createdJob.location || jobData.location || '',
+        type: createdJob.type || jobData.type || 'Full-time',
+        applicants: 0,
+        posted: 'Just now',
+        status: createdJob.status || 'active',
+        salary: createdJob.salary || jobData.salary || '',
+        views: 0,
+        description: createdJob.description || jobData.description || '',
+        requirements: createdJob.requirements || jobData.requirements || [],
+        responsibilities: createdJob.responsibilities || jobData.responsibilities || [],
+        benefits: createdJob.benefits || jobData.benefits || [],
+        urgency: 'medium',
+        matchQuality: 85,
+        department: createdJob.department || jobData.department || 'General',
+        postedDate: createdJob.createdAt || createdJob.postedDate || new Date().toISOString(),
+        remote: createdJob.workplaceType === 'Remote' || createdJob.remote || jobData.remote || false
+      };
+      
+      setJobPostings(prev => [newJobPosting, ...prev]);
+    } catch (error) {
+      console.error('Error creating job:', error);
+      alert('Failed to create job. Please try again.');
+    } finally {
+      setIsLoadingJobs(false);
+    }
   };
 
   const [showEditConfirm, setShowEditConfirm] = useState(false);
   const [pendingJobUpdate, setPendingJobUpdate] = useState<Partial<JobPosting> | null>(null);
 
-  const handleUpdateJob = (jobData: Partial<JobPosting>) => {
+  const handleUpdateJob = async (jobData: Partial<JobPosting>) => {
     if (!jobData.id) return;
     
-    // Set the pending update and show confirmation
-    setPendingJobUpdate(jobData);
-    setShowEditConfirm(true);
+    try {
+      setIsLoadingJobs(true);
+      
+      // Convert JobPosting data to backend format
+      const backendJobData = {
+        title: jobData.title,
+        description: jobData.description,
+        location: jobData.location,
+        salary: jobData.salary,
+        type: jobData.type,
+        level: 'Mid-level', // Default level
+        department: jobData.department,
+        workplaceType: jobData.remote ? 'Remote' : 'On-site',
+        remote: jobData.remote,
+        requirements: jobData.requirements,
+        responsibilities: jobData.responsibilities,
+        benefits: jobData.benefits,
+        status: jobData.status
+      };
+
+      await jobApiService.updateJob(jobData.id.toString(), backendJobData);
+      
+      // Update local state
+      setJobPostings(prev => prev.map(job => {
+        if (job.id === jobData.id) {
+          return {
+            ...job,
+            ...jobData,
+            requirements: jobData.requirements || [],
+            responsibilities: jobData.responsibilities || [],
+            benefits: jobData.benefits || []
+          };
+        }
+        return job;
+      }));
+    } catch (error) {
+      console.error('Error updating job:', error);
+      alert('Failed to update job. Please try again.');
+    } finally {
+      setIsLoadingJobs(false);
+    }
   };
 
   const confirmUpdateJob = () => {
@@ -372,10 +484,23 @@ const EmployerDashboard: React.FC = () => {
     setPendingJobUpdate(null);
   };
 
-  const handleDeleteJob = (jobId: number, hiredApplicantIds?: number[]) => {
-    setJobPostings(prev => prev.filter(job => job.id !== jobId));
-    // In a real app, you would also update applicant statuses based on hiredApplicantIds
-    console.log('Job deleted:', jobId, 'Hired applicants:', hiredApplicantIds);
+  const handleDeleteJob = async (jobId: number, hiredApplicantIds?: number[]) => {
+    try {
+      setIsLoadingJobs(true);
+      
+      await jobApiService.deleteJob(jobId.toString());
+      
+      // Update local state
+      setJobPostings(prev => prev.filter(job => job.id !== jobId));
+      
+      // In a real app, you would also update applicant statuses based on hiredApplicantIds
+      console.log('Job deleted:', jobId, 'Hired applicants:', hiredApplicantIds);
+    } catch (error) {
+      console.error('Error deleting job:', error);
+      alert('Failed to delete job. Please try again.');
+    } finally {
+      setIsLoadingJobs(false);
+    }
   };
 
   const handleJobClick = (job: JobPosting) => {
@@ -1439,7 +1564,7 @@ const EmployerDashboard: React.FC = () => {
                       >
                         <FiDownload size={16} />
                       </button>
-                      {applicant.status !== 'hired' && (
+                      {applicant.status === 'pending' && (
                         <>
                           <button 
                             onClick={() => handleApproveApplicant(applicant.id)}
@@ -1510,10 +1635,14 @@ const EmployerDashboard: React.FC = () => {
 
           {activeTab === 'jobs' && (
             <JobsTab
-              jobs={enhancedJobPostings}
+              jobs={filteredJobs}
               applicants={enhancedApplicants}
               searchTerm={searchQuery}
-              filters={{ status: filterStatus, department: '', location: '' }}
+              filters={{
+                status: filterStatus,
+                department: '',
+                location: ''
+              }}
               onSearchChange={setSearchQuery}
               onFilterChange={handleFilterChange}
               onViewJob={handleViewJobApplicants}
@@ -1521,6 +1650,7 @@ const EmployerDashboard: React.FC = () => {
               onDeleteJob={handleDeleteJob}
               onCreateJob={handleCreateJob}
               onUpdateJob={handleUpdateJob}
+              isLoading={isLoadingJobs}
             />
           )}
 
@@ -1541,6 +1671,19 @@ const EmployerDashboard: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Applicant Details Modal */}
+      {selectedApplicant && (
+        <ApplicantDetailsModal
+          applicant={selectedApplicant}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          onApprove={handleApproveApplicant}
+          onReject={handleRejectApplicant}
+          onViewResume={handleViewResume}
+          onDownloadResume={handleDownloadResume}
+        />
+      )}
 
       {/* Job Details Modal */}
       {selectedJob && (

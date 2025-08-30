@@ -210,6 +210,93 @@ class ApiService {
     return this.handleResponse(response);
   }
 
+  // Job endpoints
+  async getJobs(params?: {
+    search?: string;
+    location?: string;
+    type?: string;
+    level?: string;
+    workplaceType?: string;
+    department?: string;
+    salaryMin?: number;
+    salaryMax?: number;
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse> {
+    const url = new URL(`${API_BASE_URL}/jobs`);
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          url.searchParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const response = await fetch(url.toString());
+    return this.handleResponse(response);
+  }
+
+  async getJobById(id: string): Promise<ApiResponse> {
+    const response = await fetch(`${API_BASE_URL}/jobs/${id}`);
+    return this.handleResponse(response);
+  }
+
+  async createJob(jobData: any): Promise<ApiResponse> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/jobs`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(jobData)
+    });
+    
+    return this.handleResponse(response);
+  }
+
+  async updateJob(id: string, jobData: any): Promise<ApiResponse> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/jobs/${id}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(jobData)
+    });
+    
+    return this.handleResponse(response);
+  }
+
+  async deleteJob(id: string): Promise<ApiResponse> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/jobs/${id}`, {
+      method: 'DELETE',
+      headers
+    });
+    
+    return this.handleResponse(response);
+  }
+
+  async getEmployerJobs(params?: {
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<ApiResponse> {
+    const url = new URL(`${API_BASE_URL}/jobs/employer/my-jobs`);
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          url.searchParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(url.toString(), { headers });
+    return this.handleResponse(response);
+  }
+
+  async getJobStats(): Promise<ApiResponse> {
+    const response = await fetch(`${API_BASE_URL}/jobs/stats/overview`);
+    return this.handleResponse(response);
+  }
+
   // Utility methods
   async testConnection(): Promise<boolean> {
     try {

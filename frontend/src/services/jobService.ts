@@ -1,20 +1,9 @@
 // Job service for fetching and managing job data
 import { type ParsedResume } from "../utils/resumeParser"
+import { jobApiService, type JobFilters } from "./jobApiService"
+import { Job } from "../types/Job"
 
-export interface Job {
-  id: number
-  title: string
-  company: string
-  location: string
-  salary: string
-  type: string
-  level: string
-  workplaceType: string
-  description: string
-  requirements: string[]
-  preferredSkills?: string[]
-  industry: string
-  postedDate: string
+export interface JobServiceJob extends Job {
   matchPercentage: number
   saved: boolean
   applied: boolean
@@ -26,141 +15,20 @@ export interface Job {
   }
 }
 
-// Mock job database - in real app, this would come from your backend
-const mockJobs: Omit<Job, "matchPercentage" | "saved" | "applied" | "matchDetails">[] = [
-  {
-    id: 1,
-    title: "Senior Frontend Developer",
-    company: "Google Philippines",
-    location: "Makati City, Metro Manila",
-    salary: "₱80,000 - ₱120,000/mo",
-    type: "Full-time",
-    level: "Senior",
-    workplaceType: "Hybrid",
-    description:
-      "Lead frontend development initiatives using React, TypeScript, and modern web technologies. Collaborate with cross-functional teams to deliver exceptional user experiences.",
-    requirements: ["React", "TypeScript", "JavaScript", "HTML/CSS", "Node.js", "Git", "Agile Methodology"],
-    preferredSkills: ["Next.js", "GraphQL", "Testing", "UI/UX Design"],
-    industry: "Technology",
-    postedDate: "2024-01-20",
-  },
-  {
-    id: 2,
-    title: "UX/UI Designer",
-    company: "Shopee Philippines",
-    location: "Taguig City, Metro Manila",
-    salary: "₱50,000 - ₱75,000/mo",
-    type: "Full-time",
-    level: "Mid-level",
-    workplaceType: "Hybrid",
-    description:
-      "Design intuitive user interfaces and experiences for mobile and web applications. Conduct user research and create prototypes.",
-    requirements: ["UI/UX Design", "Figma", "Adobe Creative Suite", "User Research", "Prototyping"],
-    preferredSkills: ["Sketch", "InVision", "User Testing", "Design Systems"],
-    industry: "E-commerce",
-    postedDate: "2024-01-19",
-  },
-  {
-    id: 3,
-    title: "Full Stack Developer",
-    company: "Accenture Philippines",
-    location: "Lipa City, Batangas",
-    salary: "₱45,000 - ₱65,000/mo",
-    type: "Full-time",
-    level: "Mid-level",
-    workplaceType: "On-site",
-    description:
-      "Develop end-to-end web applications using modern JavaScript frameworks. Work with both frontend and backend technologies.",
-    requirements: ["JavaScript", "React", "Node.js", "MongoDB", "Express.js", "HTML/CSS"],
-    preferredSkills: ["Python", "AWS", "Docker", "Microservices"],
-    industry: "Consulting",
-    postedDate: "2024-01-18",
-  },
-  {
-    id: 4,
-    title: "Junior Web Developer",
-    company: "Local Tech Startup",
-    location: "Batangas City, Batangas",
-    salary: "₱25,000 - ₱35,000/mo",
-    type: "Full-time",
-    level: "Entry-level",
-    workplaceType: "Remote",
-    description:
-      "Join our growing team to build innovative web solutions. Perfect opportunity for recent graduates to grow their skills.",
-    requirements: ["HTML/CSS", "JavaScript", "Git", "Responsive Design"],
-    preferredSkills: ["React", "Vue.js", "Bootstrap", "jQuery"],
-    industry: "Startup",
-    postedDate: "2024-01-17",
-  },
-  {
-    id: 5,
-    title: "Product Designer",
-    company: "GCash (Globe Fintech)",
-    location: "Bonifacio Global City, Taguig",
-    salary: "₱70,000 - ₱95,000/mo",
-    type: "Full-time",
-    level: "Senior",
-    workplaceType: "Hybrid",
-    description:
-      "Lead product design for fintech solutions. Create user-centered designs that solve complex financial problems.",
-    requirements: ["Product Design", "UI/UX Design", "User Research", "Prototyping", "Design Systems"],
-    preferredSkills: ["Fintech Experience", "Mobile Design", "Data Visualization"],
-    industry: "Fintech",
-    postedDate: "2024-01-16",
-  },
-  {
-    id: 6,
-    title: "React Developer",
-    company: "Thinking Machines",
-    location: "Makati City, Metro Manila",
-    salary: "₱60,000 - ₱85,000/mo",
-    type: "Full-time",
-    level: "Mid-level",
-    workplaceType: "Remote",
-    description:
-      "Build data visualization dashboards and web applications using React and D3.js. Work with data scientists and analysts.",
-    requirements: ["React", "JavaScript", "TypeScript", "D3.js", "HTML/CSS"],
-    preferredSkills: ["Data Visualization", "Python", "Machine Learning", "Statistics"],
-    industry: "Data Science",
-    postedDate: "2024-01-15",
-  },
-  {
-    id: 7,
-    title: "Frontend Engineer",
-    company: "Kumu (Kumu Networks)",
-    location: "Quezon City, Metro Manila",
-    salary: "₱55,000 - ₱80,000/mo",
-    type: "Full-time",
-    level: "Mid-level",
-    workplaceType: "Hybrid",
-    description:
-      "Develop mobile-first web applications for social media platform. Focus on performance and user engagement.",
-    requirements: ["React", "JavaScript", "Mobile Development", "Performance Optimization"],
-    preferredSkills: ["React Native", "WebRTC", "Real-time Applications"],
-    industry: "Social Media",
-    postedDate: "2024-01-14",
-  },
-  {
-    id: 8,
-    title: "Web Developer",
-    company: "Pointwest Technologies",
-    location: "Alabang, Muntinlupa",
-    salary: "₱40,000 - ₱55,000/mo",
-    type: "Full-time",
-    level: "Mid-level",
-    workplaceType: "On-site",
-    description:
-      "Develop enterprise web applications using modern frameworks. Work on projects for international clients.",
-    requirements: ["JavaScript", "HTML/CSS", "Git", "Agile Methodology"],
-    preferredSkills: ["Angular", "Vue.js", "PHP", "Laravel"],
-    industry: "Software Development",
-    postedDate: "2024-01-13",
-  },
-]
+// Convert backend job to JobServiceJob format
+const convertToJobServiceJob = (job: Job): JobServiceJob => {
+  return {
+    ...job,
+    matchPercentage: 0, // Will be calculated based on resume
+    saved: false,
+    
+    applied: false
+  };
+};
 
 export class JobService {
   private static instance: JobService
-  private jobs: Job[] = []
+  private jobs: JobServiceJob[] = []
   private userResume: ParsedResume | null = null
 
   private constructor() {}
@@ -179,32 +47,24 @@ export class JobService {
   }
 
   // Get jobs with ML-powered matching
-  public async getRecommendedJobs(): Promise<Job[]> {
-    // Simulate API delay
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    if (!this.userResume) {
-      // Return jobs without matching if no resume
-      return mockJobs.map((job) => ({
-        ...job,
-        matchPercentage: Math.floor(Math.random() * 40) + 30, // Random 30-70%
-        saved: false,
-        applied: false,
-        postedDate: this.formatPostedDate(job.postedDate),
+  public async getRecommendedJobs(): Promise<JobServiceJob[]> {
+    try {
+      // Fetch jobs from backend API
+      const response = await jobApiService.getJobs()
+      
+      // Convert to JobServiceJob format with matching
+      const jobsWithMatching = response.jobs.map((job) => ({
+        ...convertToJobServiceJob(job),
+        matchPercentage: this.calculateMatchPercentage(job),
+        postedDate: this.formatPostedDate(job.postedDate || new Date().toISOString()),
       }))
+
+      this.jobs = jobsWithMatching
+      return jobsWithMatching
+    } catch (error) {
+      console.error('Error fetching jobs:', error)
+      return []
     }
-
-    // Use simple matching algorithm
-    const jobsWithDefaults = mockJobs.map((job) => ({
-      ...job,
-      saved: false,
-      applied: false,
-      matchPercentage: this.calculateMatchPercentage(job),
-      postedDate: this.formatPostedDate(job.postedDate),
-    }))
-
-    this.jobs = jobsWithDefaults
-    return jobsWithDefaults
   }
 
   // Calculate match percentage based on resume and job requirements
@@ -253,7 +113,7 @@ export class JobService {
   }
 
   // Save/unsave job
-  public toggleSaveJob(jobId: number): Job | null {
+  public toggleSaveJob(jobId: number): JobServiceJob | null {
     const job = this.jobs.find((j) => j.id === jobId)
     if (job) {
       job.saved = !job.saved
@@ -263,7 +123,7 @@ export class JobService {
   }
 
   // Apply to job
-  public applyToJob(jobId: number): Job | null {
+  public applyToJob(jobId: number): JobServiceJob | null {
     const job = this.jobs.find((j) => j.id === jobId)
     if (job) {
       job.applied = true
@@ -273,12 +133,12 @@ export class JobService {
   }
 
   // Get saved jobs
-  public getSavedJobs(): Job[] {
+  public getSavedJobs(): JobServiceJob[] {
     return this.jobs.filter((job) => job.saved)
   }
 
   // Search and filter jobs
-  public searchJobs(query: string, filters: any): Job[] {
+  public searchJobs(query: string, filters: any): JobServiceJob[] {
     let filteredJobs = [...this.jobs]
 
     // Text search
