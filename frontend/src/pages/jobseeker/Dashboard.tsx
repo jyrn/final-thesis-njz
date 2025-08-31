@@ -6,6 +6,7 @@ import FilterModal from '../../components/jobseeker/FilterModal/FilterModal'
 import SearchBar from '../../components/jobseeker/SearchBar/SearchBar'
 import ResumeUploadPrompt from '../../components/ResumeUploadPrompt';
 import JobDetailModal from '../../components/jobseeker/JobDetailModal/JobDetailModal';
+import ApplicationSuccessModal from '../../components/ApplicationSuccessModal';
 import DashboardTab from '../../components/jobseeker/Dashboard/tabs/DashboardTab';
 import JobsTab from '../../components/jobseeker/Dashboard/tabs/JobsTab';
 import SavedJobsTab from '../../components/jobseeker/Dashboard/tabs/SavedJobsTab';
@@ -61,6 +62,8 @@ const Dashboard: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false)
   const [showJobDetail, setShowJobDetail] = useState(false)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
+  const [showApplicationSuccess, setShowApplicationSuccess] = useState(false)
+  const [appliedJobDetails, setAppliedJobDetails] = useState<{ title: string; company: string } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [jobs, setJobs] = useState<Job[]>([])
   const [filteredJobs, setFilteredJobs] = useState<Job[]>([])
@@ -238,12 +241,29 @@ const Dashboard: React.FC = () => {
           const profileResponse = await apiService.get('/jobseekers/profile');
           if (profileResponse.success) {
             setUserProfile(profileResponse.data);
+            
+            // Check if user has resume data in database
+            if (profileResponse.data.resumeData) {
+              console.log('Found existing resume in database');
+              setResume(profileResponse.data.resumeData);
+              
+              // Set resume in JobService for better job matching
+              const jobService = JobService.getInstance();
+              jobService.setUserResume(profileResponse.data.resumeData);
+              
+              // User has resume, don't show upload prompt
+              setIsFirstVisit(false);
+              setShowInitialResumePrompt(false);
+              
+              localStorage.setItem('hasVisitedDashboard', 'true');
+              return; // Skip localStorage check since we have database resume
+            }
           }
         } catch (profileError) {
           console.error('Error loading user profile:', profileError);
         }
 
-        // Check if this is first visit and no resume
+        // Fallback: Check localStorage if no database resume found
         const hasVisited = localStorage.getItem('hasVisitedDashboard')
         const storedResume = localStorage.getItem('userResume')
         
@@ -303,7 +323,22 @@ const Dashboard: React.FC = () => {
       setShowInitialResumePrompt(false)
       setHasSkippedResume(false)
       
-      // Store resume data
+      // Save resume data to database
+      try {
+        const saveResponse = await apiService.post('/jobseekers/resume', {
+          resumeData
+        });
+        
+        if (saveResponse.success) {
+          console.log('Resume data saved to database successfully');
+        } else {
+          console.error('Failed to save resume to database:', saveResponse.error);
+        }
+      } catch (saveError) {
+        console.error('Error saving resume to database:', saveError);
+      }
+      
+      // Store resume data locally as backup
       localStorage.setItem('userResume', JSON.stringify(resumeData))
       
       // Set resume in JobService for better job matching
@@ -405,43 +440,122 @@ const Dashboard: React.FC = () => {
     }
   }
 
-  const handleApplyJob = (jobId: number) => {
+  const handleApplyJob = async (jobId: number) => {
     // Check if user has resume before allowing application
     // Accept either parsed resume data OR uploaded resume in profile
-    const hasResume = resume || userProfile?.resumeUrl
+    const hasResumeData = resume && resume.personalInfo && resume.personalInfo.name
+    const hasResumeFile = userProfile?.resumeUrl && userProfile.resumeUrl.trim() !== ''
+    const hasResume = hasResumeData || hasResumeFile
+    
+    console.log('Resume validation check:', {
+      hasResumeData,
+      hasResumeFile,
+      hasResume,
+      resume: resume ? 'exists' : 'null',
+      resumeUrl: userProfile?.resumeUrl || 'none'
+    })
     
     if (!hasResume) {
+      console.log('No resume found, showing upload prompt')
       setAttemptedJobId(jobId)
       setShowResumeUpload(true)
       return
     }
     
-    // Apply through JobService
-    const jobService = JobService.getInstance();
-    const updatedJob = jobService.applyToJob(jobId);
+    console.log('Resume found, proceeding with application')
     
-    // Proceed with application
-    console.log('Applying to job:', jobId)
-    const newApplication: Application = {
-      id: Date.now(),
-      jobId: jobId,
-      status: 'pending',
-      appliedDate: new Date().toISOString().split('T')[0],
-      updatedAt: new Date().toISOString()
+    // Find the job details for the success modal
+    const job = jobs.find(j => j.id === jobId);
+    if (!job) return;
+    
+    try {
+      // Get Firebase auth token directly instead of localStorage
+      const { auth } = await import('../../config/firebase');
+      const user = auth.currentUser;
+      
+      if (!user) {
+        console.error('No authenticated user found');
+        alert('Please log in again to apply for jobs');
+        window.location.href = '/auth/jobseeker';
+        return;
+      }
+
+      const token = await user.getIdToken();
+      console.log('Firebase token obtained:', !!token);
+      console.log('Token length:', token?.length || 0);
+
+      // Submit application to backend
+      const response = await fetch('http://localhost:3001/api/applications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          jobId, 
+          resumeData: resume,
+          coverLetter: '' // Optional cover letter
+        })
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        
+        if (response.status === 401) {
+          alert('Authentication failed. Please log in again.');
+          // Redirect to login or refresh token
+          window.location.href = '/auth';
+          return;
+        }
+        
+        throw new Error(`Failed to submit application: ${response.status} ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('Application submitted to backend:', result);
+      
+      // Apply through JobService
+      const jobService = JobService.getInstance();
+      const updatedJob = jobService.applyToJob(jobId);
+      
+      // Create application record
+      const newApplication: Application = {
+        id: Date.now(),
+        jobId: jobId,
+        status: 'pending',
+        appliedDate: new Date().toISOString().split('T')[0],
+        updatedAt: new Date().toISOString()
+      }
+      
+      setApplications(prev => [...prev, newApplication])
+      setShowJobDetail(false)
+      
+      // Show success modal
+      setAppliedJobDetails({
+        title: job.title,
+        company: job.company
+      });
+      setShowApplicationSuccess(true);
+      
+      console.log('Application submitted successfully for job:', jobId)
+      
+      // Update the jobs list to reflect the applied status
+      if (updatedJob) {
+        setJobs(prev => prev.map(job => 
+          job.id === jobId ? { ...job, applied: updatedJob.applied } : job
+        ));
+      }
+      
+      // Show success message
+      setError(null)
+    } catch (error) {
+      console.error('Error applying to job:', error);
+      setError('Failed to submit application. Please try again.');
     }
-    
-    setApplications(prev => [...prev, newApplication])
-    setShowJobDetail(false)
-    
-    // Update the jobs list to reflect the applied status
-    if (updatedJob) {
-      setJobs(prev => prev.map(job => 
-        job.id === jobId ? { ...job, applied: updatedJob.applied } : job
-      ));
-    }
-    
-    // Show success message
-    setError(null)
   }
 
   const handleJobClick = (job: Job) => {
@@ -596,7 +710,7 @@ const Dashboard: React.FC = () => {
               className={styles.userAvatar}
               aria-label="User profile"
             >
-              {resume?.personalInfo.name?.charAt(0) || 'U'}
+              {resume?.personalInfo?.name?.charAt(0) || 'U'}
             </div>
           </div>
         </header>
@@ -640,6 +754,13 @@ const Dashboard: React.FC = () => {
           userProfile={userProfile}
         />
       )}
+
+      <ApplicationSuccessModal
+        isOpen={showApplicationSuccess}
+        onClose={() => setShowApplicationSuccess(false)}
+        jobTitle={appliedJobDetails?.title || ''}
+        companyName={appliedJobDetails?.company || ''}
+      />
 
       {showInitialResumePrompt && (
         <div className={styles.modalOverlay}>

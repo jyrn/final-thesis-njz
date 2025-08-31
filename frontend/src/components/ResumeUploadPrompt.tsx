@@ -46,12 +46,28 @@ const ResumeUploadPrompt: React.FC<ResumeUploadPromptProps> = ({ isOpen, onClose
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      if (selectedFile.type === 'application/pdf') {
-        setFile(selectedFile);
-        setError('');
-      } else {
-        setError('Please upload a PDF file');
+      console.log('File selected:', {
+        name: selectedFile.name,
+        type: selectedFile.type,
+        size: selectedFile.size,
+        sizeInMB: (selectedFile.size / 1024 / 1024).toFixed(2)
+      });
+      
+      // Check file type
+      if (selectedFile.type !== 'application/pdf') {
+        setError(`Invalid file type: ${selectedFile.type}. Please upload a PDF file.`);
+        return;
       }
+      
+      // Check file size (5MB limit as shown in UI)
+      if (selectedFile.size > 5 * 1024 * 1024) {
+        setError(`File too large: ${(selectedFile.size / 1024 / 1024).toFixed(2)}MB. Maximum size is 5MB.`);
+        return;
+      }
+      
+      setFile(selectedFile);
+      setError('');
+      console.log('File accepted successfully');
     }
   };
 

@@ -20,6 +20,10 @@ const JobSchema = new mongoose.Schema({
     ref: 'Employer',
     required: true
   },
+  employerUid: {
+    type: String,
+    required: true
+  },
   companyName: {
     type: String,
     required: true

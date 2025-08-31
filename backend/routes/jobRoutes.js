@@ -262,6 +262,7 @@ router.post('/', verifyToken, requireRole('employer'), async (req, res) => {
       title,
       description,
       employerId: employer._id,
+      employerUid: req.user.uid, // Add the Firebase UID for proper application linking
       companyName: employer.companyName,
       companyDetails: {
         name: employer.companyName,

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { onAuthStateChanged } from 'firebase/auth';
 import { 
   FiHome,
   FiUsers,
@@ -32,12 +33,7 @@ import { ApplicantsTab } from '../../components/employer/dashboard/ApplicantsTab
 import { OverviewTab } from '../../components/employer/dashboard/OverviewTab';
 import { SettingsTab } from '../../components/employer/dashboard/SettingsTab';
 import { WelcomeSection } from '../../components/employer/dashboard/WelcomeSection';
-import { 
-  mockEmployer, 
-  mockJobPostings, 
-  mockApplicants, 
-  statsData 
-} from '../../data/mockData';
+// Removed mock data imports - using real backend data only
 import { 
   JobPosting, 
   Applicant
@@ -106,6 +102,8 @@ const EmployerDashboard: React.FC = () => {
   const [applicantFilters, setApplicantFilters] = useState<{ status: string; sortBy: string; jobId: string }>({ status: '', sortBy: 'newest', jobId: '' });
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   
   // Settings modal states
   const [isCompanyProfileModalOpen, setIsCompanyProfileModalOpen] = useState(false);
@@ -117,8 +115,26 @@ const EmployerDashboard: React.FC = () => {
   const [isJobDetailsModalOpen, setIsJobDetailsModalOpen] = useState(false);
   const [applicantStatuses, setApplicantStatuses] = useState<Record<number, string>>({});
 
-  // Load jobs from backend on component mount
+  // Initialize Firebase auth state listener
   useEffect(() => {
+    const { auth } = require('../../config/firebase');
+    
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      console.log('Auth state changed:', !!user);
+      setCurrentUser(user);
+      setIsAuthReady(true);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Load jobs from backend when auth is ready
+  useEffect(() => {
+    if (!isAuthReady || !currentUser) {
+      console.log('Auth not ready or no user:', { isAuthReady, hasUser: !!currentUser });
+      return;
+    }
+
     const loadJobs = async () => {
       try {
         setIsLoadingJobs(true);
@@ -149,28 +165,104 @@ const EmployerDashboard: React.FC = () => {
         setJobPostings(convertedJobs);
       } catch (error) {
         console.error('Error loading jobs:', error);
-        // Fallback to mock data on error
-        setJobPostings(mockJobPostings);
+        // Set empty array instead of mock data
+        setJobPostings([]);
       } finally {
         setIsLoadingJobs(false);
       }
     };
 
     loadJobs();
-  }, []);
+  }, [isAuthReady, currentUser]);
 
 
-  // Enhanced applicants using centralized mock data
-  const enhancedApplicants: Applicant[] = mockApplicants.map(applicant => ({
-    ...applicant,
-    matchPercentage: applicant.match,
-    matchScore: applicant.match,
-    location: 'Metro Manila',
-    salary: '₱80,000',
-    expectedSalary: '₱70,000 - ₱90,000',
-    jobTitle: applicant.position,
-    jobId: applicant.jobId || '1' // Ensure jobId is set for filtering
-  })).sort((a, b) => b.matchPercentage - a.matchPercentage);
+  // State for real applications from backend
+  const [applications, setApplications] = useState<Applicant[]>([]);
+  const [isLoadingApplications, setIsLoadingApplications] = useState(true);
+
+  // Load applications from backend when auth is ready
+  useEffect(() => {
+    if (!isAuthReady || !currentUser) {
+      console.log('Auth not ready for applications:', { isAuthReady, hasUser: !!currentUser });
+      return;
+    }
+
+    const loadApplications = async () => {
+      try {
+        setIsLoadingApplications(true);
+        
+        const token = await currentUser.getIdToken();
+        
+        const response = await fetch('http://localhost:3001/api/applications/employer', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('Applications API response status:', response.status);
+        console.log('Applications API response headers:', response.headers);
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Applications data received:', data);
+          console.log('Number of applications:', data.data?.length || data.applications?.length || 0);
+          
+          // If no applications, show empty state instead of mock data
+          if (!data.data || data.data.length === 0) {
+            console.log('No applications found, setting empty array');
+            setApplications([]);
+            return;
+          }
+          
+          // Convert backend applications to Applicant format
+          const applicationsArray = data.data || data.applications || [];
+          const convertedApplications: Applicant[] = applicationsArray.map((app: any) => ({
+            id: app._id,
+            name: app.applicant?.name || app.resumeData?.personalInfo?.name || 'Unknown Applicant',
+            position: app.jobTitle || 'Unknown Position',
+            email: app.applicant?.email || app.resumeData?.personalInfo?.email || '',
+            phone: app.applicant?.phone || app.resumeData?.personalInfo?.phone || '',
+            location: app.applicant?.address || app.resumeData?.personalInfo?.address || 'Metro Manila',
+            salary: app.jobSalary || '₱80,000',
+            expectedSalary: app.resumeData?.expectedSalary || '₱70,000 - ₱90,000',
+            experience: app.resumeData?.experience?.[0]?.duration || app.resumeData?.workExperience?.[0]?.duration || '2+ years',
+            skills: app.resumeData?.skills || [],
+            education: app.resumeData?.education?.[0]?.degree || app.resumeData?.education?.[0]?.institution || '',
+            appliedDate: app.appliedDate,
+            status: app.status,
+            match: 85, // Default match score
+            matchPercentage: 85,
+            matchScore: 85,
+            jobTitle: app.jobTitle || 'Unknown Position',
+            jobId: app.jobId,
+            resumeUrl: app.resumeData ? '#' : undefined,
+            coverLetter: app.coverLetter || '',
+            notes: app.notes || ''
+          }));
+          
+          setApplications(convertedApplications);
+        } else {
+          console.error('Failed to load applications:', response.status, response.statusText);
+          const errorText = await response.text();
+          console.error('Error response body:', errorText);
+          // Show empty state - no mock data fallback
+          setApplications([]);
+        }
+      } catch (error) {
+        console.error('Error loading applications:', error);
+        // Show empty state - no mock data fallback
+        setApplications([]);
+      } finally {
+        setIsLoadingApplications(false);
+      }
+    };
+
+    loadApplications();
+  }, [isAuthReady, currentUser]);
+
+  // Use real applications data only
+  const enhancedApplicants: Applicant[] = applications.sort((a, b) => b.matchPercentage - a.matchPercentage);
 
 
   // Filter and sort applicants based on search and filters
@@ -299,25 +391,83 @@ const EmployerDashboard: React.FC = () => {
     }));
   };
 
-  // Handle applicant actions
-  const handleApproveApplicant = (applicantId: number) => {
-    setApplicantStatuses(prev => ({
-      ...prev,
-      [applicantId]: 'interview'
-    }));
-    
-    // Show success notification (you can replace with toast notification)
-    alert('Applicant moved to interview stage!');
+  // Handle applicant actions with backend integration
+  const handleApproveApplicant = async (applicantId: number) => {
+    try {
+      if (!currentUser) {
+        alert('Please log in again to update application status');
+        return;
+      }
+
+      const token = await currentUser.getIdToken();
+      
+      const response = await fetch(`http://localhost:3001/api/applications/${applicantId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: 'interview' })
+      });
+
+      if (response.ok) {
+        setApplicantStatuses(prev => ({
+          ...prev,
+          [applicantId]: 'interview'
+        }));
+        
+        // Update local applications state
+        setApplications(prev => prev.map(app => 
+          app.id === applicantId ? { ...app, status: 'interview' } : app
+        ));
+        
+        alert('Applicant moved to interview stage!');
+      } else {
+        throw new Error('Failed to update application status');
+      }
+    } catch (error) {
+      console.error('Error updating application status:', error);
+      alert('Failed to update applicant status. Please try again.');
+    }
   };
 
-  const handleRejectApplicant = (applicantId: number) => {
-    setApplicantStatuses(prev => ({
-      ...prev,
-      [applicantId]: 'rejected'
-    }));
-    
-    // Show notification
-    alert('Applicant has been rejected.');
+  const handleRejectApplicant = async (applicantId: number) => {
+    try {
+      if (!currentUser) {
+        alert('Please log in again to update application status');
+        return;
+      }
+
+      const token = await currentUser.getIdToken();
+      
+      const response = await fetch(`http://localhost:3001/api/applications/${applicantId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: 'rejected' })
+      });
+
+      if (response.ok) {
+        setApplicantStatuses(prev => ({
+          ...prev,
+          [applicantId]: 'rejected'
+        }));
+        
+        // Update local applications state
+        setApplications(prev => prev.map(app => 
+          app.id === applicantId ? { ...app, status: 'rejected' } : app
+        ));
+        
+        alert('Applicant has been rejected.');
+      } else {
+        throw new Error('Failed to update application status');
+      }
+    } catch (error) {
+      console.error('Error updating application status:', error);
+      alert('Failed to update applicant status. Please try again.');
+    }
   };
 
   const handleViewResume = (applicantId: number) => {
@@ -682,7 +832,7 @@ const EmployerDashboard: React.FC = () => {
             <>
               {/* Welcome Section */}
               <WelcomeSection 
-                userName={mockEmployer.name}
+                userName="Employer"
                 subtitle="Here's what's happening with your hiring process today"
               />
 

@@ -33,4 +33,9 @@ router.post('/resend-verification', authController.resendVerification);
 // @access  Public
 router.get('/check-email/:email', authController.checkEmailExists);
 
+// @route   GET /api/auth/check-email/:email?role=:role
+// @desc    Check if email exists with role parameter
+// @access  Public
+router.get('/check-email/:email', authController.checkEmailExists);
+
 module.exports = router;

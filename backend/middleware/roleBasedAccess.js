@@ -91,6 +91,8 @@ const requireRole = (allowedRoles) => {
       next();
     } catch (error) {
       console.error('Role check error:', error);
+      console.error('User UID:', req.user?.uid);
+      console.error('Error details:', error.message);
       res.status(500).json({
         success: false,
         error: 'Failed to verify role'

@@ -31,6 +31,57 @@ const upload = multer({
   }
 });
 
+// @route   POST /api/jobseekers/resume-data
+// @desc    Save resume data to jobseeker profile
+// @access  Private
+router.post('/resume-data', verifyToken, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { resumeData } = req.body;
+
+    if (!resumeData) {
+      return res.status(400).json({
+        success: false,
+        error: 'Resume data is required'
+      });
+    }
+
+    // Find and update jobseeker profile with resume data
+    const jobSeeker = await JobSeeker.findOneAndUpdate(
+      { uid },
+      { 
+        resumeData: {
+          ...resumeData,
+          uploadedAt: new Date()
+        }
+      },
+      { new: true, upsert: false }
+    );
+
+    if (!jobSeeker) {
+      return res.status(404).json({
+        success: false,
+        error: 'JobSeeker profile not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Resume data saved successfully',
+      data: {
+        resumeData: jobSeeker.resumeData
+      }
+    });
+
+  } catch (error) {
+    console.error('Error saving resume data:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to save resume data'
+    });
+  }
+});
+
 // @route   GET /api/jobseekers/profile
 // @desc    Get jobseeker profile
 // @access  Private
@@ -155,7 +206,7 @@ router.put('/profile', verifyToken, async (req, res) => {
 });
 
 // @route   POST /api/jobseekers/resume
-// @desc    Upload resume
+// @desc    Upload resume and parse data
 // @access  Private
 router.post('/resume', verifyToken, upload.single('resume'), async (req, res) => {
   try {
@@ -180,13 +231,46 @@ router.post('/resume', verifyToken, upload.single('resume'), async (req, res) =>
     // Update resume URL
     const resumeUrl = `/uploads/resumes/${req.file.filename}`;
     jobseekerProfile.resumeUrl = resumeUrl;
+
+    // Parse resume using NER service
+    try {
+      const FormData = require('form-data');
+      const fetch = require('node-fetch');
+      
+      const formData = new FormData();
+      formData.append('file', require('fs').createReadStream(req.file.path));
+      
+      const nerResponse = await fetch('http://localhost:5000/extract', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (nerResponse.ok) {
+        const resumeData = await nerResponse.json();
+        
+        // Save parsed resume data to database
+        jobseekerProfile.resumeData = {
+          ...resumeData,
+          uploadedAt: new Date()
+        };
+        
+        console.log('Resume parsed and saved to database:', resumeData);
+      } else {
+        console.warn('Resume parsing failed, saving file URL only');
+      }
+    } catch (parseError) {
+      console.warn('Resume parsing error:', parseError.message);
+      // Continue without parsed data - just save the file URL
+    }
+
     await jobseekerProfile.save();
 
     res.json({
       success: true,
       message: 'Resume uploaded successfully',
       data: {
-        resumeUrl: resumeUrl
+        resumeUrl: resumeUrl,
+        resumeData: jobseekerProfile.resumeData
       }
     });
 
@@ -195,6 +279,40 @@ router.post('/resume', verifyToken, upload.single('resume'), async (req, res) =>
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to upload resume'
+    });
+  }
+});
+
+// @route   GET /api/jobseekers/resume/view
+// @desc    Get resume file for viewing
+// @access  Private
+router.get('/resume/view', verifyToken, async (req, res) => {
+  try {
+    const { uid } = req.user;
+
+    // Find jobseeker profile
+    const jobseekerProfile = await JobSeeker.findOne({ uid });
+    if (!jobseekerProfile || !jobseekerProfile.resumeUrl) {
+      return res.status(404).json({
+        success: false,
+        error: 'Resume not found'
+      });
+    }
+
+    // Return the resume URL for frontend to display
+    res.json({
+      success: true,
+      data: {
+        resumeUrl: jobseekerProfile.resumeUrl,
+        resumeData: jobseekerProfile.resumeData
+      }
+    });
+
+  } catch (error) {
+    console.error('Resume view error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to get resume'
     });
   }
 });

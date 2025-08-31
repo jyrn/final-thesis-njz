@@ -89,6 +89,34 @@ const JobSeekerSchema = new mongoose.Schema({
   resumeUrl: {
     type: String
   },
+  resumeData: {
+    personalInfo: {
+      name: String,
+      email: String,
+      phone: String,
+      address: String
+    },
+    summary: String,
+    skills: [String],
+    experience: [{
+      company: String,
+      position: String,
+      duration: String,
+      description: String
+    }],
+    education: [{
+      institution: String,
+      degree: String,
+      year: String,
+      gpa: String
+    }],
+    certifications: [String],
+    languages: [String],
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    }
+  },
   portfolioUrl: {
     type: String
   },

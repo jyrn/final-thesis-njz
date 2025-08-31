@@ -4,6 +4,7 @@ import styles from './SettingsTab.module.css';
 import { apiService } from '../../../services/apiService';
 import firebaseAuthService from '../../../services/firebaseAuthService';
 import { useNavigate } from 'react-router-dom';
+import PDFPreview from '../../shared/PDFPreview';
 
 interface JobseekerProfile {
   _id?: string;
@@ -686,6 +687,16 @@ const SettingsTab: React.FC = () => {
                   </label>
                 </div>
               </div>
+
+              {/* PDF Preview */}
+              {profile.resumeUrl && (
+                <div className={styles.pdfPreviewSection}>
+                  <PDFPreview 
+                    resumeUrl={profile.resumeUrl} 
+                    className={styles.resumePreview}
+                  />
+                </div>
+              )}
 
                 {uploading && (
                   <div className={styles.uploadProgress}>

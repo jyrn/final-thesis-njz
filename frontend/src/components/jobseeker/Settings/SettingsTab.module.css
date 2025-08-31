@@ -50,6 +50,20 @@
   100% { transform: rotate(360deg); }
 }
 
+.pdfPreviewSection {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.resumePreview {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
 .error {
   display: flex;
   flex-direction: column;
