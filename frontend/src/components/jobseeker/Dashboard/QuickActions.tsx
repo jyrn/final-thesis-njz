@@ -5,9 +5,10 @@ import styles from './QuickActions.module.css';
 interface QuickActionsProps {
   onNavigate: (tab: string) => void;
   onShowResumeUpload: () => void;
+  userProfile?: any;
 }
 
-const QuickActions: React.FC<QuickActionsProps> = ({ onNavigate, onShowResumeUpload }) => {
+const QuickActions: React.FC<QuickActionsProps> = ({ onNavigate, onShowResumeUpload, userProfile }) => {
   return (
     <div className={styles.quickActions}>
       <h2 className={styles.sectionTitle}>Quick Actions</h2>
@@ -25,7 +26,9 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onNavigate, onShowResumeUpl
           onClick={onShowResumeUpload}
         >
           <FiFileText className={styles.actionIcon} />
-          <span className={styles.actionLabel}>Upload Resume</span>
+          <span className={styles.actionLabel}>
+            {userProfile?.resumeUrl ? 'Update Resume' : 'Upload Resume'}
+          </span>
         </button>
         
         <button 

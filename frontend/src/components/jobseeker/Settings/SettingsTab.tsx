@@ -655,7 +655,7 @@ const SettingsTab: React.FC = () => {
                   {profile.resumeUrl && (
                     <>
                       <a 
-                        href={profile.resumeUrl} 
+                        href={`http://localhost:3001${profile.resumeUrl}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className={styles.viewButton}

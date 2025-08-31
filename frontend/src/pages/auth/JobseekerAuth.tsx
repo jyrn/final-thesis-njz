@@ -330,29 +330,21 @@ const JobseekerAuth: React.FC = () => {
 
     setIsUploading(true)
     try {
-      console.log("Preparing resume for processing:", resumeFile.name)
+      console.log("Uploading resume to backend:", resumeFile.name)
 
-      const fileReader = new FileReader()
-      const fileDataUrl = await new Promise<string>((resolve) => {
-        fileReader.onload = () => resolve(fileReader.result as string)
-        fileReader.readAsDataURL(resumeFile)
-      })
-
-      const resumeUploadData = {
-        fileName: resumeFile.name,
-        fileSize: resumeFile.size,
-        uploadDate: new Date().toISOString(),
-        needsProcessing: true,
+      const response = await apiService.uploadResume(resumeFile)
+      
+      if (response.success) {
+        console.log("Resume uploaded successfully:", response.data)
+        setSuccessMessage("Resume uploaded successfully!")
+        return response.data // Return the upload result for use in registration
+      } else {
+        throw new Error(response.error || "Failed to upload resume")
       }
-
-      localStorage.setItem("pendingResumeUpload", JSON.stringify(resumeUploadData))
-      localStorage.setItem("pendingResumeFile", fileDataUrl)
-
-      console.log("Resume stored for processing in dashboard")
-      setSuccessMessage("Resume uploaded successfully! It will be processed when you access your dashboard.")
-    } catch (error) {
-      console.error("Upload preparation failed:", error)
-      setErrors(prev => ({ ...prev, general: "Failed to prepare resume for upload. Please try again." }))
+    } catch (error: any) {
+      console.error("Resume upload failed:", error)
+      setErrors(prev => ({ ...prev, resume: error.message || "Failed to upload resume. Please try again." }))
+      throw error // Re-throw to handle in registration flow
     } finally {
       setIsUploading(false)
     }
@@ -458,11 +450,6 @@ const JobseekerAuth: React.FC = () => {
         }
       }
 
-      // Upload resume if provided (optional)
-      if (resumeFile) {
-        await handleFileUpload()
-      }
-      
       // Create Firebase user only if email doesn't exist
       const firebaseResponse = await firebaseAuthService.registerWithEmailPassword(
         formData.email, 
@@ -493,6 +480,18 @@ const JobseekerAuth: React.FC = () => {
       
       if (!profileResponse.success) {
         throw new Error(profileResponse.error || "Failed to create user profile")
+      }
+
+      // Upload resume if provided (optional) - now that user is authenticated
+      if (resumeFile) {
+        try {
+          await handleFileUpload()
+          console.log("Resume uploaded successfully during registration")
+        } catch (resumeError) {
+          // Don't fail registration if resume upload fails - user can upload later
+          console.warn("Resume upload failed during registration:", resumeError)
+          setSuccessMessage("Account created successfully! Resume upload failed, but you can upload it later from your dashboard.")
+        }
       }
       
       // Redirect to email verification page

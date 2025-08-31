@@ -14,6 +14,7 @@ import SettingsTab from '../../components/jobseeker/Settings/SettingsTab';
 import { parseResume } from '../../utils/resumeParser'
 import { Job } from '../../types/Job'
 import { JobService } from '../../services/jobService'
+import { apiService } from '../../services/apiService'
 
 // Types
 interface PersonalInfo {
@@ -75,6 +76,7 @@ const Dashboard: React.FC = () => {
   const [showInitialResumePrompt, setShowInitialResumePrompt] = useState(false)
   const [attemptedJobId, setAttemptedJobId] = useState<number | null>(null)
   const [showFilterModal, setShowFilterModal] = useState(false)
+  const [userProfile, setUserProfile] = useState<any>(null)
   
   interface ActiveFilters {
     lastUpdate: string;
@@ -230,6 +232,16 @@ const Dashboard: React.FC = () => {
         const backendJobs = await jobService.getRecommendedJobs();
         setJobs(backendJobs);
         setApplications([]);
+
+        // Load user profile to check for existing resume
+        try {
+          const profileResponse = await apiService.get('/jobseekers/profile');
+          if (profileResponse.success) {
+            setUserProfile(profileResponse.data);
+          }
+        } catch (profileError) {
+          console.error('Error loading user profile:', profileError);
+        }
 
         // Check if this is first visit and no resume
         const hasVisited = localStorage.getItem('hasVisitedDashboard')
@@ -395,7 +407,10 @@ const Dashboard: React.FC = () => {
 
   const handleApplyJob = (jobId: number) => {
     // Check if user has resume before allowing application
-    if (!resume) {
+    // Accept either parsed resume data OR uploaded resume in profile
+    const hasResume = resume || userProfile?.resumeUrl
+    
+    if (!hasResume) {
       setAttemptedJobId(jobId)
       setShowResumeUpload(true)
       return
@@ -499,6 +514,7 @@ const Dashboard: React.FC = () => {
       savedJobs,
       jobs,
       hasSkippedResume,
+      userProfile,
       onNavigate: setActiveTab,
       onShowResumeUpload: () => setShowResumeUpload(true),
       getJobsToDisplay,
@@ -621,6 +637,7 @@ const Dashboard: React.FC = () => {
           onClose={() => setShowResumeUpload(false)} 
           onUpload={handleResumeUpload}
           onSkip={handleSkipResume}
+          userProfile={userProfile}
         />
       )}
 

@@ -8,9 +8,10 @@ interface ResumeUploadPromptProps {
   onClose: () => void;
   onUpload: (file: File) => Promise<void>;
   onSkip?: () => void;
+  userProfile?: any;
 }
 
-const ResumeUploadPrompt: React.FC<ResumeUploadPromptProps> = ({ isOpen, onClose, onUpload, onSkip }) => {
+const ResumeUploadPrompt: React.FC<ResumeUploadPromptProps> = ({ isOpen, onClose, onUpload, onSkip, userProfile }) => {
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -77,7 +78,9 @@ const ResumeUploadPrompt: React.FC<ResumeUploadPromptProps> = ({ isOpen, onClose
     <div className={styles.modalOverlay}>
       <div className={styles.uploadModal}>
         <div className={styles.modalHeader}>
-          <h2 className={styles.modalTitle}>Upload Your Resume</h2>
+          <h2 className={styles.modalTitle}>
+            {userProfile?.resumeUrl ? 'Update Your Resume' : 'Upload Your Resume'}
+          </h2>
           <button 
             type="button" 
             className={styles.closeButton}
@@ -88,10 +91,19 @@ const ResumeUploadPrompt: React.FC<ResumeUploadPromptProps> = ({ isOpen, onClose
           </button>
         </div>
         
-        <p className={styles.modalDescription}>
-          Upload your resume to unlock personalized job recommendations and apply to jobs faster.
-          We support PDF files up to 5MB.
-        </p>
+        {userProfile?.resumeUrl ? (
+          <div className={styles.existingResumeNotice}>
+            <FiCheck className={styles.checkIcon} />
+            <p className={styles.modalDescription}>
+              You already have a resume uploaded. You can upload a new one to replace it, or skip to use your existing resume for job applications.
+            </p>
+          </div>
+        ) : (
+          <p className={styles.modalDescription}>
+            Upload your resume to unlock personalized job recommendations and apply to jobs faster.
+            We support PDF files up to 5MB.
+          </p>
+        )}
         
         <form onSubmit={handleSubmit} className={styles.uploadForm}>
           <div 
@@ -167,14 +179,14 @@ const ResumeUploadPrompt: React.FC<ResumeUploadPromptProps> = ({ isOpen, onClose
               onClick={onSkip}
               disabled={isLoading}
             >
-              Skip for now
+              {userProfile?.resumeUrl ? 'Use Existing Resume' : 'Skip for now'}
             </button>
             <button 
               type="submit" 
               className={styles.primaryButton}
               disabled={!file || isLoading}
             >
-              {isLoading ? 'Uploading...' : 'Upload Resume'}
+              {isLoading ? 'Uploading...' : userProfile?.resumeUrl ? 'Replace Resume' : 'Upload Resume'}
             </button>
           </div>
         </form>

@@ -13,6 +13,7 @@ const DashboardTab: React.FC<any> = ({
   savedJobs,
   jobs,
   hasSkippedResume,
+  userProfile,
   onNavigate,
   onShowResumeUpload,
   getJobsToDisplay,
@@ -32,6 +33,7 @@ const DashboardTab: React.FC<any> = ({
       <QuickActions
         onNavigate={onNavigate}
         onShowResumeUpload={onShowResumeUpload}
+        userProfile={userProfile}
       />
       <RecentActivity
         applications={applications}
