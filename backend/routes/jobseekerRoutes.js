@@ -253,10 +253,6 @@ router.post('/resume', verifyToken, upload.single('resume'), async (req, res) =>
           ...resumeData,
           uploadedAt: new Date()
         };
-        
-        console.log('Resume parsed and saved to database:', resumeData);
-      } else {
-        console.warn('Resume parsing failed, saving file URL only');
       }
     } catch (parseError) {
       console.warn('Resume parsing error:', parseError.message);

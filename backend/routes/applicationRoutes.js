@@ -64,18 +64,10 @@ const Application = mongoose.model('Application', ApplicationSchema);
 // @access  Private (Job Seeker)
 router.post('/', verifyToken, async (req, res) => {
   try {
-    console.log('=== APPLICATION SUBMISSION START ===');
     const { jobId, resumeData, coverLetter } = req.body;
     const { uid } = req.user;
 
-    console.log('Request body keys:', Object.keys(req.body));
-    console.log('JobId:', jobId);
-    console.log('User UID:', uid);
-    console.log('Has resume data:', !!resumeData);
-    console.log('Has cover letter:', !!coverLetter);
-
     if (!jobId) {
-      console.error('Missing jobId in request');
       return res.status(400).json({
         success: false,
         error: 'Job ID is required'
@@ -92,34 +84,22 @@ router.post('/', verifyToken, async (req, res) => {
 
     // Get job details to find employer
     const Job = require('../models/Job');
-    console.log('Looking up job with ID:', jobId);
-    
     const job = await Job.findById(jobId);
-    console.log('Job lookup result:', job ? {
-      id: job._id,
-      title: job.title,
-      employerUid: job.employerUid,
-      employerId: job.employerId
-    } : 'NOT FOUND');
     
     if (!job) {
-      console.error('Job not found for ID:', jobId);
       return res.status(404).json({
         success: false,
         error: 'Job not found'
       });
-    }
+    };
 
     // Check if user already applied to this job
-    console.log('Checking for existing application...');
     const existingApplication = await Application.findOne({
       jobId,
       jobSeekerUid: uid
     });
-    console.log('Existing application found:', !!existingApplication);
 
     if (existingApplication) {
-      console.log('User already applied to this job');
       return res.status(400).json({
         success: false,
         error: 'You have already applied to this job'
@@ -127,8 +107,6 @@ router.post('/', verifyToken, async (req, res) => {
     }
 
     // Create application
-    console.log('Creating new application...');
-    
     // Handle missing employerUid field in existing jobs
     let employerIdentifier = 'unknown';
     if (job.employerUid) {
@@ -136,8 +114,6 @@ router.post('/', verifyToken, async (req, res) => {
     } else if (job.employerId) {
       employerIdentifier = job.employerId;
     }
-    
-    console.log('Using employer identifier:', employerIdentifier);
     
     // Get job seeker profile to ensure we have the correct name
     const JobSeeker = require('../models/JobSeeker');
@@ -155,7 +131,6 @@ router.post('/', verifyToken, async (req, res) => {
       }
     };
     
-    console.log('Enhanced resume data with name:', enhancedResumeData.personalInfo.name);
     
     const applicationData = {
       jobId,
@@ -171,13 +146,8 @@ router.post('/', verifyToken, async (req, res) => {
       applicantAddress: enhancedResumeData.personalInfo.address || jobSeekerProfile?.address || ''
     };
     
-    console.log('Application data to save:', JSON.stringify(applicationData, null, 2));
-    
     const application = new Application(applicationData);
-    
-    console.log('Attempting to save application...');
     await application.save();
-    console.log('Application saved successfully with ID:', application._id);
 
     // Update job applicant count
     await Job.findByIdAndUpdate(jobId, {
@@ -219,25 +189,6 @@ router.get('/employer', verifyToken, async (req, res) => {
     const { uid } = req.user;
     const { status, jobId } = req.query;
 
-    console.log('=== EMPLOYER APPLICATIONS REQUEST ===');
-    console.log('Employer UID:', uid);
-    console.log('Query filters:', { status, jobId });
-
-    // First, let's see all applications in the database
-    const allApplications = await Application.find({});
-    console.log('Total applications in database:', allApplications.length);
-    
-    allApplications.forEach((app, index) => {
-      console.log(`App ${index + 1}:`, {
-        id: app._id,
-        employerUid: app.employerUid,
-        employerId: app.employerId,
-        jobSeekerUid: app.jobSeekerUid,
-        applicantName: app.resumeData?.personalInfo?.name || 'No name',
-        status: app.status,
-        appliedDate: app.appliedDate
-      });
-    });
 
     // Build query using clean employerUid field
     const query = {
@@ -246,30 +197,14 @@ router.get('/employer', verifyToken, async (req, res) => {
     if (status) query.status = status;
     if (jobId) query.jobId = jobId;
 
-    console.log('MongoDB query:', JSON.stringify(query, null, 2));
-    console.log('Looking for employer UID:', uid);
 
     const applications = await Application.find(query)
       .populate('jobId', 'title location type salary companyName')
       .sort({ appliedDate: -1 });
 
-    console.log('Applications found:', applications.length);
-    console.log('Applications data:', applications.map(app => ({
-      id: app._id,
-      jobTitle: app.jobId?.title,
-      status: app.status,
-      appliedDate: app.appliedDate
-    })));
 
     // Format applications for frontend
     const formattedApplications = applications.map(app => {
-      console.log('Processing application:', {
-        id: app._id,
-        jobTitle: app.jobId?.title,
-        hasResumeData: !!app.resumeData,
-        resumeDataKeys: app.resumeData ? Object.keys(app.resumeData) : [],
-        personalInfo: app.resumeData?.personalInfo
-      });
 
       return {
         _id: app._id, // Add _id for compatibility
