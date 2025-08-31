@@ -117,10 +117,13 @@ router.get('/employer/my-jobs', verifyToken, requireRole('employer'), async (req
       });
     }
 
-    const query = { employerId: employer._id };
+    const query = { employerUid: req.user.uid };
     if (status && status !== 'all') {
       query.status = status;
     }
+
+    console.log('🔍 Job query:', JSON.stringify(query, null, 2));
+    console.log('👤 Employer UID:', req.user.uid);
 
     const jobs = await Job.find(query)
       .sort({ createdAt: -1 })
@@ -128,6 +131,27 @@ router.get('/employer/my-jobs', verifyToken, requireRole('employer'), async (req
       .skip((page - 1) * limit);
 
     const totalJobs = await Job.countDocuments(query);
+
+    console.log('📊 Jobs found:', jobs.length);
+    console.log('📈 Total jobs count:', totalJobs);
+    
+    // Debug: Show detailed job info for this employer
+    console.log('🔍 Jobs found for this employer:');
+    jobs.forEach((job, index) => {
+      console.log(`  ${index + 1}. ${job.title} (Status: ${job.status}) - Created: ${job.createdAt}`);
+    });
+    
+    // Check if there are jobs with missing employerUid
+    const jobsWithoutUid = await Job.find({ 
+      $or: [
+        { employerUid: { $exists: false } },
+        { employerUid: null },
+        { employerUid: '' }
+      ]
+    });
+    if (jobsWithoutUid.length > 0) {
+      console.log(`⚠️ Found ${jobsWithoutUid.length} jobs without employerUid - these won't show for any employer`);
+    }
 
     // Format jobs for employer dashboard
     const formattedJobs = jobs.map(job => ({

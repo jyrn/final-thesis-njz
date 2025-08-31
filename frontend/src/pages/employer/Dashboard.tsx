@@ -138,7 +138,10 @@ const EmployerDashboard: React.FC = () => {
     const loadJobs = async () => {
       try {
         setIsLoadingJobs(true);
+        console.log('🔄 Loading employer jobs...');
         const response = await jobApiService.getEmployerJobs();
+        console.log('📊 Jobs API response:', response);
+        console.log('📝 Number of jobs received:', response.jobs?.length || 0);
         
         // Convert backend jobs to JobPosting format
         const convertedJobs: JobPosting[] = response.jobs.map((job: any) => ({
@@ -162,9 +165,10 @@ const EmployerDashboard: React.FC = () => {
           remote: job.workplaceType === 'Remote' || job.remote
         }));
         
+        console.log('✅ Converted jobs:', convertedJobs);
         setJobPostings(convertedJobs);
       } catch (error) {
-        console.error('Error loading jobs:', error);
+        console.error('❌ Error loading jobs:', error);
         // Set empty array instead of mock data
         setJobPostings([]);
       } finally {
@@ -401,7 +405,7 @@ const EmployerDashboard: React.FC = () => {
 
       const token = await currentUser.getIdToken();
       
-      const response = await fetch(`http://localhost:3001/api/applications/${applicantId}`, {
+      const response = await fetch(`http://localhost:3001/api/applications/${applicantId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -440,7 +444,7 @@ const EmployerDashboard: React.FC = () => {
 
       const token = await currentUser.getIdToken();
       
-      const response = await fetch(`http://localhost:3001/api/applications/${applicantId}`, {
+      const response = await fetch(`http://localhost:3001/api/applications/${applicantId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
