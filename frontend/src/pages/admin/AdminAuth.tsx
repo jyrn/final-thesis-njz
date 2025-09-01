@@ -3,17 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../config/firebase';
 import { FiUser, FiEye } from 'react-icons/fi';
-import { HiShieldCheck, HiEyeOff, HiLockClosed } from 'react-icons/hi';
+import { HiShieldCheck, HiLockClosed, HiEyeOff } from 'react-icons/hi';
+import { AdminFormData } from '../../types/admin';
 import './AdminAuth.css';
 
 interface AdminAuthProps {}
 
 const AdminAuth: React.FC<AdminAuthProps> = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<AdminFormData>({
     email: '',
-    password: '',
-    adminLevel: 'admin' as 'admin' | 'superadmin'
+    password: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -48,7 +48,7 @@ const AdminAuth: React.FC<AdminAuthProps> = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${idToken}`
         },
-        body: JSON.stringify({ adminLevel: formData.adminLevel }),
+        body: JSON.stringify({})
       });
 
       const data = await response.json();
@@ -145,22 +145,6 @@ const AdminAuth: React.FC<AdminAuthProps> = () => {
               </div>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="adminLevel">Access Level</label>
-              <div className="input-wrapper">
-                <HiShieldCheck className="input-icon" />
-                <select
-                  id="adminLevel"
-                  name="adminLevel"
-                  value={formData.adminLevel}
-                  onChange={handleInputChange}
-                  required
-                >
-                  <option value="admin">Admin</option>
-                  <option value="superadmin">Super Admin</option>
-                </select>
-              </div>
-            </div>
 
             <button
               type="submit"

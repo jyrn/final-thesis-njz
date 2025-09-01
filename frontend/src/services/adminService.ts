@@ -1,35 +1,4 @@
-interface AdminUser {
-  uid: string;
-  email: string;
-  role: 'admin' | 'superadmin';
-  adminName: string;
-  adminLevel: string;
-  department: string;
-  permissions: string[];
-}
-
-interface DashboardStats {
-  totalUsers: number;
-  totalEmployers: number;
-  totalJobSeekers: number;
-  totalJobs: number;
-  totalApplications: number;
-  pendingEmployers: number;
-  activeJobs: number;
-  recentApplications: number;
-}
-
-interface PendingEmployer {
-  _id: string;
-  userId: {
-    email: string;
-    companyName: string;
-    createdAt: string;
-  };
-  businessPermitUrl?: string;
-  dtiRegistrationUrl?: string;
-  accountStatus: string;
-}
+import { AdminUser, DashboardStats, PendingEmployer, Job } from '../types/admin';
 
 class AdminService {
   private baseUrl = 'http://localhost:3001/api/admin';
