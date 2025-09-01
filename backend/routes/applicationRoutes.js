@@ -1,63 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
+const Application = require('../models/Application');
 const { verifyToken } = require('../middleware/authMiddleware');
-
-// Application Schema
-const ApplicationSchema = new mongoose.Schema({
-  jobId: {
-    type: mongoose.Schema.Types.ObjectId,
-    required: true,
-    ref: 'Job'
-  },
-  jobSeekerUid: {
-    type: String,
-    required: true
-  },
-  employerUid: {
-    type: String,
-    required: true
-  },
-  status: {
-    type: String,
-    enum: ['pending', 'reviewed', 'interview', 'hired', 'rejected'],
-    default: 'pending'
-  },
-  appliedDate: {
-    type: Date,
-    default: Date.now
-  },
-  resumeData: {
-    personalInfo: {
-      name: String,
-      email: String,
-      phone: String,
-      address: String
-    },
-    summary: String,
-    skills: [String],
-    experience: [{
-      company: String,
-      position: String,
-      duration: String,
-      description: String
-    }],
-    education: [{
-      institution: String,
-      degree: String,
-      year: String
-    }],
-    certifications: [String]
-  },
-  coverLetter: String,
-  notes: String,
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
-});
-
-const Application = mongoose.model('Application', ApplicationSchema);
 
 // @route   POST /api/applications
 // @desc    Submit job application

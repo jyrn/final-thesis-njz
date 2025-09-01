@@ -13,7 +13,7 @@ const UserSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['jobseeker', 'employer'],
+    enum: ['jobseeker', 'employer', 'admin', 'superadmin'],
     required: true
   },
   
@@ -34,6 +34,21 @@ const UserSchema = new mongoose.Schema({
   companyName: {
     type: String,
     required: function() { return this.role === 'employer'; }
+  },
+  
+  // Admin specific fields (only populated if role is 'admin' or 'superadmin')
+  adminName: {
+    type: String,
+    required: function() { return this.role === 'admin' || this.role === 'superadmin'; }
+  },
+  adminLevel: {
+    type: String,
+    enum: ['admin', 'superadmin'],
+    required: function() { return this.role === 'admin' || this.role === 'superadmin'; }
+  },
+  department: {
+    type: String,
+    required: function() { return this.role === 'admin' || this.role === 'superadmin'; }
   },
   
   // Common authentication fields
@@ -81,6 +96,10 @@ const UserSchema = new mongoose.Schema({
         return ['view_jobs', 'apply_jobs', 'manage_profile', 'upload_resume'];
       } else if (this.role === 'employer') {
         return ['post_jobs', 'view_applications', 'manage_company', 'verify_documents'];
+      } else if (this.role === 'admin') {
+        return ['verify_employers', 'manage_jobs', 'view_analytics', 'manage_users', 'generate_reports'];
+      } else if (this.role === 'superadmin') {
+        return ['all_permissions', 'manage_admins', 'system_settings', 'verify_employers', 'manage_jobs', 'view_analytics', 'manage_users', 'generate_reports', 'delete_users', 'system_backup'];
       }
       return [];
     }
@@ -134,6 +153,12 @@ UserSchema.methods.getRoleSpecificData = function() {
   } else if (this.role === 'employer') {
     return {
       companyName: this.companyName
+    };
+  } else if (this.role === 'admin' || this.role === 'superadmin') {
+    return {
+      adminName: this.adminName,
+      adminLevel: this.adminLevel,
+      department: this.department
     };
   }
   return {};
