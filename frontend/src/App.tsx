@@ -9,6 +9,9 @@ import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import EmailVerificationPage from './pages/auth/EmailVerificationPage';
 import JobSeekerDashboard from './pages/jobseeker/Dashboard';
 import EmployerDashboard from './pages/employer/Dashboard';
+import AdminAuth from './pages/admin/AdminAuth';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import SuperAdminDashboard from './pages/admin/SuperAdminDashboard';
 
 function App() {
   return (
@@ -23,6 +26,11 @@ function App() {
         <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/auth/reset-password" element={<ResetPasswordPage />} />
         <Route path="/auth/verify-email" element={<EmailVerificationPage />} />
+
+        {/* Admin routes without layout */}
+        <Route path="/admin/auth" element={<AdminAuth />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
 
         {/* Protected routes with layout */}
         <Route path="/" element={<MainLayout />}>
