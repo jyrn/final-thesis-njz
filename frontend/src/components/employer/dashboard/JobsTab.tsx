@@ -4,11 +4,12 @@ import { JobDetailsModal } from './JobDetailsModal';
 import { DeleteJobModal } from './DeleteJobModal';
 import { JobFormModal } from './JobFormModal';
 import { FiPlus, FiBriefcase } from 'react-icons/fi';
-import { JobPosting, Applicant } from '@/types/dashboard';
+import { Job } from '@/types/Job';
+import { Applicant } from '@/types/dashboard';
 import styles from './JobsTab.module.css';
 
 interface JobsTabProps {
-  jobs: JobPosting[];
+  jobs: Job[];
   applicants: Applicant[];
   searchTerm: string;
   filters: {
@@ -18,11 +19,11 @@ interface JobsTabProps {
   };
   onSearchChange: (term: string) => void;
   onFilterChange: (filterType: string, value: string) => void;
-  onViewJob: (job: JobPosting) => void;
-  onEditJob: (job: JobPosting) => void;
-  onDeleteJob: (jobId: number, hiredApplicantIds?: number[]) => void;
-  onCreateJob: (jobData: Partial<JobPosting>) => void;
-  onUpdateJob: (jobData: Partial<JobPosting>) => void;
+  onViewJob: (job: Job) => void;
+  onEditJob: (job: Job) => void;
+  onDeleteJob: (jobId: string | number, hiredApplicantIds?: number[]) => void;
+  onCreateJob: (jobData: Partial<Job>) => void;
+  onUpdateJob: (jobData: Partial<Job>) => void;
   isLoading?: boolean;
 }
 
@@ -40,12 +41,12 @@ export const JobsTab: React.FC<JobsTabProps> = ({
   onUpdateJob,
   isLoading = false,
 }) => {
-  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [jobToDelete, setJobToDelete] = useState<JobPosting | null>(null);
+  const [jobToDelete, setJobToDelete] = useState<Job | null>(null);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-  const [jobToEdit, setJobToEdit] = useState<JobPosting | null>(null);
+  const [jobToEdit, setJobToEdit] = useState<Job | null>(null);
 
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -53,29 +54,29 @@ export const JobsTab: React.FC<JobsTabProps> = ({
     return matchesSearch && matchesStatus;
   });
 
-  const handleJobCardClick = (job: JobPosting) => {
+  const handleJobCardClick = (job: Job) => {
     setSelectedJob(job);
     setIsDetailsModalOpen(true);
   };
 
-  const handleViewJobApplicants = (job: JobPosting) => {
+  const handleViewJobApplicants = (job: Job) => {
     // Pass the job to the parent component to handle the tab change and filtering
     onViewJob?.(job);
   };
 
-  const handleEditJob = (job: JobPosting) => {
+  const handleEditJob = (job: Job) => {
     setJobToEdit(job);
     setIsDetailsModalOpen(false);
     setIsFormModalOpen(true);
   };
 
-  const handleDeleteJob = (job: JobPosting) => {
+  const handleDeleteJob = (job: Job) => {
     setJobToDelete(job);
     setIsDetailsModalOpen(false);
     setIsDeleteModalOpen(true);
   };
 
-  const handleConfirmDelete = (jobId: number, hiredApplicantIds: number[]) => {
+  const handleConfirmDelete = (jobId: string | number, hiredApplicantIds: number[]) => {
     onDeleteJob(jobId, hiredApplicantIds);
     setIsDeleteModalOpen(false);
     setJobToDelete(null);
@@ -86,7 +87,7 @@ export const JobsTab: React.FC<JobsTabProps> = ({
     setIsFormModalOpen(true);
   };
 
-  const handleSaveJob = (jobData: Partial<JobPosting>) => {
+  const handleSaveJob = (jobData: Partial<Job>) => {
     if (jobToEdit) {
       onUpdateJob(jobData);
     } else {
@@ -118,7 +119,7 @@ export const JobsTab: React.FC<JobsTabProps> = ({
         }
       </p>
       {(!searchTerm && !filters.status) && (
-        <button className={styles.emptyStateButton} onClick={onCreateJob}>
+        <button className={styles.emptyStateButton} onClick={handleCreateJob}>
           <FiPlus />
           Create Your First Job
         </button>

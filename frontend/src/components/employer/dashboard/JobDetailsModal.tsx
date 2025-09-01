@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { JobPosting } from '@/types/dashboard';
+import { Job } from '@/types/Job';
 import { FiX, FiMapPin, FiClock, FiUsers, FiCalendar, FiBriefcase, FiTag, FiEdit3, FiSave, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import styles from './JobDetailsModal.module.css';
 
 interface JobDetailsModalProps {
-  job: JobPosting;
+  job: Job | null;
   isOpen: boolean;
   onClose: () => void;
-  onEdit: (job: JobPosting) => void;
-  onDelete: (job: JobPosting) => void;
-  onUpdateJob?: (jobData: Partial<JobPosting>) => void;
-  onViewApplicants?: (job: JobPosting) => void;
+  onEdit: (job: Job) => void;
+  onDelete: (job: Job) => void;
+  onUpdateJob?: (jobData: Partial<Job>) => void;
+  onViewApplicants?: (job: Job) => void;
 }
 
 export const JobDetailsModal: React.FC<JobDetailsModalProps> = (props) => {
@@ -26,7 +26,7 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = (props) => {
   } = props;
   
   // Create a stable reference to the onViewApplicants function
-  const handleViewApplicantsClick = React.useCallback((e: React.MouseEvent, job: JobPosting) => {
+  const handleViewApplicantsClick = React.useCallback((e: React.MouseEvent, job: Job) => {
     e.stopPropagation();
     
     if (onViewApplicants) {

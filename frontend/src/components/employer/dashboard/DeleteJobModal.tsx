@@ -6,15 +6,16 @@ import {
   FiCheck,
   FiUser
 } from 'react-icons/fi';
-import { JobPosting, Applicant } from '@/types/dashboard';
+import { Job } from '@/types/Job';
+import { Applicant } from '@/types/dashboard';
 import styles from './DeleteJobModal.module.css';
 
 interface DeleteJobModalProps {
-  job: JobPosting | null;
+  job: Job | null;
   applicants: Applicant[];
   isOpen: boolean;
   onClose: () => void;
-  onConfirmDelete: (jobId: number, hiredApplicantIds: number[]) => void;
+  onConfirmDelete: (jobId: string | number, hiredApplicantIds: number[]) => void;
 }
 
 export const DeleteJobModal: React.FC<DeleteJobModalProps> = ({

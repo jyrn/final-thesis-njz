@@ -1,10 +1,8 @@
 import React, { useState } from 'react'
-import { FiArrowLeft, FiMapPin, FiX, FiGlobe, FiUsers, FiCalendar, FiHome, FiBriefcase } from 'react-icons/fi'
+import { FiArrowLeft, FiMapPin, FiX, FiGlobe, FiUsers, FiCalendar, FiHome, FiBriefcase, FiClock, FiStar, FiBookmark, FiTrendingUp } from 'react-icons/fi'
 import styles from './JobDetailModal.module.css'
 
 import { Job } from '../../../types/Job';
-
-// Using the shared Job type from types/Job.ts
 
 interface JobDetailModalProps {
   job: Job | null
@@ -13,259 +11,314 @@ interface JobDetailModalProps {
   onApply: (jobId: number) => void
 }
 
-const CompanyModal: React.FC<{ company: Job['companyDetails'] & { name: string }, onClose: () => void }> = ({ company, onClose }) => {
-  console.log('CompanyModal company data:', company);
+const getCompanyLogo = (company: string) => {
+  // Generate a consistent color based on company name
+  const colors = [
+    '#667eea', '#764ba2', '#f093fb', '#f5576c',
+    '#4facfe', '#00f2fe', '#43e97b', '#38f9d7',
+    '#ffecd2', '#fcb69f', '#a8edea', '#fed6e3'
+  ];
+  const colorIndex = company.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
   
   return (
-    <div className={styles.companyModalOverlay} onClick={onClose}>
-      <div className={styles.companyModalContent} onClick={e => e.stopPropagation()}>
-        <div className={styles.companyModalHeader}>
-          <h3>About {company.name}</h3>
-          <button className={styles.companyCloseButton} onClick={onClose}>
-            <FiX size={20} />
-          </button>
-        </div>
-        <div className={styles.companyModalBody}>
-          {company.description ? (
-            <div className={styles.companySection}>
-              <h4>About Us</h4>
-              <p>{company.description}</p>
-            </div>
-          ) : (
-            <div className={styles.companySection}>
-              <h4>About Us</h4>
-              <p>We are {company.name}, a leading company in our industry. More information coming soon.</p>
-            </div>
-          )}
-          
-          <div className={styles.companyDetails}>
-            {company.industry ? (
-              <div className={styles.companyDetailItem}>
-                <FiBriefcase className={styles.companyDetailIcon} />
-                <span>{company.industry}</span>
-              </div>
-            ) : (
-              <div className={styles.companyDetailItem}>
-                <FiBriefcase className={styles.companyDetailIcon} />
-                <span>Technology & Services</span>
-              </div>
-            )}
-            
-            {company.headquarters ? (
-              <div className={styles.companyDetailItem}>
-                <FiHome className={styles.companyDetailIcon} />
-                <span>{company.headquarters}</span>
-              </div>
-            ) : (
-              <div className={styles.companyDetailItem}>
-                <FiHome className={styles.companyDetailIcon} />
-                <span>Metro Manila, Philippines</span>
-              </div>
-            )}
-            
-            {company.size ? (
-              <div className={styles.companyDetailItem}>
-                <FiUsers className={styles.companyDetailIcon} />
-                <span>{company.size} employees</span>
-              </div>
-            ) : (
-              <div className={styles.companyDetailItem}>
-                <FiUsers className={styles.companyDetailIcon} />
-                <span>Growing team</span>
-              </div>
-            )}
-            
-            {company.founded ? (
-              <div className={styles.companyDetailItem}>
-                <FiCalendar className={styles.companyDetailIcon} />
-                <span>Founded in {company.founded}</span>
-              </div>
-            ) : (
-              <div className={styles.companyDetailItem}>
-                <FiCalendar className={styles.companyDetailIcon} />
-                <span>Established company</span>
-              </div>
-            )}
-            
-            {company.website ? (
-              <a 
-                href={company.website.startsWith('http') ? company.website : `https://${company.website}`} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className={styles.companyWebsiteLink}
-              >
-                <FiGlobe className={styles.companyDetailIcon} />
-                <span>Visit Website</span>
-              </a>
-            ) : (
-              <div className={styles.companyDetailItem}>
-                <FiGlobe className={styles.companyDetailIcon} />
-                <span>Website coming soon</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+    <div 
+      className={styles.companyLogo}
+      style={{ background: `linear-gradient(135deg, ${colors[colorIndex]}, ${colors[(colorIndex + 1) % colors.length]})` }}
+    >
+      {company.charAt(0).toUpperCase()}
     </div>
   );
 };
 
 const JobDetailModal: React.FC<JobDetailModalProps> = ({ job, isOpen, onClose, onApply }) => {
-  const [showCompanyModal, setShowCompanyModal] = useState(false);
-  
-  if (!isOpen || !job) return null
-  
-  // Debug logging to check job data
-  console.log('JobDetailModal job data:', job)
+  if (!isOpen || !job) return null;
 
-  const getCompanyLogo = (company: string) => {
-    switch (company.toLowerCase()) {
-      case 'google':
-        return (
-          <div className={`${styles.companyLogo} ${styles.google}`}>
-            G
-          </div>
-        )
-      case 'apple':
-        return (
-          <div className={`${styles.companyLogo} ${styles.apple}`}>
-            
-          </div>
-        )
-      default:
-        return (
-          <div className={styles.companyLogo}>
-            {company.charAt(0)}
-          </div>
-        )
+  const formatSalary = () => {
+    if (job.salaryMin && job.salaryMax) {
+      return `₱${job.salaryMin.toLocaleString('en-PH')} - ₱${job.salaryMax.toLocaleString('en-PH')}`;
     }
-  }
+    if (job.salary) {
+      return `₱${job.salary.toLocaleString('en-PH')}`;
+    }
+    return 'Salary not specified';
+  };
+
+  const formatPostedDate = () => {
+    if (job.postedDate) {
+      // Handle different date formats from backend
+      let date;
+      if (typeof job.postedDate === 'string') {
+        // Try parsing ISO string or other common formats
+        date = new Date(job.postedDate);
+      } else if (job.postedDate && typeof job.postedDate === 'object') {
+        date = new Date(job.postedDate);
+      } else {
+        return 'Recently posted';
+      }
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return 'Recently posted';
+      }
+      
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - date.getTime());
+      const diffMinutes = Math.floor(diffTime / (1000 * 60));
+      const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      // Format full date
+      const fullDate = date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      // Format relative time
+      let timeAgo;
+      if (diffMinutes < 1) {
+        timeAgo = 'Just now';
+      } else if (diffMinutes < 60) {
+        timeAgo = diffMinutes === 1 ? '1 minute ago' : `${diffMinutes} minutes ago`;
+      } else if (diffHours < 24) {
+        timeAgo = diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
+      } else if (diffDays === 1) {
+        timeAgo = '1 day ago';
+      } else if (diffDays < 7) {
+        timeAgo = `${diffDays} days ago`;
+      } else if (diffDays < 30) {
+        timeAgo = `${Math.ceil(diffDays / 7)} weeks ago`;
+      } else {
+        timeAgo = `${Math.ceil(diffDays / 30)} months ago`;
+      }
+      
+      return `${fullDate} — ${timeAgo}`;
+    }
+    return 'Recently posted';
+  };
 
   return (
     <div className={styles.overlay}>
-      {showCompanyModal && (
-        <CompanyModal 
-          company={{ ...(job.companyDetails || {}), name: job.company }}
-          onClose={() => setShowCompanyModal(false)}
-        />
-      )}
       <div className={styles.modal}>
+        {/* Header with company banner */}
         <div className={styles.header}>
-          <button className={styles.backButton} onClick={onClose}>
-            <FiArrowLeft />
-          </button>
-          <button 
-            className={styles.aboutCompanyButton}
-            onClick={() => setShowCompanyModal(true)}
-            title="About Company"
-          >
-            <FiBriefcase size={16} />
-            <span>About Company</span>
+          <div className={styles.companyBanner}>
+            <div className={styles.companyBannerContent}>
+              <div className={styles.companyLogoContainer}>
+                {getCompanyLogo(job.company)}
+              </div>
+              <div className={styles.companyHeaderInfo}>
+                <div className={styles.jobTitleBanner}>
+                  <h1 className={styles.jobTitleHeader}>
+                    {job.title}
+                    <span className={styles.postedDateInline}>{formatPostedDate()}</span>
+                  </h1>
+                </div>
+                <div className={styles.companyNameRow}>
+                  <h2 className={styles.companyName}>{job.company}</h2>
+                  <button className={styles.viewAllJobs}>View all jobs</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button className={styles.closeButton} onClick={onClose}>
+            <FiX size={24} />
           </button>
         </div>
 
-        <div className={styles.content}>
-          <div className={styles.jobHeader}>
-            {getCompanyLogo(job.company)}
-            <div className={styles.jobInfo}>
-              <h1 className={styles.jobTitle}>{job.title}</h1>
-              <div className={styles.companyInfo}>
-                <span className={styles.companyName}>{job.company}</span>
-                <span className={styles.separator}>•</span>
-                <span className={styles.location}>{job.location}</span>
-                <span className={styles.separator}>•</span>
-                <span className={styles.postedDate}>{job.postedDate}</span>
+        {/* Main content with two-column layout */}
+        <div className={styles.mainContent}>
+          {/* Left Column - Job Details */}
+          <div className={styles.leftColumn}>
+            <div className={styles.jobTitleSection}>
+              <div className={styles.jobMeta}>
+                <div className={styles.metaBadge}>
+                  <FiMapPin className={styles.badgeIcon} />
+                  <span>{job.location}</span>
+                </div>
+                <div className={styles.metaBadge}>
+                  <FiBriefcase className={styles.badgeIcon} />
+                  <span>{job.department || 'Not specified'}</span>
+                </div>
+                <div className={styles.metaBadge}>
+                  <FiClock className={styles.badgeIcon} />
+                  <span>{job.type}</span>
+                </div>
+                <div className={styles.metaBadge}>
+                  <FiTrendingUp className={styles.badgeIcon} />
+                  <span>{job.level || job.experienceLevel || 'Mid-level'}</span>
+                </div>
+                <div className={styles.metaBadge}>
+                  <span className={styles.pesoIcon}>₱</span>
+                  <span>{formatSalary()}</span>
+                </div>
+              </div>
+              <div className={styles.postingInfo}>
+                <span className={styles.applicationVolume}>Medium application volume</span>
               </div>
             </div>
-          </div>
 
-          <div className={styles.jobDescription}>
-            <h3>Job Description</h3>
-            <p>
-              {job.description}
-            </p>
-          </div>
-
-          <div className={styles.requirements}>
-            <h3>Requirements</h3>
-            <ul>
-              {job.requirements?.map((req, index) => (
-                <li key={index}>{req}</li>
-              )) || (
-                <li>No specific requirements listed</li>
-              )}
-            </ul>
-          </div>
-
-          <div className={styles.location}>
-            <h3>Location</h3>
-            <div className={styles.locationInfo}>
-              <FiMapPin className={styles.locationIcon} />
-              <span>{job.location}</span>
-            </div>
-            <div className={styles.mapPlaceholder}>
-              {/* Map would go here */}
-              <div className={styles.mapPin}>📍</div>
-            </div>
-          </div>
-
-          <div className={styles.information}>
-            <h3>Job Information</h3>
-            <div className={styles.infoGrid}>
-              <div className={styles.infoItem}>
-                <span className={styles.infoLabel}>Position</span>
-                <span className={styles.infoValue}>{job.title}</span>
-              </div>
-              <div className={styles.infoItem}>
-                <span className={styles.infoLabel}>Experience Level</span>
-                <span className={styles.infoValue}>{job.level || job.experienceLevel}</span>
-              </div>
-              <div className={styles.infoItem}>
-                <span className={styles.infoLabel}>Job Type</span>
-                <span className={styles.infoValue}>{job.type}</span>
-              </div>
-              <div className={styles.infoItem}>
-                <span className={styles.infoLabel}>Workplace Type</span>
-                <span className={styles.infoValue}>{job.workplaceType || (job.isRemote ? 'Remote' : job.isHybrid ? 'Hybrid' : 'On-site')}</span>
-              </div>
-              <div className={styles.infoItem}>
-                <span className={styles.infoLabel}>Salary</span>
-                <span className={styles.infoValue}>
-                  {job.salary ? `₱${job.salary.toLocaleString('en-PH')}/month` : 'Salary not specified'}
-                </span>
-              </div>
-              <div className={styles.infoItem}>
-                <span className={styles.infoLabel}>Posted Date</span>
-                <span className={styles.infoValue}>{job.postedDate}</span>
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>Job Description</h3>
+              <div className={styles.sectionContent}>
+                <p>{job.description}</p>
               </div>
             </div>
+
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>Requirements</h3>
+              <div className={styles.sectionContent}>
+                <ul className={styles.requirementsList}>
+                  {job.requirements?.map((req, index) => (
+                    <li key={index}>{req}</li>
+                  )) || (
+                    <li>No specific requirements listed</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+
+            {job.responsibilities && job.responsibilities.length > 0 && (
+              <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Responsibilities</h3>
+                <div className={styles.sectionContent}>
+                  <ul className={styles.requirementsList}>
+                    {job.responsibilities.map((resp, index) => (
+                      <li key={index}>{resp}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {(job.benefits && job.benefits.length > 0) && (
+              <div className={styles.section}>
+                <h3 className={styles.sectionTitle}>Benefits & Perks</h3>
+                <div className={styles.sectionContent}>
+                  <div className={styles.benefitsList}>
+                    {job.benefits.map((benefit, index) => (
+                      <span key={index} className={styles.benefitTag}>
+                        <FiStar className={styles.benefitIcon} />
+                        {benefit}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className={styles.facilities}>
-            <h3>Benefits & Perks</h3>
-            <div className={styles.facilitiesList}>
-              <span className={styles.facilityTag}>Health Insurance</span>
-              <span className={styles.facilityTag}>Dental Coverage</span>
-              <span className={styles.facilityTag}>Professional Development</span>
-              <span className={styles.facilityTag}>Flexible Hours</span>
-              <span className={styles.facilityTag}>Work from Home</span>
-              <span className={styles.facilityTag}>13th Month Pay</span>
-              <span className={styles.facilityTag}>Performance Bonus</span>
+          {/* Right Column - Company Information */}
+          <div className={styles.rightColumn}>
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>About {job.company}</h3>
+              <div className={styles.sectionContent}>
+                <div className={styles.companyDescription}>
+                  {job.companyDetails?.description ? (
+                    <p>{job.companyDetails.description}</p>
+                  ) : (
+                    <p>We are {job.company}, a leading company in our industry committed to excellence and innovation. Join our team and be part of our growth story.</p>
+                  )}
+                </div>
+                
+                <div className={styles.companyStats}>
+                  <div className={styles.statItem}>
+                    <FiBriefcase className={styles.statIcon} />
+                    <div className={styles.statInfo}>
+                      <span className={styles.statLabel}>Industry</span>
+                      <span className={styles.statValue}>{job.companyDetails?.industry || 'Technology & Services'}</span>
+                    </div>
+                  </div>
+                  
+                  <div className={styles.statItem}>
+                    <FiUsers className={styles.statIcon} />
+                    <div className={styles.statInfo}>
+                      <span className={styles.statLabel}>Company Size</span>
+                      <span className={styles.statValue}>{job.companyDetails?.size || '101-500'} employees</span>
+                    </div>
+                  </div>
+                  
+                  <div className={styles.statItem}>
+                    <FiHome className={styles.statIcon} />
+                    <div className={styles.statInfo}>
+                      <span className={styles.statLabel}>Headquarters</span>
+                      <span className={styles.statValue}>{job.companyDetails?.headquarters || 'Metro Manila, Philippines'}</span>
+                    </div>
+                  </div>
+                  
+                  <div className={styles.statItem}>
+                    <FiCalendar className={styles.statIcon} />
+                    <div className={styles.statInfo}>
+                      <span className={styles.statLabel}>Founded</span>
+                      <span className={styles.statValue}>{job.companyDetails?.founded || '2010'}</span>
+                    </div>
+                  </div>
+                  
+                  {job.companyDetails?.website && (
+                    <div className={styles.statItem}>
+                      <FiGlobe className={styles.statIcon} />
+                      <div className={styles.statInfo}>
+                        <span className={styles.statLabel}>Website</span>
+                        <a 
+                          href={job.companyDetails.website.startsWith('http') ? job.companyDetails.website : `https://${job.companyDetails.website}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={styles.websiteLink}
+                        >
+                          Visit Website
+                        </a>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.section}>
+              <h3 className={styles.sectionTitle}>Job Details</h3>
+              <div className={styles.sectionContent}>
+                <div className={styles.jobDetailsList}>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Employment Type</span>
+                    <span className={styles.detailValue}>{job.type}</span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Experience Level</span>
+                    <span className={styles.detailValue}>{job.level || job.experienceLevel || 'Mid-level'}</span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Work Arrangement</span>
+                    <span className={styles.detailValue}>
+                      {job.workplaceType || (job.isRemote ? 'Remote' : job.isHybrid ? 'Hybrid' : 'On-site')}
+                    </span>
+                  </div>
+                  <div className={styles.detailItem}>
+                    <span className={styles.detailLabel}>Department</span>
+                    <span className={styles.detailValue}>{job.department || 'General'}</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
+        {/* Sticky Footer with action buttons */}
         <div className={styles.footer}>
+          <button className={styles.saveButton}>
+            <FiBookmark className={styles.buttonIcon} />
+            Save Job
+          </button>
           <button 
             className={styles.applyButton}
-            onClick={() => onApply(job.id)}
+            onClick={() => onApply(typeof job.id === 'string' ? parseInt(job.id) : job.id)}
           >
-            APPLY NOW
+            <FiTrendingUp className={styles.buttonIcon} />
+            Apply
           </button>
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 export default JobDetailModal

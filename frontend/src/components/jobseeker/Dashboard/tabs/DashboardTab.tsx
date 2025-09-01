@@ -29,6 +29,7 @@ const DashboardTab: React.FC<any> = ({
         savedJobsCount={savedJobs.size}
         interviewsCount={applications.filter((app: any) => app.status === 'interview').length}
         availableJobsCount={jobs.length}
+        onNavigate={onNavigate}
       />
       <QuickActions
         onNavigate={onNavigate}

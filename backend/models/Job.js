@@ -221,7 +221,7 @@ JobSchema.methods.getPublicData = function() {
     requirements: this.requirements,
     responsibilities: this.responsibilities,
     benefits: this.benefits,
-    postedDate: this.formatPostedDate(),
+    postedDate: this.postedDate,
     lastUpdated: this.lastUpdated,
     applicationCount: this.applicationCount,
     viewCount: this.viewCount,

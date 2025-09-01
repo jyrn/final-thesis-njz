@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { JobPosting } from '@/types/dashboard';
+import { Job } from '@/types/Job';
 import { FiX, FiPlus, FiMinus, FiBriefcase } from 'react-icons/fi';
 import Button from '../ui/Button';
 import styles from './JobFormModal.module.css';
 
 interface JobFormModalProps {
-  job?: JobPosting | null;
+  job?: Job | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (jobData: Partial<JobPosting>) => void;
+  onSave: (jobData: Partial<Job>) => void;
   isEditing?: boolean;
 }
 
@@ -39,12 +39,14 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
       // Parse existing salary range if it exists
       let salaryMin = '';
       let salaryMax = '';
-      if (job.salary) {
-        const salaryMatch = job.salary.match(/₱([\d,]+)\s*-\s*₱([\d,]+)/);
-        if (salaryMatch) {
-          salaryMin = salaryMatch[1].replace(/,/g, '');
-          salaryMax = salaryMatch[2].replace(/,/g, '');
-        }
+      if (job.salaryMin && job.salaryMax) {
+        salaryMin = job.salaryMin.toString();
+        salaryMax = job.salaryMax.toString();
+      } else if (job.salary) {
+        // If only main salary is provided, use it as both min and max
+        const salaryValue = job.salary.toString();
+        salaryMin = salaryValue;
+        salaryMax = salaryValue;
       }
       
       return {
@@ -82,12 +84,14 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
       // Parse existing salary range if it exists
       let salaryMin = '';
       let salaryMax = '';
-      if (job.salary) {
-        const salaryMatch = job.salary.match(/₱([\d,]+)\s*-\s*₱([\d,]+)/);
-        if (salaryMatch) {
-          salaryMin = salaryMatch[1].replace(/,/g, '');
-          salaryMax = salaryMatch[2].replace(/,/g, '');
-        }
+      if (job.salaryMin && job.salaryMax) {
+        salaryMin = job.salaryMin.toString();
+        salaryMax = job.salaryMax.toString();
+      } else if (job.salary) {
+        // If only main salary is provided, use it as both min and max
+        const salaryValue = job.salary.toString();
+        salaryMin = salaryValue;
+        salaryMax = salaryValue;
       }
       
       // Use setTimeout to ensure the form is ready
@@ -211,23 +215,27 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
     const filteredResponsibilities = formData.responsibilities.filter(resp => resp.trim());
     const filteredBenefits = formData.benefits.filter(ben => ben.trim());
     
-    // Combine salary min/max into salary range string
+    // Calculate average salary as a number
     const salary = formData.salaryMin && formData.salaryMax 
-      ? `₱${parseInt(formData.salaryMin).toLocaleString()} - ₱${parseInt(formData.salaryMax).toLocaleString()}`
-      : '';
+      ? Math.round((parseInt(formData.salaryMin) + parseInt(formData.salaryMax)) / 2)
+      : undefined;
     
-    const jobData: Partial<JobPosting> = {
-      ...formData,
+    const jobData: Partial<Job> = {
+      title: formData.title,
+      location: formData.location,
+      type: formData.type,
+      description: formData.description,
+      department: formData.department,
+      remote: formData.remote,
+      status: formData.status,
       salary,
+      salaryMin: formData.salaryMin ? parseInt(formData.salaryMin) : undefined,
+      salaryMax: formData.salaryMax ? parseInt(formData.salaryMax) : undefined,
       requirements: filteredRequirements,
       responsibilities: filteredResponsibilities,
       benefits: filteredBenefits,
       ...(isEditing && job ? { id: job.id } : {})
     };
-    
-    // Remove salaryMin and salaryMax from the final object
-    delete (jobData as any).salaryMin;
-    delete (jobData as any).salaryMax;
 
     onSave(jobData);
   };

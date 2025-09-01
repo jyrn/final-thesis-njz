@@ -35,11 +35,10 @@ import { SettingsTab } from '../../components/employer/dashboard/SettingsTab';
 import { WelcomeSection } from '../../components/employer/dashboard/WelcomeSection';
 // Removed mock data imports - using real backend data only
 import { 
-  JobPosting, 
   Applicant
 } from '../../types/dashboard';
-import { jobApiService } from '../../services/jobApiService';
 import { Job } from '../../types/Job';
+import { jobApiService } from '../../services/jobApiService';
 import { ApplicantDetailsModal } from '../../components/employer/dashboard/ApplicantDetailsModal';
 import { JobDetailsModal } from '../../components/employer/dashboard/JobDetailsModal';
 import { CompanyProfileModal } from '../../components/employer/dashboard/CompanyProfileModal';
@@ -97,7 +96,7 @@ const EmployerDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [jobPostings, setJobPostings] = useState<JobPosting[]>([]);
+  const [jobPostings, setJobPostings] = useState<Job[]>([]);
   const [isLoadingJobs, setIsLoadingJobs] = useState(true);
   const [applicantFilters, setApplicantFilters] = useState<{ status: string; sortBy: string; jobId: string }>({ status: '', sortBy: 'newest', jobId: '' });
   const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
@@ -111,7 +110,7 @@ const EmployerDashboard: React.FC = () => {
   const [isTeamManagementModalOpen, setIsTeamManagementModalOpen] = useState(false);
   const [isDocumentsModalOpen, setIsDocumentsModalOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isJobDetailsModalOpen, setIsJobDetailsModalOpen] = useState(false);
   const [applicantStatuses, setApplicantStatuses] = useState<Record<number, string>>({});
 
@@ -143,26 +142,37 @@ const EmployerDashboard: React.FC = () => {
         console.log('📊 Jobs API response:', response);
         console.log('📝 Number of jobs received:', response.jobs?.length || 0);
         
-        // Convert backend jobs to JobPosting format
-        const convertedJobs: JobPosting[] = response.jobs.map((job: any) => ({
+        // Convert backend jobs to Job format
+        const convertedJobs: Job[] = response.jobs.map((job: any) => ({
           id: job._id || job.id,
+          _id: job._id,
           title: job.title,
+          company: job.company || 'Your Company',
           location: job.location,
-          type: job.type,
-          applicants: job.applicantCount || 0,
-          posted: job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'Recently',
-          status: job.status,
-          salary: job.salary || `₱${job.salaryMin?.toLocaleString()} - ₱${job.salaryMax?.toLocaleString()}`,
-          views: job.views || 0,
           description: job.description,
+          salary: job.salary || (job.salaryMin && job.salaryMax ? `₱${job.salaryMin?.toLocaleString()} - ₱${job.salaryMax?.toLocaleString()}` : undefined),
+          salaryMin: job.salaryMin,
+          salaryMax: job.salaryMax,
+          type: job.type,
+          level: job.level || job.experienceLevel || 'Mid-level',
+          experienceLevel: job.experienceLevel || job.level,
+          department: job.department,
+          isRemote: job.workplaceType === 'Remote' || job.remote || false,
+          isHybrid: job.workplaceType === 'Hybrid' || job.hybrid || false,
+          workplaceType: job.workplaceType as 'On-site' | 'Hybrid' | 'Remote',
+          remote: job.workplaceType === 'Remote' || job.remote || false,
           requirements: job.requirements || [],
           responsibilities: job.responsibilities || [],
           benefits: job.benefits || [],
-          urgency: 'medium',
-          matchQuality: 85,
-          department: job.department || 'General',
-          postedDate: job.createdAt || new Date().toISOString(),
-          remote: job.workplaceType === 'Remote' || job.remote
+          postedDate: job.createdAt ? new Date(job.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+          lastUpdated: job.updatedAt,
+          posted: job.createdAt ? new Date(job.createdAt).toLocaleDateString() : 'Recently',
+          status: job.status,
+          applicants: job.applicantCount || 0,
+          applicantCount: job.applicantCount || 0,
+          views: job.views || 0,
+          urgency: 'medium' as const,
+          matchQuality: 85
         }));
         
         console.log('✅ Converted jobs:', convertedJobs);
@@ -312,7 +322,7 @@ const EmployerDashboard: React.FC = () => {
   });
 
   // Enhanced job postings from state
-  const enhancedJobPostings: JobPosting[] = jobPostings.map((job, index) => ({
+  const enhancedJobPostings: Job[] = jobPostings.map((job, index) => ({
     ...job,
     views: job.views || [450, 320, 280, 390][index % 4],
     id: job.id || index + 1,
@@ -372,7 +382,7 @@ const EmployerDashboard: React.FC = () => {
   };
 
   // Handle editing a job
-  const handleEditJob = (job: JobPosting) => {
+  const handleEditJob = (job: Job) => {
     setSelectedJob(job);
     // In a real implementation, you would open an edit form modal here
     console.log('Edit job:', job);
@@ -509,18 +519,18 @@ const EmployerDashboard: React.FC = () => {
   };
 
 
-  const handleCreateJob = async (jobData: Partial<JobPosting>) => {
+  const handleCreateJob = async (jobData: Partial<Job>) => {
     try {
       setIsLoadingJobs(true);
       
-      // Convert JobPosting data to backend format
+      // Convert Job data to backend format
       const backendJobData = {
         title: jobData.title || '',
         description: jobData.description || '',
         location: jobData.location || '',
-        salary: jobData.salary,
+        salary: jobData.salary ? jobData.salary.toString() : '',
         type: jobData.type || 'Full-time',
-        level: 'Mid-level', // Default level since it's not in JobPosting interface
+        level: jobData.level || 'Mid-level',
         department: jobData.department || 'General',
         workplaceType: jobData.remote ? 'Remote' : 'On-site',
         remote: jobData.remote || false,
@@ -532,12 +542,14 @@ const EmployerDashboard: React.FC = () => {
 
       const createdJob = await jobApiService.createJob(backendJobData);
       
-      // Convert created job to JobPosting format and add to state
-      const newJobPosting: JobPosting = {
+      // Convert created job to Job format and add to state
+      const newJob: Job = {
         id: createdJob._id || createdJob.id || Math.random().toString(),
         title: createdJob.title || jobData.title || '',
+        company: createdJob.company || 'Your Company',
         location: createdJob.location || jobData.location || '',
         type: createdJob.type || jobData.type || 'Full-time',
+        level: createdJob.level || jobData.level || 'Mid-level',
         applicants: 0,
         posted: 'Just now',
         status: createdJob.status || 'active',
@@ -547,14 +559,14 @@ const EmployerDashboard: React.FC = () => {
         requirements: createdJob.requirements || jobData.requirements || [],
         responsibilities: createdJob.responsibilities || jobData.responsibilities || [],
         benefits: createdJob.benefits || jobData.benefits || [],
-        urgency: 'medium',
+        urgency: 'medium' as const,
         matchQuality: 85,
         department: createdJob.department || jobData.department || 'General',
-        postedDate: createdJob.createdAt || createdJob.postedDate || new Date().toISOString(),
-        remote: createdJob.workplaceType === 'Remote' || createdJob.remote || jobData.remote || false
+        postedDate: createdJob.createdAt || new Date().toISOString(),
+        remote: createdJob.remote || jobData.remote || false
       };
-      
-      setJobPostings(prev => [newJobPosting, ...prev]);
+
+      setJobPostings(prev => [...prev, newJob]);
     } catch (error) {
       console.error('Error creating job:', error);
       alert('Failed to create job. Please try again.');
@@ -564,22 +576,22 @@ const EmployerDashboard: React.FC = () => {
   };
 
   const [showEditConfirm, setShowEditConfirm] = useState(false);
-  const [pendingJobUpdate, setPendingJobUpdate] = useState<Partial<JobPosting> | null>(null);
+  const [pendingJobUpdate, setPendingJobUpdate] = useState<Partial<Job> | null>(null);
 
-  const handleUpdateJob = async (jobData: Partial<JobPosting>) => {
+  const handleUpdateJob = async (jobData: Partial<Job>) => {
     if (!jobData.id) return;
     
     try {
       setIsLoadingJobs(true);
       
-      // Convert JobPosting data to backend format
+      // Convert Job data to backend format
       const backendJobData = {
         title: jobData.title,
         description: jobData.description,
         location: jobData.location,
-        salary: jobData.salary,
+        salary: jobData.salary ? jobData.salary.toString() : '',
         type: jobData.type,
-        level: 'Mid-level', // Default level
+        level: jobData.level || 'Mid-level',
         department: jobData.department,
         workplaceType: jobData.remote ? 'Remote' : 'On-site',
         remote: jobData.remote,
@@ -657,7 +669,7 @@ const EmployerDashboard: React.FC = () => {
     }
   };
 
-  const handleJobClick = (job: JobPosting) => {
+  const handleJobClick = (job: Job) => {
     setSelectedJob(job);
     setApplicantFilters(prev => ({
       ...prev,
@@ -668,13 +680,13 @@ const EmployerDashboard: React.FC = () => {
     setIsJobDetailsModalOpen(true);
   };
 
-  const handleViewJobDetails = (job: JobPosting) => {
+  const handleViewJobDetails = (job: Job) => {
     setSelectedJob(job);
     setIsJobDetailsModalOpen(true);
   };
 
   // Handle viewing applicants for a specific job
-  const handleViewJobApplicants = (job: JobPosting) => {
+  const handleViewJobApplicants = (job: Job) => {
     setActiveTab('applicants');
     setApplicantFilters(prev => ({
       ...prev,
@@ -683,8 +695,8 @@ const EmployerDashboard: React.FC = () => {
     }));
   };
 
-  const handleEditJobFromModal = (job: JobPosting) => {
-    const handleEditJob = (job: JobPosting) => {
+  const handleEditJobFromModal = (job: Job) => {
+    const handleEditJob = (job: Job) => {
       setSelectedJob(job);
       // Here you would typically open an edit form modal
       // For now, we'll just log it
@@ -694,9 +706,9 @@ const EmployerDashboard: React.FC = () => {
     setIsJobDetailsModalOpen(false);
   };
 
-  const handleDeleteJobFromModal = (job: JobPosting) => {
+  const handleDeleteJobFromModal = (job: Job) => {
     setIsJobDetailsModalOpen(false);
-    handleDeleteJob(job.id || 0);
+    handleDeleteJob(typeof job.id === 'string' ? parseInt(job.id) : job.id || 0);
   };
 
   const closeJobDetailsModal = () => {

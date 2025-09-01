@@ -56,7 +56,7 @@ export class JobService {
       const jobsWithMatching = response.jobs.map((job) => ({
         ...convertToJobServiceJob(job),
         matchPercentage: this.calculateMatchPercentage(job),
-        postedDate: this.formatPostedDate(job.postedDate || new Date().toISOString()),
+        postedDate: job.postedDate || new Date().toISOString(),
       }))
 
       this.jobs = jobsWithMatching

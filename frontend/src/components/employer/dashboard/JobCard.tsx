@@ -1,15 +1,15 @@
 import React from 'react';
-import { JobPosting } from '@/types/dashboard';
+import { Job } from '@/types/Job';
 import Button from '../ui/Button';
 import { FiEye, FiEdit2, FiTrash2, FiUsers, FiClock, FiMapPin } from 'react-icons/fi';
 import styles from './JobCard.module.css';
 
 interface JobCardProps {
-  job: JobPosting;
-  onView?: (job: JobPosting) => void;
-  onEdit?: (job: JobPosting) => void;
-  onDelete?: (jobId: number) => void;
-  onClick?: (job: JobPosting) => void;
+  job: Job;
+  onView?: (job: Job) => void;
+  onEdit?: (job: Job) => void;
+  onDelete?: (jobId: string | number) => void;
+  onClick?: (job: Job) => void;
 }
 
 export const JobCard: React.FC<JobCardProps> = ({ job, onView, onEdit, onDelete, onClick }) => {
