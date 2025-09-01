@@ -33,7 +33,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ stats }) => {
         <StatsCard
           icon={HiCheckCircle}
           value={stats?.totalApplications || 0}
-          label="Applications"
+          label="Jobseekers"
           iconClassName="applications"
         />
         <StatsCard

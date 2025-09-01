@@ -2,10 +2,15 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../config/firebase';
-import { FiUser, FiEye } from 'react-icons/fi';
-import { HiShieldCheck, HiLockClosed, HiEyeOff } from 'react-icons/hi';
-import { AdminFormData } from '../../types/admin';
+import { HiLockClosed, HiUserGroup, HiEye, HiShieldCheck, HiExclamationCircle } from 'react-icons/hi2';
+import { HiMail, HiEyeOff } from 'react-icons/hi';
+import adminService from '../../services/adminService';
 import './AdminAuth.css';
+
+interface AdminFormData {
+  email: string;
+  password: string;
+}
 
 interface AdminAuthProps {}
 
@@ -85,85 +90,98 @@ const AdminAuth: React.FC<AdminAuthProps> = () => {
 
   return (
     <div className="admin-auth-container">
-      <div className="admin-auth-background">
-        <div className="admin-auth-overlay"></div>
-      </div>
-      
-      <div className="admin-auth-content">
-        <div className="admin-auth-card">
-          <div className="admin-auth-header">
-            <div className="admin-logo">
-              <HiShieldCheck className="shield-icon" />
+      <div className="admin-auth-card">
+        <div className="admin-left-panel">
+          <div className="admin-visual-content">
+            <div className="admin-logo-container">
+              <img 
+                src="/peso-logo.png" 
+                alt="PESO Logo" 
+                className="admin-peso-logo"
+              />
             </div>
-            <h1>PESO Admin Portal</h1>
-            <p>Secure administrative access</p>
+            <div className="admin-journey-text">
+              <h2>Admin Portal Access</h2>
+              <p>Secure administrative control for PESO Job Portal</p>
+            </div>
+            <div className="admin-decorative-circle1"></div>
+            <div className="admin-decorative-circle2"></div>
+            <div className="admin-decorative-circle3"></div>
           </div>
+        </div>
 
-          <form onSubmit={handleSubmit} className="admin-auth-form">
+        <div className="admin-right-panel">
+          <div className="admin-form-container">
+            <div className="admin-role-indicator">
+              <div className="admin-role-info">
+                <div className="admin-role-icon">
+                  <HiShieldCheck />
+                </div>
+                <div className="admin-role-text">
+                  <span className="admin-role-label">Signing in as</span>
+                  <span className="admin-role-name">Administrator</span>
+                </div>
+              </div>
+            </div>
+
             {error && (
-              <div className="error-message">
-                <span>{error}</span>
+              <div className="admin-error-message">
+                <HiExclamationCircle className="admin-message-icon" />
+                {error}
               </div>
             )}
 
-            <div className="form-group">
-              <label htmlFor="email">Admin Email</label>
-              <div className="input-wrapper">
-                <FiUser className="input-icon" />
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  placeholder="Enter your admin email"
-                  required
-                />
+            <form onSubmit={handleSubmit} className="admin-form">
+              <div className="admin-form-header">
+                <h1 className="admin-form-title">Welcome Back</h1>
+                <p className="admin-form-subtitle">Sign in to your admin account</p>
               </div>
-            </div>
 
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <div className="input-wrapper">
-                <HiLockClosed className="input-icon" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="Enter your password"
-                  required
-                />
-                <button
-                  type="button"
-                  className="password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <HiEyeOff /> : <FiEye />}
-                </button>
+              <div className="admin-input-group">
+                <label className="admin-input-label">Email</label>
+                <div className="admin-input-wrapper">
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="admin-input"
+                    placeholder="Enter your admin email"
+                    required
+                  />
+                </div>
               </div>
-            </div>
 
+              <div className="admin-input-group">
+                <label className="admin-input-label">Password</label>
+                <div className="admin-input-wrapper">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="admin-input admin-has-eye-button"
+                    placeholder="Enter your password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="admin-eye-button"
+                    onClick={() => setShowPassword(!showPassword)}
+                  >
+                    {showPassword ? <HiEyeOff /> : <HiEye />}
+                  </button>
+                </div>
+              </div>
 
-            <button
-              type="submit"
-              className="admin-login-btn"
-              disabled={loading}
-            >
-              {loading ? 'Authenticating...' : 'Access Admin Portal'}
-            </button>
-          </form>
-
-          <div className="admin-auth-footer">
-            <p>Authorized personnel only</p>
-            <button 
-              type="button" 
-              className="back-link"
-              onClick={() => navigate('/')}
-            >
-              ← Back to Main Site
-            </button>
+              <button
+                type="submit"
+                className="admin-primary-button"
+                disabled={loading}
+              >
+                {loading ? "Signing In..." : "Sign In"}
+              </button>
+            </form>
           </div>
         </div>
       </div>

@@ -8,6 +8,8 @@ import {
   FiSettings,
   FiUserCheck
 } from 'react-icons/fi';
+import { HiShieldCheck } from 'react-icons/hi2';
+import { HiSparkles } from 'react-icons/hi';
 import { AdminUser, AdminTab } from '../../types/admin';
 
 interface AdminSidebarProps {
@@ -37,11 +39,20 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   return (
     <div className="admin-sidebar">
       <div className="admin-sidebar-header">
-        <h2>PESO Admin</h2>
-        <div className="admin-info">
-          <p>{adminUser.adminName}</p>
-          <span className="admin-role">{adminUser.role}</span>
+        <div className="admin-logo-section">
+          <img 
+            src="/peso-logo.png" 
+            alt="PESO Logo" 
+            className="sidebar-peso-logo"
+          />
+          <h2>PESO Admin</h2>
         </div>
+        {adminUser.role === 'superadmin' && (
+          <div className="admin-role-badge">
+            <HiSparkles className="role-icon" />
+            SUPERADMIN
+          </div>
+        )}
       </div>
 
       <nav className="admin-nav">
