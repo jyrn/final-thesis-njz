@@ -246,18 +246,18 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = (props) => {
 
         <div className={styles.modalActions}>
           <button 
-            className={styles.editButton}
-            onClick={() => onEdit(job)}
-          >
-            <FiEdit3 />
-            Edit Job
-          </button>
-          <button 
             className={styles.deleteButton}
             onClick={() => onDelete(job)}
           >
             <FiTrash2 />
             Delete Job
+          </button>
+          <button 
+            className={styles.editButton}
+            onClick={() => onEdit(job)}
+          >
+            <FiEdit3 />
+            Edit Job
           </button>
         </div>
       </div>
