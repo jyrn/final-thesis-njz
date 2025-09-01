@@ -16,14 +16,15 @@ const defaultJobData = {
   title: '',
   location: '',
   type: 'Full-time',
+  level: 'Mid-level',
   salaryMin: '',
   salaryMax: '',
   description: '',
   requirements: [''],
   responsibilities: [''],
   benefits: [''],
-  department: 'Engineering',
-  remote: false,
+  department: 'Technology',
+  workplaceType: 'On-site',
   status: 'active'
 };
 
@@ -53,14 +54,15 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
         title: job.title || '',
         location: job.location || '',
         type: job.type || 'Full-time',
+        level: job.level || job.experienceLevel || 'Mid-level',
         salaryMin,
         salaryMax,
         description: job.description || '',
         requirements: job.requirements && job.requirements.length > 0 ? job.requirements : [''],
         responsibilities: job.responsibilities && job.responsibilities.length > 0 ? job.responsibilities : [''],
         benefits: job.benefits && job.benefits.length > 0 ? job.benefits : [''],
-        department: job.department || 'Engineering',
-        remote: job.remote || false,
+        department: job.department || 'Technology',
+        workplaceType: job.workplaceType || (job.remote ? 'Remote' : 'On-site'),
         status: job.status || 'active'
       };
     }
@@ -100,14 +102,15 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
           title: job.title || '',
           location: job.location || '',
           type: job.type || 'Full-time',
+          level: job.level || job.experienceLevel || 'Mid-level',
           salaryMin,
           salaryMax,
           description: job.description || '',
           requirements: job.requirements && job.requirements.length > 0 ? job.requirements : [''],
           responsibilities: job.responsibilities && job.responsibilities.length > 0 ? job.responsibilities : [''],
           benefits: job.benefits && job.benefits.length > 0 ? job.benefits : [''],
-          department: job.department || 'Engineering',
-          remote: job.remote || false,
+          department: job.department || 'Technology',
+          workplaceType: job.workplaceType || (job.remote ? 'Remote' : 'On-site'),
           status: job.status || 'active'
         };
         
@@ -224,9 +227,10 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
       title: formData.title,
       location: formData.location,
       type: formData.type,
+      level: formData.level,
       description: formData.description,
       department: formData.department,
-      remote: formData.remote,
+      workplaceType: formData.workplaceType as 'On-site' | 'Hybrid' | 'Remote',
       status: formData.status,
       salary,
       salaryMin: formData.salaryMin ? parseInt(formData.salaryMin) : undefined,
@@ -301,6 +305,23 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
             </div>
 
             <div className={styles.formGroup}>
+              <label className={styles.label}>Experience Level</label>
+              <select
+                className={styles.select}
+                value={formData.level}
+                onChange={(e) => handleInputChange('level', e.target.value)}
+              >
+                <option value="Entry-level">Entry-level</option>
+                <option value="Mid-level">Mid-level</option>
+                <option value="Senior-level">Senior-level</option>
+                <option value="Lead">Lead</option>
+                <option value="Manager">Manager</option>
+                <option value="Director">Director</option>
+                <option value="Executive">Executive</option>
+              </select>
+            </div>
+
+            <div className={styles.formGroup}>
               <label className={styles.label}>
                 Location <span className={styles.required}>*</span>
               </label>
@@ -316,20 +337,13 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
 
             <div className={styles.formGroup}>
               <label className={styles.label}>Department</label>
-              <select
-                className={styles.select}
+              <input
+                type="text"
+                className={styles.input}
                 value={formData.department}
                 onChange={(e) => handleInputChange('department', e.target.value)}
-              >
-                <option value="Engineering">Engineering</option>
-                <option value="Design">Design</option>
-                <option value="Product">Product</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Sales">Sales</option>
-                <option value="Data">Data</option>
-                <option value="HR">Human Resources</option>
-                <option value="Finance">Finance</option>
-              </select>
+                placeholder="e.g. Marketing & Communications, Engineering, etc."
+              />
             </div>
 
             <div className={styles.formGroup}>
@@ -381,14 +395,16 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
               </div>
               
               <div className={styles.formGroup}>
-                <label className={styles.checkboxGroup}>
-                  <input
-                    type="checkbox"
-                    checked={formData.remote}
-                    onChange={(e) => handleInputChange('remote', e.target.checked)}
-                  />
-                  <span className={styles.checkboxLabel}>Remote work available</span>
-                </label>
+                <label className={styles.label}>Workplace Type</label>
+                <select
+                  className={styles.select}
+                  value={formData.workplaceType}
+                  onChange={(e) => handleInputChange('workplaceType', e.target.value)}
+                >
+                  <option value="On-site">On-site</option>
+                  <option value="Hybrid">Hybrid</option>
+                  <option value="Remote">Remote</option>
+                </select>
               </div>
             </div>
 

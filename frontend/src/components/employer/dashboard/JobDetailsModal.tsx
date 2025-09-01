@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Job } from '@/types/Job';
 import { FiX, FiMapPin, FiClock, FiUsers, FiCalendar, FiBriefcase, FiTag, FiEdit3, FiSave, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import styles from './JobDetailsModal.module.css';
@@ -46,12 +47,54 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = (props) => {
   
   if (!isOpen || !job) return null;
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+  const formatPostedDate = () => {
+    if (job.postedDate || job.posted) {
+      // Handle different date formats from backend
+      let date;
+      if (typeof (job.postedDate || job.posted) === 'string') {
+        date = new Date(job.postedDate || job.posted);
+      } else {
+        date = new Date(job.postedDate || job.posted);
+      }
+      
+      if (isNaN(date.getTime())) {
+        return 'Recently posted';
+      }
+      
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - date.getTime());
+      const diffMinutes = Math.floor(diffTime / (1000 * 60));
+      const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      // Format full date
+      const fullDate = date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      // Format relative time
+      let timeAgo;
+      if (diffMinutes < 1) {
+        timeAgo = 'Just now';
+      } else if (diffMinutes < 60) {
+        timeAgo = diffMinutes === 1 ? '1 minute ago' : `${diffMinutes} minutes ago`;
+      } else if (diffHours < 24) {
+        timeAgo = diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
+      } else if (diffDays === 1) {
+        timeAgo = '1 day ago';
+      } else if (diffDays < 7) {
+        timeAgo = `${diffDays} days ago`;
+      } else if (diffDays < 30) {
+        timeAgo = `${Math.ceil(diffDays / 7)} weeks ago`;
+      } else {
+        timeAgo = `${Math.ceil(diffDays / 30)} months ago`;
+      }
+      
+      return `${fullDate} — ${timeAgo}`;
+    }
+    return 'Recently posted';
   };
 
   const getStatusColor = (status: string) => {
@@ -67,28 +110,50 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = (props) => {
     }
   };
 
-  return (
+  const getCompanyLogo = (company: string) => {
+    const colors = [
+      '#667eea', '#764ba2', '#f093fb', '#f5576c',
+      '#4facfe', '#00f2fe', '#43e97b', '#38f9d7',
+      '#ffecd2', '#fcb69f', '#a8edea', '#fed6e3'
+    ];
+    const colorIndex = company.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % colors.length;
+    
+    return (
+      <div 
+        className={styles.companyLogo}
+        style={{ background: `linear-gradient(135deg, ${colors[colorIndex]}, ${colors[(colorIndex + 1) % colors.length]})` }}
+      >
+        {company.charAt(0).toUpperCase()}
+      </div>
+    );
+  };
+
+  const modalContent = (
     <div className={styles.modalOverlay} onClick={onClose}>
       <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-        <div className={styles.modalHeader}>
-          <div className={styles.jobInfo}>
-            <div className={styles.jobIcon}>
-              <FiBriefcase size={36} />
-            </div>
-            <div className={styles.jobDetails}>
-              <h2 className={styles.jobTitle}>{job.title}</h2>
-              <p className={styles.jobLocation}>{job.location}</p>
-              <div className={styles.jobMeta}>
-                <span className={styles.location}>
-                  <FiMapPin size={14} />
-                  {job.type}
-                </span>
-                <span 
-                  className={styles.statusBadge} 
-                  style={getStatusColor(job.status)}
-                >
-                  {job.status}
-                </span>
+        {/* Header with company banner */}
+        <div className={styles.header}>
+          <div className={styles.companyBanner}>
+            <div className={styles.companyBannerContent}>
+              <div className={styles.companyLogoContainer}>
+                {getCompanyLogo(job.company || 'Company')}
+              </div>
+              <div className={styles.companyHeaderInfo}>
+                <div className={styles.jobTitleBanner}>
+                  <h1 className={styles.jobTitleHeader}>
+                    {job.title}
+                    <span className={styles.postedDateInline}>{formatPostedDate()}</span>
+                  </h1>
+                </div>
+                <div className={styles.companyNameRow}>
+                  <h2 className={styles.companyName}>{job.company || 'Company Name'}</h2>
+                  <span 
+                    className={styles.statusBadge} 
+                    style={getStatusColor(job.status)}
+                  >
+                    {job.status}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -99,8 +164,12 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = (props) => {
 
         <div className={styles.metaSection}>
           <div className={styles.metaItem}>
+            <FiMapPin className={styles.metaIcon} />
+            <span>{job.location}</span>
+          </div>
+          <div className={styles.metaItem}>
             <FiBriefcase className={styles.metaIcon} />
-            <span>{job.department || 'Engineering'}</span>
+            <span>{job.department || 'Not specified'}</span>
           </div>
           <div className={styles.metaItem}>
             <FiClock className={styles.metaIcon} />
@@ -108,29 +177,36 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = (props) => {
           </div>
           <div className={styles.metaItem}>
             <FiTag className={styles.metaIcon} />
-            <span>{job.salary}</span>
+            <span>{job.level || job.experienceLevel || 'Mid-level'}</span>
           </div>
           <div className={styles.metaItem}>
-            <FiCalendar className={styles.metaIcon} />
-            <span>Posted {formatDate(job.postedDate || job.posted)}</span>
+            <span className={styles.pesoIcon}>₱</span>
+            <span>{job.salaryMin && job.salaryMax ? `₱${job.salaryMin.toLocaleString('en-PH')} - ₱${job.salaryMax.toLocaleString('en-PH')}` : job.salary ? `₱${job.salary.toLocaleString('en-PH')}` : 'Salary not specified'}</span>
           </div>
           <div 
             className={`${styles.metaItem} ${styles.clickable}`}
             onClick={(e) => handleViewApplicantsClick(e, job)}
           >
             <FiUsers className={styles.metaIcon} />
-            <span>{job.applicants} applicants</span>
+            <span>{job.applicants || job.applicantCount || 0} applicants</span>
           </div>
+          {(job.workplaceType || job.remote) && (
+            <div className={styles.metaItem}>
+              <FiMapPin className={styles.metaIcon} />
+              <span>{job.workplaceType || (job.remote ? 'Remote' : 'On-site')}</span>
+            </div>
+          )}
         </div>
 
-        <div className={styles.section}>
-          <h3 className={styles.sectionTitle}>Job Description</h3>
-          <div className={styles.description}>
-            <div className={styles.descriptionContent}>
-              <p>{job.description || 'No description available.'}</p>
+        <div className={styles.scrollableContent}>
+          <div className={styles.section}>
+            <h3 className={styles.sectionTitle}>Job Description</h3>
+            <div className={styles.description}>
+              <div className={styles.descriptionContent}>
+                <p>{job.description || 'No description available.'}</p>
+              </div>
             </div>
           </div>
-        </div>
 
         {job.requirements && job.requirements.length > 0 && (
           <div className={styles.section}>
@@ -166,6 +242,7 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = (props) => {
             </ul>
           </div>
         )}
+        </div>
 
         <div className={styles.modalActions}>
           <button 
@@ -186,4 +263,6 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = (props) => {
       </div>
     </div>
   );
+
+  return isOpen ? createPortal(modalContent, document.body) : null;
 };

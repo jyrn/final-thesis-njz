@@ -31,9 +31,14 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onView, onEdit, onDelete,
               <FiMapPin className={styles.icon} />
               {job.location} • {job.type}
             </span>
-            {job.salary && (
-              <span className={styles.jobSalary}>{job.salary}</span>
+            {job.level && (
+              <span className={styles.jobLevel}>{job.level}</span>
             )}
+            {(job.salaryMin && job.salaryMax) ? (
+              <span className={styles.jobSalary}>₱{job.salaryMin.toLocaleString('en-PH')} - ₱{job.salaryMax.toLocaleString('en-PH')}</span>
+            ) : job.salary ? (
+              <span className={styles.jobSalary}>₱{job.salary.toLocaleString('en-PH')}</span>
+            ) : null}
           </div>
         </div>
         <span className={`${styles.statusBadge} ${styles[job.status.toLowerCase()]}`}>
@@ -46,17 +51,32 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onView, onEdit, onDelete,
           className={`${styles.statItem} ${styles.clickableStat}`}
           onClick={(e) => {
             e.stopPropagation();
-            // Use the onView handler for the applicants count
             onView?.(job);
           }}
         >
           <FiUsers className={styles.icon} />
-          {job.applicants} {job.applicants === 1 ? 'applicant' : 'applicants'}
+          {job.applicants || job.applicantCount || 0} {(job.applicants || job.applicantCount || 0) === 1 ? 'applicant' : 'applicants'}
         </span>
         <span className={styles.statItem}>
           <FiClock className={styles.icon} />
-          {job.posted}
+          {job.postedDate ? new Date(job.postedDate).toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+          }) : job.posted ? new Date(job.posted).toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+          }) : 'Recently'}
         </span>
+        {job.department && (
+          <span className={styles.statItem}>
+            {job.department}
+          </span>
+        )}
+        {(job.workplaceType || job.remote) && (
+          <span className={styles.statItem}>
+            {job.workplaceType || (job.remote ? 'Remote' : 'On-site')}
+          </span>
+        )}
       </div>
 
       {job.requirements && job.requirements.length > 0 && (
