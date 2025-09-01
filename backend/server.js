@@ -8,6 +8,7 @@ const jobseekerRoutes = require('./routes/jobseekerRoutes');
 const employerRoutes = require('./routes/employerRoutes');
 const jobRoutes = require('./routes/jobRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
+const resumeRoutes = require('./routes/resumeRoutes');
 
 // Initialize Express app
 const app = express();
@@ -30,6 +31,7 @@ app.use('/api/jobseekers', jobseekerRoutes);
 app.use('/api/employers', employerRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/resumes', resumeRoutes);
 
 // Basic route for testing
 app.get('/', (req, res) => {

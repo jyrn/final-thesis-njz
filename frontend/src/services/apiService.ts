@@ -297,7 +297,7 @@ class ApiService {
     return this.handleResponse(response);
   }
 
-  // Resume upload method
+  // Resume endpoints
   async uploadResume(file: File): Promise<ApiResponse> {
     const formData = new FormData();
     formData.append('resume', file);
@@ -306,13 +306,60 @@ class ApiService {
     // Remove Content-Type header to let browser set it with boundary for multipart/form-data
     delete (headers as any)['Content-Type'];
     
-    const response = await fetch(`${API_BASE_URL}/jobseekers/resume`, {
+    const response = await fetch(`${API_BASE_URL}/resumes/upload`, {
       method: 'POST',
       headers,
       body: formData
     });
     
     return this.handleResponse(response);
+  }
+
+  async getResumes(): Promise<ApiResponse> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/resumes`, {
+      headers
+    });
+    
+    return this.handleResponse(response);
+  }
+
+  async getCurrentResume(): Promise<ApiResponse> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/resumes/current`, {
+      headers
+    });
+    
+    return this.handleResponse(response);
+  }
+
+  async activateResume(resumeId: string): Promise<ApiResponse> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/resumes/${resumeId}/activate`, {
+      method: 'PUT',
+      headers
+    });
+    
+    return this.handleResponse(response);
+  }
+
+  async deleteResume(resumeId: string): Promise<ApiResponse> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/resumes/${resumeId}`, {
+      method: 'DELETE',
+      headers
+    });
+    
+    return this.handleResponse(response);
+  }
+
+  async downloadResume(resumeId: string): Promise<Response> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/resumes/${resumeId}/download`, {
+      headers
+    });
+    
+    return response; // Return raw response for file download
   }
 
   // Utility methods

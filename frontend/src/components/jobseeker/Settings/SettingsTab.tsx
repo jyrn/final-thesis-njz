@@ -119,8 +119,24 @@ const SettingsTab: React.FC = () => {
       
       const response = await apiService.get('/jobseekers/profile');
       if (response.success && response.data) {
-        setProfile(response.data);
-        setEditedProfile(response.data);
+        let profileData = response.data;
+        
+        // Fetch current resume from the Resume collection
+        try {
+          const resumeResponse = await apiService.getCurrentResume();
+          if (resumeResponse.success && resumeResponse.data) {
+            // Add resume URL to profile data
+            profileData = {
+              ...profileData,
+              resumeUrl: resumeResponse.data.fileUrl
+            };
+          }
+        } catch (resumeErr) {
+          console.log('No resume found in Resume collection');
+        }
+        
+        setProfile(profileData);
+        setEditedProfile(profileData);
       } else {
         // If 401 error, redirect to auth
         if (response.error?.includes('401') || response.error?.includes('Unauthorized')) {
@@ -193,17 +209,13 @@ const SettingsTab: React.FC = () => {
       setUploading(true);
       setError(null);
 
-      const formData = new FormData();
-      formData.append('resume', file);
-
-      const response = await apiService.post('/jobseekers/resume', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
+      const response = await apiService.uploadResume(file);
 
       if (response.success && response.data) {
-        setProfile(prev => prev ? { ...prev, resumeUrl: response.data.resumeUrl } : null);
+        // Update profile to reflect new resume
+        const updatedProfile = { ...profile, resumeUrl: response.data.fileUrl };
+        setProfile(updatedProfile);
+        setEditedProfile(updatedProfile);
         setSuccess('Resume uploaded successfully!');
         setTimeout(() => setSuccess(null), 3000);
       } else {
@@ -221,7 +233,16 @@ const SettingsTab: React.FC = () => {
     try {
       setError(null);
       
-      const response = await apiService.delete('/jobseekers/resume');
+      // First get the current resume to get its ID
+      const currentResumeResponse = await apiService.getCurrentResume();
+      if (!currentResumeResponse.success || !currentResumeResponse.data) {
+        setError('No resume found to delete');
+        return;
+      }
+      
+      const resumeId = currentResumeResponse.data.id;
+      const response = await apiService.deleteResume(resumeId);
+      
       if (response.success) {
         setProfile(prev => prev ? { ...prev, resumeUrl: undefined } : null);
         setSuccess('Resume deleted successfully!');
@@ -241,8 +262,8 @@ const SettingsTab: React.FC = () => {
         setError('Please upload only PDF files.');
         return;
       }
-      if (file.size > 10 * 1024 * 1024) {
-        setError('File size must be less than 10MB.');
+      if (file.size > 5 * 1024 * 1024) {
+        setError('File size must be less than 5MB.');
         return;
       }
       setResumeFile(file);

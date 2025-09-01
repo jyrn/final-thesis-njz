@@ -21,10 +21,10 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUpload, isUploading = fal
       return "Please upload a PDF file only."
     }
 
-    // Check file size (10MB limit)
-    const maxSize = 10 * 1024 * 1024 // 10MB in bytes
+    // Check file size (5MB limit to match backend)
+    const maxSize = 5 * 1024 * 1024 // 5MB in bytes
     if (file.size > maxSize) {
-      return "File size must be less than 10MB."
+      return "File size must be less than 5MB."
     }
 
     return null
@@ -115,7 +115,7 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUpload, isUploading = fal
               <p>Drag and drop your PDF resume here, or click to browse</p>
               <div className={styles.fileRequirements}>
                 <span>• PDF format only</span>
-                <span>• Maximum 10MB</span>
+                <span>• Maximum 5MB</span>
               </div>
             </div>
           )}

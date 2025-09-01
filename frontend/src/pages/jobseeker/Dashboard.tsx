@@ -80,6 +80,7 @@ const Dashboard: React.FC = () => {
   const [attemptedJobId, setAttemptedJobId] = useState<number | null>(null)
   const [showFilterModal, setShowFilterModal] = useState(false)
   const [userProfile, setUserProfile] = useState<any>(null)
+  const [currentResume, setCurrentResume] = useState<any>(null)
   
   interface ActiveFilters {
     lastUpdate: string;
@@ -226,7 +227,7 @@ const Dashboard: React.FC = () => {
     setShowFilterModal(false);
   };
 
-  // Load jobs from backend
+  // Load data on component mount
   useEffect(() => {
     const loadData = async () => {
       try {
@@ -236,55 +237,52 @@ const Dashboard: React.FC = () => {
         setJobs(backendJobs);
         setApplications([]);
 
-        // Load user profile to check for existing resume
+        // Check if user has visited before
+        const hasVisited = localStorage.getItem('hasVisitedDashboard')
+
+        // First, try to load resume from database
+        let resumeLoaded = false
         try {
-          const profileResponse = await apiService.get('/jobseekers/profile');
-          if (profileResponse.success) {
-            setUserProfile(profileResponse.data);
+          const currentResumeResponse = await apiService.getCurrentResume()
+          if (currentResumeResponse.success && currentResumeResponse.data) {
+            // Store the current resume data for the upload prompt
+            setCurrentResume(currentResumeResponse.data)
             
-            // Check if user has resume data in database
-            if (profileResponse.data.resumeData) {
-              console.log('Found existing resume in database');
-              setResume(profileResponse.data.resumeData);
-              
-              // Set resume in JobService for better job matching
-              const jobService = JobService.getInstance();
-              jobService.setUserResume(profileResponse.data.resumeData);
-              
-              // User has resume, don't show upload prompt
-              setIsFirstVisit(false);
-              setShowInitialResumePrompt(false);
-              
-              localStorage.setItem('hasVisitedDashboard', 'true');
-              return; // Skip localStorage check since we have database resume
+            // If we have a resume in the database, use its parsed data
+            const dbResume = currentResumeResponse.data
+            if (dbResume.parsedData) {
+              setResume(dbResume.parsedData)
+              const jobService = JobService.getInstance()
+              jobService.setUserResume(dbResume.parsedData)
+              resumeLoaded = true
             }
           }
-        } catch (profileError) {
-          console.error('Error loading user profile:', profileError);
+        } catch (err) {
+          console.log('No resume found in database, checking localStorage')
         }
 
-        // Fallback: Check localStorage if no database resume found
-        const hasVisited = localStorage.getItem('hasVisitedDashboard')
-        const storedResume = localStorage.getItem('userResume')
+        // If no resume in database, check localStorage as fallback
+        if (!resumeLoaded) {
+          const storedResume = localStorage.getItem('userResume')
+          if (storedResume) {
+            try {
+              const resumeData = JSON.parse(storedResume)
+              setResume(resumeData)
+              const jobService = JobService.getInstance()
+              jobService.setUserResume(resumeData)
+              resumeLoaded = true
+            } catch (e) {
+              console.error('Error parsing stored resume:', e)
+            }
+          }
+        }
         
-        if (!hasVisited && !storedResume) {
+        // Show initial resume prompt only if no resume found and first visit
+        if (!hasVisited && !resumeLoaded) {
           setShowInitialResumePrompt(true)
           setIsFirstVisit(true)
         } else {
           setIsFirstVisit(false)
-          if (storedResume) {
-          // Load stored resume data
-          try {
-            const resumeData = JSON.parse(storedResume)
-            setResume(resumeData)
-            
-            // Set resume in JobService for better job matching
-            const jobService = JobService.getInstance();
-            jobService.setUserResume(resumeData);
-          } catch (e) {
-            console.error('Error parsing stored resume:', e)
-          }
-        }
         }
 
         localStorage.setItem('hasVisitedDashboard', 'true')
@@ -299,6 +297,19 @@ const Dashboard: React.FC = () => {
 
   const handleResumeUpload = async (file: File) => {
     try {
+      // Upload the file to the new resume collection
+      const uploadResponse = await apiService.uploadResume(file);
+      
+      if (!uploadResponse.success) {
+        throw new Error(uploadResponse.error || 'Failed to upload resume');
+      }
+      
+      console.log('Resume uploaded successfully:', uploadResponse.data);
+      
+      // Update the current resume state with the new upload
+      setCurrentResume(uploadResponse.data);
+      
+      // Parse the resume for local display (this won't be integrated with NER service yet)
       const parsed = await parseResume(file)
       const resumeData = {
         personalInfo: {
@@ -322,21 +333,6 @@ const Dashboard: React.FC = () => {
       setShowResumeUpload(false)
       setShowInitialResumePrompt(false)
       setHasSkippedResume(false)
-      
-      // Save resume data to database
-      try {
-        const saveResponse = await apiService.post('/jobseekers/resume', {
-          resumeData
-        });
-        
-        if (saveResponse.success) {
-          console.log('Resume data saved to database successfully');
-        } else {
-          console.error('Failed to save resume to database:', saveResponse.error);
-        }
-      } catch (saveError) {
-        console.error('Error saving resume to database:', saveError);
-      }
       
       // Store resume data locally as backup
       localStorage.setItem('userResume', JSON.stringify(resumeData))
@@ -442,15 +438,18 @@ const Dashboard: React.FC = () => {
 
   const handleApplyJob = async (jobId: number) => {
     // Check if user has resume before allowing application
-    // Accept either parsed resume data OR uploaded resume in profile
+    // Priority: currentResume from Resume collection, then parsed resume data, then profile resumeUrl
+    const hasCurrentResume = currentResume && currentResume.fileUrl
     const hasResumeData = resume && resume.personalInfo && resume.personalInfo.name
     const hasResumeFile = userProfile?.resumeUrl && userProfile.resumeUrl.trim() !== ''
-    const hasResume = hasResumeData || hasResumeFile
+    const hasResume = hasCurrentResume || hasResumeData || hasResumeFile
     
     console.log('Resume validation check:', {
+      hasCurrentResume,
       hasResumeData,
       hasResumeFile,
       hasResume,
+      currentResume: currentResume ? 'exists' : 'null',
       resume: resume ? 'exists' : 'null',
       resumeUrl: userProfile?.resumeUrl || 'none'
     })
@@ -751,7 +750,7 @@ const Dashboard: React.FC = () => {
           onClose={() => setShowResumeUpload(false)} 
           onUpload={handleResumeUpload}
           onSkip={handleSkipResume}
-          userProfile={userProfile}
+          userProfile={currentResume ? { resumeUrl: currentResume.fileUrl } : null}
         />
       )}
 
