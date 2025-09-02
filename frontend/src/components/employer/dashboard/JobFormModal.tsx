@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Job } from '@/types/Job';
 import { FiX, FiPlus, FiMinus, FiBriefcase } from 'react-icons/fi';
 import Button from '../ui/Button';
@@ -249,7 +250,7 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
   // Debug log to check if job data is being passed correctly
   console.log('JobFormModal - isEditing:', isEditing, 'job:', job, 'formData:', formData);
 
-  return (
+  const modalContent = (
     <div className={styles.overlay} onClick={onClose}>
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
@@ -273,261 +274,278 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <div className={styles.formContent}>
-            <div className={styles.formSection}>
-              <h3 className={styles.sectionTitle}>Basic Information</h3>
-              <div className={styles.formGrid}>
-            <div className={styles.formGroup}>
-              <label className={styles.label}>
-                Job Title <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="text"
-                className={`${styles.input} ${errors.title ? styles.inputError : ''}`}
-                value={formData.title}
-                onChange={(e) => handleInputChange('title', e.target.value)}
-                placeholder="e.g. Senior Frontend Developer"
-              />
-              {errors.title && <span className={styles.errorText}>{errors.title}</span>}
-            </div>
+            {/* Three-Column Layout */}
+            <div className={styles.compactSection}>
+              <div className={styles.threeColumnGrid}>
+                {/* Column 3: Status & Salary */}
+                <div className={styles.compactColumn}>
+                  <h4 className={styles.compactTitle}>Job Details</h4>
+                  <div className={styles.compactGroup}>
+                    <label className={styles.compactLabel}>
+                      Job Title <span className={styles.required}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      className={`${styles.compactInput} ${errors.title ? styles.inputError : ''}`}
+                      value={formData.title}
+                      onChange={(e) => handleInputChange('title', e.target.value)}
+                      placeholder="e.g. Senior Frontend Developer"
+                    />
+                    {errors.title && <span className={styles.errorText}>{errors.title}</span>}
+                  </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Job Type</label>
-              <select
-                className={styles.select}
-                value={formData.type}
-                onChange={(e) => handleInputChange('type', e.target.value)}
-              >
-                <option value="Full-time">Full-time</option>
-                <option value="Part-time">Part-time</option>
-                <option value="Contract">Contract</option>
-                <option value="Internship">Internship</option>
-              </select>
-            </div>
+                  <div className={styles.compactGroup}>
+                    <label className={styles.compactLabel}>
+                      Location <span className={styles.required}>*</span>
+                    </label>
+                    <input
+                      type="text"
+                      className={`${styles.compactInput} ${errors.location ? styles.inputError : ''}`}
+                      value={formData.location}
+                      onChange={(e) => handleInputChange('location', e.target.value)}
+                      placeholder="e.g. Makati City, Metro Manila"
+                    />
+                    {errors.location && <span className={styles.errorText}>{errors.location}</span>}
+                  </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Experience Level</label>
-              <select
-                className={styles.select}
-                value={formData.level}
-                onChange={(e) => handleInputChange('level', e.target.value)}
-              >
-                <option value="Entry-level">Entry-level</option>
-                <option value="Mid-level">Mid-level</option>
-                <option value="Senior-level">Senior-level</option>
-                <option value="Lead">Lead</option>
-                <option value="Manager">Manager</option>
-                <option value="Director">Director</option>
-                <option value="Executive">Executive</option>
-              </select>
-            </div>
+                  <div className={styles.compactGroup}>
+                    <label className={styles.compactLabel}>Department</label>
+                    <input
+                      type="text"
+                      className={styles.compactInput}
+                      value={formData.department}
+                      onChange={(e) => handleInputChange('department', e.target.value)}
+                      placeholder="e.g. Engineering"
+                    />
+                  </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.label}>
-                Location <span className={styles.required}>*</span>
-              </label>
-              <input
-                type="text"
-                className={`${styles.input} ${errors.location ? styles.inputError : ''}`}
-                value={formData.location}
-                onChange={(e) => handleInputChange('location', e.target.value)}
-                placeholder="e.g. Makati City, Metro Manila"
-              />
-              {errors.location && <span className={styles.errorText}>{errors.location}</span>}
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Department</label>
-              <input
-                type="text"
-                className={styles.input}
-                value={formData.department}
-                onChange={(e) => handleInputChange('department', e.target.value)}
-                placeholder="e.g. Marketing & Communications, Engineering, etc."
-              />
-            </div>
-
-            <div className={styles.formGroup}>
-              <label className={styles.label}>
-                Salary Range
-              </label>
-              <div className={styles.salaryRange}>
-                <div className={styles.salaryInput}>
-                  <span className={styles.currencySymbol}>₱</span>
-                  <input
-                    type="number"
-                    value={formData.salaryMin}
-                    onChange={(e) => handleInputChange('salaryMin', e.target.value)}
-                    className={`${styles.input} ${errors.salaryMin ? styles.inputError : ''}`}
-                    placeholder="Min salary"
-                  />
+                  <div className={styles.compactGroup}>
+                    <label className={styles.compactLabel}>Job Type</label>
+                    <select
+                      className={styles.compactSelect}
+                      value={formData.type}
+                      onChange={(e) => handleInputChange('type', e.target.value)}
+                    >
+                      <option value="Full-time">Full-time</option>
+                      <option value="Part-time">Part-time</option>
+                      <option value="Contract">Contract</option>
+                      <option value="Internship">Internship</option>
+                    </select>
+                  </div>
                 </div>
-                <span className={styles.salaryDivider}>to</span>
-                <div className={styles.salaryInput}>
-                  <span className={styles.currencySymbol}>₱</span>
-                  <input
-                    type="number"
-                    value={formData.salaryMax}
-                    onChange={(e) => handleInputChange('salaryMax', e.target.value)}
-                    className={`${styles.input} ${errors.salaryMax ? styles.inputError : ''}`}
-                    placeholder="Max salary"
-                  />
+
+                {/* Column 2: Employment Info */}
+                <div className={styles.compactColumn}>
+                  <h4 className={styles.compactTitle}>Employment</h4>
+                  <div className={styles.compactGroup}>
+                    <label className={styles.compactLabel}>Experience Level</label>
+                    <select
+                      className={styles.compactSelect}
+                      value={formData.level}
+                      onChange={(e) => handleInputChange('level', e.target.value)}
+                    >
+                      <option value="Entry-level">Entry-level</option>
+                      <option value="Mid-level">Mid-level</option>
+                      <option value="Senior-level">Senior-level</option>
+                      <option value="Lead">Lead</option>
+                      <option value="Manager">Manager</option>
+                      <option value="Director">Director</option>
+                    </select>
+                  </div>
+
+                  <div className={styles.compactGroup}>
+                    <label className={styles.compactLabel}>Workplace Type</label>
+                    <select
+                      className={styles.compactSelect}
+                      value={formData.workplaceType}
+                      onChange={(e) => handleInputChange('workplaceType', e.target.value)}
+                    >
+                      <option value="On-site">On-site</option>
+                      <option value="Hybrid">Hybrid</option>
+                      <option value="Remote">Remote</option>
+                    </select>
+                  </div>
+
+                  <div className={styles.compactGroup}>
+                    <label className={styles.compactLabel}>Status</label>
+                    <select
+                      className={styles.compactSelect}
+                      value={formData.status}
+                      onChange={(e) => handleInputChange('status', e.target.value)}
+                    >
+                      <option value="active">Active</option>
+                      <option value="paused">Paused</option>
+                      <option value="closed">Closed</option>
+                    </select>
+                  </div>
+
+                  <div className={styles.compactGroup}>
+                    <label className={styles.compactLabel}>Salary Range</label>
+                    <div className={styles.compactSalaryRange}>
+                      <div className={styles.compactSalaryInput}>
+                        <span className={styles.currencySymbol}>₱</span>
+                        <input
+                          type="number"
+                          value={formData.salaryMin}
+                          onChange={(e) => handleInputChange('salaryMin', e.target.value)}
+                          className={`${styles.compactInput} ${errors.salaryMin ? styles.inputError : ''}`}
+                          placeholder="Min"
+                        />
+                      </div>
+                      <span className={styles.salaryDivider}>-</span>
+                      <div className={styles.compactSalaryInput}>
+                        <span className={styles.currencySymbol}>₱</span>
+                        <input
+                          type="number"
+                          value={formData.salaryMax}
+                          onChange={(e) => handleInputChange('salaryMax', e.target.value)}
+                          className={`${styles.compactInput} ${errors.salaryMax ? styles.inputError : ''}`}
+                          placeholder="Max"
+                        />
+                      </div>
+                    </div>
+                    {(errors.salaryMin || errors.salaryMax) && (
+                      <span className={styles.errorText}>
+                        {errors.salaryMin || errors.salaryMax}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-              {(errors.salaryMin || errors.salaryMax) && (
-                <span className={styles.errorText}>
-                  {errors.salaryMin || errors.salaryMax}
-                </span>
-              )}
-            </div>
 
-            <div className={styles.formGroup}>
-              <label className={styles.label}>Status</label>
-              <select
-                className={styles.select}
-                value={formData.status}
-                onChange={(e) => handleInputChange('status', e.target.value)}
-              >
-                <option value="active">Active</option>
-                <option value="paused">Paused</option>
-                <option value="closed">Closed</option>
-              </select>
-            </div>
-              </div>
-              
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Workplace Type</label>
-                <select
-                  className={styles.select}
-                  value={formData.workplaceType}
-                  onChange={(e) => handleInputChange('workplaceType', e.target.value)}
-                >
-                  <option value="On-site">On-site</option>
-                  <option value="Hybrid">Hybrid</option>
-                  <option value="Remote">Remote</option>
-                </select>
-              </div>
-            </div>
-
-            <div className={styles.formSection}>
-              <h3 className={styles.sectionTitle}>Job Description</h3>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>
-                  Job Description <span className={styles.required}>*</span>
-                </label>
-                <textarea
-                  className={`${styles.textarea} ${errors.description ? styles.inputError : ''}`}
-                  value={formData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  placeholder="Describe the role, responsibilities, and what makes this position exciting..."
-                  rows={6}
-                  readOnly={false}
-                  disabled={false}
-                  autoComplete="off"
-                />
-                {errors.description && <span className={styles.errorText}>{errors.description}</span>}
-              </div>
-            </div>
-
-            <div className={styles.formSection}>
-              <h3 className={styles.sectionTitle}>Requirements & Responsibilities</h3>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>
-                  Requirements <span className={styles.required}>*</span>
-                </label>
-                {formData.requirements.map((requirement, index) => (
-                  <div key={index} className={styles.requirementRow}>
-                    <input
-                      type="text"
-                      className={styles.input}
-                      value={requirement}
-                      onChange={(e) => handleRequirementChange(index, e.target.value)}
-                      placeholder="e.g. React, TypeScript, 3+ years experience"
+                {/* Column 3: Job Description */}
+                <div className={styles.compactColumn}>
+                  <h4 className={styles.compactTitle}>Description</h4>
+                  <div className={styles.compactGroup}>
+                    <label className={styles.compactLabel}>
+                      Job Description <span className={styles.required}>*</span>
+                    </label>
+                    <textarea
+                      className={`${styles.compactTextarea} ${errors.description ? styles.inputError : ''}`}
+                      value={formData.description}
+                      onChange={(e) => handleInputChange('description', e.target.value)}
+                      placeholder="Describe the role and responsibilities..."
+                      rows={8}
                     />
-                    {formData.requirements.length > 1 && (
+                    {errors.description && <span className={styles.errorText}>{errors.description}</span>}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Two-Column Layout for Lists */}
+            <div className={styles.compactSection}>
+              <div className={styles.twoColumnGrid}>
+                {/* Left Column - Requirements & Responsibilities */}
+                <div className={styles.compactColumn}>
+                  <h4 className={styles.compactTitle}>Requirements & Responsibilities</h4>
+                  
+                  <div className={styles.compactGroup}>
+                    <label className={styles.compactLabel}>
+                      Requirements <span className={styles.required}>*</span>
+                    </label>
+                    <div className={styles.compactListContainer}>
+                      {formData.requirements.map((requirement, index) => (
+                        <div key={index} className={styles.compactRequirementRow}>
+                          <input
+                            type="text"
+                            className={styles.compactInput}
+                            value={requirement}
+                            onChange={(e) => handleRequirementChange(index, e.target.value)}
+                            placeholder="e.g. React, TypeScript, 3+ years"
+                          />
+                          {formData.requirements.length > 1 && (
+                            <button
+                              type="button"
+                              className={styles.compactRemoveButton}
+                              onClick={() => removeRequirement(index)}
+                            >
+                              <FiMinus />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                      {errors.requirements && <span className={styles.errorText}>{errors.requirements}</span>}
                       <button
                         type="button"
-                        className={styles.removeButton}
-                        onClick={() => removeRequirement(index)}
+                        className={styles.compactAddButton}
+                        onClick={addRequirement}
                       >
-                        <FiMinus />
+                        <FiPlus /> Add
                       </button>
-                    )}
+                    </div>
                   </div>
-                ))}
-                {errors.requirements && <span className={styles.errorText}>{errors.requirements}</span>}
-                <button
-                  type="button"
-                  className={styles.addButton}
-                  onClick={addRequirement}
-                >
-                  <FiPlus /> Add Requirement
-                </button>
-              </div>
 
-              <div className={styles.formGroup}>
-                <label className={styles.label}>
-                  Key Responsibilities
-                </label>
-                {formData.responsibilities.map((responsibility, index) => (
-                  <div key={index} className={styles.requirementRow}>
-                    <input
-                      type="text"
-                      className={styles.input}
-                      value={responsibility}
-                      onChange={(e) => handleResponsibilityChange(index, e.target.value)}
-                      placeholder="e.g. Design and develop user interfaces"
-                    />
-                    {formData.responsibilities.length > 1 && (
+                  <div className={styles.compactGroup}>
+                    <label className={styles.compactLabel}>Key Responsibilities</label>
+                    <div className={styles.compactListContainer}>
+                      {formData.responsibilities.map((responsibility, index) => (
+                        <div key={index} className={styles.compactRequirementRow}>
+                          <input
+                            type="text"
+                            className={styles.compactInput}
+                            value={responsibility}
+                            onChange={(e) => handleResponsibilityChange(index, e.target.value)}
+                            placeholder="e.g. Design user interfaces"
+                          />
+                          {formData.responsibilities.length > 1 && (
+                            <button
+                              type="button"
+                              className={styles.compactRemoveButton}
+                              onClick={() => removeResponsibility(index)}
+                            >
+                              <FiMinus />
+                            </button>
+                          )}
+                        </div>
+                      ))}
                       <button
                         type="button"
-                        className={styles.removeButton}
-                        onClick={() => removeResponsibility(index)}
+                        className={styles.compactAddButton}
+                        onClick={addResponsibility}
                       >
-                        <FiMinus />
+                        <FiPlus /> Add
                       </button>
-                    )}
+                    </div>
                   </div>
-                ))}
-                <button
-                  type="button"
-                  className={styles.addButton}
-                  onClick={addResponsibility}
-                >
-                  <FiPlus /> Add Responsibility
-                </button>
-              </div>
+                </div>
 
-              <div className={styles.formGroup}>
-                <label className={styles.label}>
-                  What We Offer
-                </label>
-                {formData.benefits.map((benefit, index) => (
-                  <div key={index} className={styles.requirementRow}>
-                    <input
-                      type="text"
-                      className={styles.input}
-                      value={benefit}
-                      onChange={(e) => handleBenefitChange(index, e.target.value)}
-                      placeholder="e.g. Competitive salary package"
-                    />
-                    {formData.benefits.length > 1 && (
+                {/* Right Column - Benefits */}
+                <div className={styles.compactColumn}>
+                  <h4 className={styles.compactTitle}>What We Offer</h4>
+                  <div className={styles.compactGroup}>
+                    <label className={styles.compactLabel}>Benefits & Perks</label>
+                    <div className={styles.compactListContainer}>
+                      {formData.benefits.map((benefit, index) => (
+                        <div key={index} className={styles.compactRequirementRow}>
+                          <input
+                            type="text"
+                            className={styles.compactInput}
+                            value={benefit}
+                            onChange={(e) => handleBenefitChange(index, e.target.value)}
+                            placeholder="e.g. Health insurance"
+                          />
+                          {formData.benefits.length > 1 && (
+                            <button
+                              type="button"
+                              className={styles.compactRemoveButton}
+                              onClick={() => removeBenefit(index)}
+                            >
+                              <FiMinus />
+                            </button>
+                          )}
+                        </div>
+                      ))}
                       <button
                         type="button"
-                        className={styles.removeButton}
-                        onClick={() => removeBenefit(index)}
+                        className={styles.compactAddButton}
+                        onClick={addBenefit}
                       >
-                        <FiMinus />
+                        <FiPlus /> Add
                       </button>
-                    )}
+                    </div>
                   </div>
-                ))}
-                <button
-                  type="button"
-                  className={styles.addButton}
-                  onClick={addBenefit}
-                >
-                  <FiPlus /> Add Benefit
-                </button>
+                </div>
               </div>
             </div>
           </div>
@@ -544,4 +562,6 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
