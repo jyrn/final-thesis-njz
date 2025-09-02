@@ -16,16 +16,16 @@ interface JobFormModalProps {
 const defaultJobData = {
   title: '',
   location: '',
-  type: 'Full-time',
-  level: 'Mid-level',
+  type: '',
+  level: '',
   salaryMin: '',
   salaryMax: '',
   description: '',
   requirements: [''],
   responsibilities: [''],
   benefits: [''],
-  department: 'Technology',
-  workplaceType: 'On-site',
+  department: '',
+  workplaceType: '',
   status: 'active'
 };
 
@@ -54,17 +54,17 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
       return {
         title: job.title || '',
         location: job.location || '',
-        type: job.type || 'Full-time',
-        level: job.level || job.experienceLevel || 'Mid-level',
+        type: job.type || '',
+        level: job.level || job.experienceLevel || '',
         salaryMin,
         salaryMax,
         description: job.description || '',
         requirements: job.requirements && job.requirements.length > 0 ? job.requirements : [''],
         responsibilities: job.responsibilities && job.responsibilities.length > 0 ? job.responsibilities : [''],
         benefits: job.benefits && job.benefits.length > 0 ? job.benefits : [''],
-        department: job.department || 'Technology',
-        workplaceType: job.workplaceType || (job.remote ? 'Remote' : 'On-site'),
-        status: job.status || 'active'
+        department: job.department || '',
+        workplaceType: job.workplaceType || (job.remote ? '' : ''),
+        status: job.status || ''
       };
     }
     return defaultJobData;
@@ -102,17 +102,17 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
         const newFormData = {
           title: job.title || '',
           location: job.location || '',
-          type: job.type || 'Full-time',
-          level: job.level || job.experienceLevel || 'Mid-level',
+          type: job.type || '',
+          level: job.level || job.experienceLevel || '',
           salaryMin,
           salaryMax,
           description: job.description || '',
           requirements: job.requirements && job.requirements.length > 0 ? job.requirements : [''],
           responsibilities: job.responsibilities && job.responsibilities.length > 0 ? job.responsibilities : [''],
           benefits: job.benefits && job.benefits.length > 0 ? job.benefits : [''],
-          department: job.department || 'Technology',
-          workplaceType: job.workplaceType || (job.remote ? 'Remote' : 'On-site'),
-          status: job.status || 'active'
+          department: job.department || '',
+          workplaceType: job.workplaceType || (job.remote ? '' : ''),
+          status: job.status || ''
         };
         
         console.log('Setting form data:', newFormData);
@@ -325,7 +325,9 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
                       className={styles.compactSelect}
                       value={formData.type}
                       onChange={(e) => handleInputChange('type', e.target.value)}
+                      required
                     >
+                      <option value="" disabled>Select Job Type</option>
                       <option value="Full-time">Full-time</option>
                       <option value="Part-time">Part-time</option>
                       <option value="Contract">Contract</option>
@@ -343,7 +345,9 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
                       className={styles.compactSelect}
                       value={formData.level}
                       onChange={(e) => handleInputChange('level', e.target.value)}
+                      required
                     >
+                      <option value="" disabled>Select Experience Level</option>
                       <option value="Entry-level">Entry-level</option>
                       <option value="Mid-level">Mid-level</option>
                       <option value="Senior-level">Senior-level</option>
@@ -359,7 +363,9 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
                       className={styles.compactSelect}
                       value={formData.workplaceType}
                       onChange={(e) => handleInputChange('workplaceType', e.target.value)}
+                      required
                     >
+                      <option value="" disabled>Select Workplace Type</option>
                       <option value="On-site">On-site</option>
                       <option value="Hybrid">Hybrid</option>
                       <option value="Remote">Remote</option>
@@ -367,12 +373,14 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
                   </div>
 
                   <div className={styles.compactGroup}>
-                    <label className={styles.compactLabel}>Status</label>
+                    <label className={styles.compactLabel}>Job Posting Status</label>
                     <select
-                      className={styles.compactSelect}
+                      className={`${styles.compactSelect} ${!formData.status ? 'placeholderText' : ''}`}
                       value={formData.status}
                       onChange={(e) => handleInputChange('status', e.target.value)}
+                      required
                     >
+                      <option value="" disabled>Select Status</option>
                       <option value="active">Active</option>
                       <option value="paused">Paused</option>
                       <option value="closed">Closed</option>
@@ -419,13 +427,16 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
                     <label className={styles.compactLabel}>
                       Job Description <span className={styles.required}>*</span>
                     </label>
-                    <textarea
-                      className={`${styles.compactTextarea} ${errors.description ? styles.inputError : ''}`}
-                      value={formData.description}
-                      onChange={(e) => handleInputChange('description', e.target.value)}
-                      placeholder="Describe the role and responsibilities..."
-                      rows={8}
-                    />
+                    <div className={styles.textareaContainer}>
+                      <textarea
+                        className={`${styles.compactTextarea} ${errors.description ? styles.inputError : ''}`}
+                        value={formData.description}
+                        onChange={(e) => handleInputChange('description', e.target.value)}
+                        placeholder="Describe the role and responsibilities..."
+                        rows={8}
+                        required
+                      />
+                    </div>
                     {errors.description && <span className={styles.errorText}>{errors.description}</span>}
                   </div>
                 </div>

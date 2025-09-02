@@ -186,9 +186,11 @@
   flex-direction: column;
   gap: 0.75rem;
   background: #f8fafc;
-  padding: 1rem;
+  padding: 1.25rem;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
+  min-height: 100%;
+  box-sizing: border-box;
 }
 
 .compactTitle {
@@ -223,6 +225,71 @@
   font-weight: 500;
   transition: all 0.2s ease;
   background: white;
+  width: 100%;
+}
+
+/* Style for input placeholders */
+.compactInput::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* Style for select dropdown placeholders */
+.compactSelect option[value=""] {
+  color: #9ca3af;
+  font-style: italic;
+  font-weight: 400;
+  background-color: white;
+}
+
+/* Style for select element when no value is selected */
+.compactSelect:invalid,
+.compactSelect.placeholderText {
+  color: #9ca3af !important;
+  font-style: italic !important;
+  font-weight: 400 !important;
+}
+
+/* Reset color when a value is selected */
+.compactSelect:not(:invalid):not(.placeholderText),
+.compactSelect option:not([value=""]) {
+  color: #1f2937 !important;
+  font-style: normal !important;
+  font-weight: 500 !important;
+}
+
+/* Textarea container for better styling */
+.textareaContainer {
+  position: relative;
+  width: 100%;
+}
+
+/* Textarea styling */
+.compactTextarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 1rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  resize: vertical;
+  transition: all 0.2s ease;
+}
+
+/* Textarea placeholder styling */
+.compactTextarea::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+  font-weight: 400;
+}
+
+/* Textarea focus state */
+.compactTextarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 
 .compactInput:focus,

@@ -68,14 +68,16 @@ const JobSchema = new mongoose.Schema({
   },
   department: {
     type: String,
-    required: true,
-    enum: ['Engineering', 'Design', 'Product', 'Marketing', 'Sales', 'Data', 'HR', 'Finance', 'Operations', 'Customer Support']
+    required: false,
+    trim: true,
+    maxlength: 100,
+    default: ''
   },
   
   // Work Arrangement
   workplaceType: {
     type: String,
-    enum: ['On-site', 'Remote', 'Hybrid'],
+    enum: ['On-site', 'Remote', 'Hybrid', ''],
     default: 'On-site'
   },
   remote: {
