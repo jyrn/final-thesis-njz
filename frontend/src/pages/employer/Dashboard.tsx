@@ -531,13 +531,29 @@ const EmployerDashboard: React.FC = () => {
       setIsLoadingJobs(true);
       
       // Convert Job data to backend format
+      // Normalize job level to match backend enum values
+      const normalizedLevel = jobData.level === 'Entry-level' ? 'Entry Level' : 
+                           (jobData.level || 'Mid-level');
+      
+      // Format salary based on what's provided
+      let formattedSalary = '';
+      if (jobData.salaryMin && jobData.salaryMax) {
+        formattedSalary = `${Number(jobData.salaryMin).toLocaleString()} - ${Number(jobData.salaryMax).toLocaleString()}`;
+      } else if (jobData.salaryMin) {
+        formattedSalary = `${Number(jobData.salaryMin).toLocaleString()}+`;
+      } else if (jobData.salaryMax) {
+        formattedSalary = `Up to ${Number(jobData.salaryMax).toLocaleString()}`;
+      }
+      
       const backendJobData = {
         title: jobData.title || '',
         description: jobData.description || '',
         location: jobData.location || '',
-        salary: jobData.salary ? jobData.salary.toString() : '',
+        salary: formattedSalary,
+        salaryMin: jobData.salaryMin ? Number(jobData.salaryMin) : undefined,
+        salaryMax: jobData.salaryMax ? Number(jobData.salaryMax) : undefined,
         type: jobData.type || 'Full-time',
-        level: jobData.level || 'Mid-level',
+        level: normalizedLevel,
         department: jobData.department || 'General',
         workplaceType: jobData.remote ? 'Remote' : 'On-site',
         remote: jobData.remote || false,
@@ -591,21 +607,37 @@ const EmployerDashboard: React.FC = () => {
     try {
       setIsLoadingJobs(true);
       
+      // Normalize job level to match backend enum values
+      const normalizedLevel = jobData.level === 'Entry-level' ? 'Entry Level' : 
+                           (jobData.level || 'Mid-level');
+      
       // Convert Job data to backend format
+      // Format salary based on what's provided
+      let formattedSalary = '';
+      if (jobData.salaryMin && jobData.salaryMax) {
+        formattedSalary = `${Number(jobData.salaryMin).toLocaleString()} - ${Number(jobData.salaryMax).toLocaleString()}`;
+      } else if (jobData.salaryMin) {
+        formattedSalary = `${Number(jobData.salaryMin).toLocaleString()}+`;
+      } else if (jobData.salaryMax) {
+        formattedSalary = `Up to ${Number(jobData.salaryMax).toLocaleString()}`;
+      }
+      
       const backendJobData = {
         title: jobData.title,
         description: jobData.description,
         location: jobData.location,
-        salary: jobData.salary ? jobData.salary.toString() : '',
+        salary: formattedSalary,
         type: jobData.type,
-        level: jobData.level || 'Mid-level',
-        department: jobData.department,
-        workplaceType: jobData.remote ? 'Remote' : 'On-site',
+        department: jobData.department || 'General',
+        level: normalizedLevel,
+        workplaceType: jobData.workplaceType || (jobData.remote ? 'Remote' : 'On-site'),
         remote: jobData.remote,
-        requirements: jobData.requirements,
-        responsibilities: jobData.responsibilities,
-        benefits: jobData.benefits,
-        status: jobData.status
+        requirements: jobData.requirements || [],
+        responsibilities: jobData.responsibilities || [],
+        benefits: jobData.benefits || [],
+        status: jobData.status || 'active',
+        salaryMin: jobData.salaryMin,
+        salaryMax: jobData.salaryMax
       };
 
       await jobApiService.updateJob(jobData.id.toString(), backendJobData);

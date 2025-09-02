@@ -34,8 +34,15 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ job, isOpen, onClose, o
   if (!isOpen || !job) return null;
 
   const formatSalary = () => {
+    // Handle individual salary values first
     if (job.salaryMin && job.salaryMax) {
       return `₱${job.salaryMin.toLocaleString('en-PH')} - ₱${job.salaryMax.toLocaleString('en-PH')}`;
+    }
+    if (job.salaryMin && !job.salaryMax) {
+      return `₱${job.salaryMin.toLocaleString('en-PH')}+`;
+    }
+    if (!job.salaryMin && job.salaryMax) {
+      return `Up to ₱${job.salaryMax.toLocaleString('en-PH')}`;
     }
     if (job.salary) {
       return `₱${job.salary.toLocaleString('en-PH')}`;
@@ -294,7 +301,7 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ job, isOpen, onClose, o
                   </div>
                   <div className={styles.detailItem}>
                     <span className={styles.detailLabel}>Department</span>
-                    <span className={styles.detailValue}>{job.department || 'General'}</span>
+                    <span className={styles.detailValue}>{job.department || 'Not specified'}</span>
                   </div>
                 </div>
               </div>

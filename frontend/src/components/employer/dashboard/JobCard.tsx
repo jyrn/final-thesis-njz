@@ -34,11 +34,20 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onView, onEdit, onDelete,
             {job.level && (
               <span className={styles.jobLevel}>{job.level}</span>
             )}
-            {(job.salaryMin && job.salaryMax) ? (
-              <span className={styles.jobSalary}>₱{job.salaryMin.toLocaleString('en-PH')} - ₱{job.salaryMax.toLocaleString('en-PH')}</span>
+            {(job.salaryMin !== undefined || job.salaryMax !== undefined) ? (
+              <span className={styles.jobSalary}>
+                ₱{job.salaryMin && job.salaryMax 
+                  ? `${job.salaryMin.toLocaleString('en-PH')} - ₱${job.salaryMax.toLocaleString('en-PH')}`
+                  : job.salaryMin 
+                    ? `${job.salaryMin.toLocaleString('en-PH')}+`
+                    : `Up to ${job.salaryMax?.toLocaleString('en-PH')}`
+                }
+              </span>
             ) : job.salary ? (
-              <span className={styles.jobSalary}>₱{job.salary.toLocaleString('en-PH')}</span>
-            ) : null}
+              <span className={styles.jobSalary}>₱{job.salary}</span>
+            ) : (
+              <span className={styles.jobSalary}>Salary not specified</span>
+            )}
           </div>
         </div>
         <span className={`${styles.statusBadge} ${styles[job.status.toLowerCase()]}`}>
