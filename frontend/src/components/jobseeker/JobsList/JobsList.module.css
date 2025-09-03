@@ -74,7 +74,27 @@
 }
 
 .jobsList {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+/* Responsive design for mobile */
+@media (max-width: 768px) {
+  .jobsList {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+/* For very small screens */
+@media (max-width: 480px) {
+  .jobsSection {
+    padding: 0 1rem;
+  }
+  
+  .jobsList {
+    gap: 0.75rem;
+  }
 }

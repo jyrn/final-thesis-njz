@@ -1,7 +1,7 @@
 import React from 'react';
 import { Job } from '@/types/Job';
 import Button from '../ui/Button';
-import { FiEye, FiEdit2, FiTrash2, FiUsers, FiClock, FiMapPin } from 'react-icons/fi';
+import { FiEye, FiEdit2, FiTrash2, FiUsers, FiClock, FiMapPin, FiBriefcase, FiTrendingUp } from 'react-icons/fi';
 import styles from './JobCard.module.css';
 
 interface JobCardProps {
@@ -21,113 +21,128 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onView, onEdit, onDelete,
     onClick?.(job);
   };
 
+  const formatPostedDate = () => {
+    if (job.postedDate || job.posted) {
+      let date;
+      if (typeof (job.postedDate || job.posted) === 'string') {
+        date = new Date(job.postedDate || job.posted);
+      } else {
+        date = new Date(job.postedDate || job.posted);
+      }
+      
+      if (isNaN(date.getTime())) {
+        return 'Recently posted';
+      }
+      
+      const now = new Date();
+      const diffTime = Math.abs(now.getTime() - date.getTime());
+      const diffMinutes = Math.floor(diffTime / (1000 * 60));
+      const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      
+      // Format full date
+      const fullDate = date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      // Format relative time
+      let timeAgo;
+      if (diffMinutes < 1) {
+        timeAgo = 'Just now';
+      } else if (diffMinutes < 60) {
+        timeAgo = diffMinutes === 1 ? '1 minute ago' : `${diffMinutes} minutes ago`;
+      } else if (diffHours < 24) {
+        timeAgo = diffHours === 1 ? '1 hour ago' : `${diffHours} hours ago`;
+      } else if (diffDays === 1) {
+        timeAgo = '1 day ago';
+      } else if (diffDays < 7) {
+        timeAgo = `${diffDays} days ago`;
+      } else if (diffDays < 30) {
+        timeAgo = `${Math.ceil(diffDays / 7)} weeks ago`;
+      } else {
+        timeAgo = `${Math.ceil(diffDays / 30)} months ago`;
+      }
+      
+      return `${fullDate} — ${timeAgo}`;
+    }
+    return 'Recently posted';
+  };
+
   return (
     <div className={styles.jobCard} onClick={handleCardClick}>
       <div className={styles.jobHeader}>
-        <div>
-          <h3 className={styles.jobTitle}>{job.title}</h3>
-          <div className={styles.jobMeta}>
-            <span className={styles.jobLocation}>
-              <FiMapPin className={styles.icon} />
-              {job.location} • {job.type}
+        <div className={styles.jobHeaderContent}>
+          <div className={styles.jobTitleSection}>
+            <h3 className={styles.jobTitle}>{job.title}</h3>
+            <p className={styles.companyName}>{job.company}</p>
+          </div>
+          <div className={styles.statusSection}>
+            <span className={`${styles.statusBadge} ${styles[job.status.toLowerCase()]}`}>
+              {job.status}
             </span>
-            {job.level && (
-              <span className={styles.jobLevel}>{job.level}</span>
-            )}
-            {(job.salaryMin !== undefined || job.salaryMax !== undefined) ? (
-              <span className={styles.jobSalary}>
-                ₱{job.salaryMin && job.salaryMax 
-                  ? `${job.salaryMin.toLocaleString('en-PH')} - ₱${job.salaryMax.toLocaleString('en-PH')}`
-                  : job.salaryMin 
-                    ? `${job.salaryMin.toLocaleString('en-PH')}+`
-                    : `Up to ${job.salaryMax?.toLocaleString('en-PH')}`
-                }
-              </span>
-            ) : job.salary ? (
-              <span className={styles.jobSalary}>₱{job.salary}</span>
-            ) : (
-              <span className={styles.jobSalary}>Salary not specified</span>
-            )}
+            <span className={styles.postedDate}>{formatPostedDate()}</span>
           </div>
         </div>
-        <span className={`${styles.statusBadge} ${styles[job.status.toLowerCase()]}`}>
-          {job.status}
-        </span>
+        
+        <div className={styles.jobMeta}>
+          <div className={styles.metaItem}>
+            <FiMapPin className={styles.metaIcon} />
+            <span>{job.location}</span>
+          </div>
+          <div className={styles.metaItem}>
+            <FiClock className={styles.metaIcon} />
+            <span>{job.type}</span>
+          </div>
+          {job.level && (
+            <div className={styles.metaItem}>
+              <FiTrendingUp className={styles.metaIcon} />
+              <span>{job.level}</span>
+            </div>
+          )}
+          {job.department && (
+            <div className={styles.metaItem}>
+              <FiBriefcase className={styles.metaIcon} />
+              <span>{job.department}</span>
+            </div>
+          )}
+          {(job.salaryMin !== undefined || job.salaryMax !== undefined || job.salary) && (
+            <div className={styles.metaItem}>
+              <span>₱</span>
+              <span>
+                {(job.salaryMin !== undefined || job.salaryMax !== undefined) ? (
+                  job.salaryMin && job.salaryMax 
+                    ? `${job.salaryMin.toLocaleString('en-PH')} - ${job.salaryMax.toLocaleString('en-PH')}`
+                    : job.salaryMin 
+                      ? `${job.salaryMin.toLocaleString('en-PH')}+`
+                      : `Up to ${job.salaryMax?.toLocaleString('en-PH')}`
+                ) : job.salary ? (
+                  job.salary
+                ) : (
+                  'Competitive'
+                )}
+              </span>
+            </div>
+          )}
+          {(job.workplaceType || job.remote) && (
+            <div className={styles.metaItem}>
+              <span>{job.workplaceType || (job.remote ? 'Remote' : 'On-site')}</span>
+            </div>
+          )}
+        </div>
       </div>
       
-      <div className={styles.jobStats}>
-        <span 
-          className={`${styles.statItem} ${styles.clickableStat}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onView?.(job);
-          }}
-        >
-          <FiUsers className={styles.icon} />
-          {job.applicants || job.applicantCount || 0} {(job.applicants || job.applicantCount || 0) === 1 ? 'applicant' : 'applicants'}
-        </span>
-        <span className={styles.statItem}>
-          <FiClock className={styles.icon} />
-          {job.postedDate ? new Date(job.postedDate).toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric' 
-          }) : job.posted ? new Date(job.posted).toLocaleDateString('en-US', { 
-            month: 'short', 
-            day: 'numeric' 
-          }) : 'Recently'}
-        </span>
-        {job.department && (
-          <span className={styles.statItem}>
-            {job.department}
-          </span>
-        )}
-        {(job.workplaceType || job.remote) && (
-          <span className={styles.statItem}>
-            {job.workplaceType || (job.remote ? 'Remote' : 'On-site')}
-          </span>
-        )}
-      </div>
-
-      {job.requirements && job.requirements.length > 0 && (
-        <div className={styles.requirements}>
-          {job.requirements.slice(0, 3).map((req, idx) => (
-            <span key={idx} className={styles.requirementTag}>
-              {req}
-            </span>
-          ))}
-          {job.requirements.length > 3 && (
-            <span className={styles.moreTag}>
-              +{job.requirements.length - 3} more
-            </span>
-          )}
+      {/* Job Description */}
+      {job.description && (
+        <div className={styles.jobDescription}>
+          <p className={styles.descriptionText}>
+            {job.description}
+          </p>
         </div>
       )}
 
       <div className={styles.jobActions}>
-        <div className={styles.actionGroup}>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onView?.(job);
-            }}
-          >
-            <FiEye className={styles.icon} />
-            View
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit?.(job);
-            }}
-          >
-            <FiEdit2 className={styles.icon} />
-            Edit
-          </Button>
-        </div>
         <Button 
           variant="ghost" 
           size="sm"
@@ -137,9 +152,53 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onView, onEdit, onDelete,
             onDelete?.(job.id);
           }}
         >
-          <FiTrash2 className={styles.icon} />
-          Delete
+          <span className={styles.buttonContent}>
+            <FiTrash2 className={styles.icon} />
+            <span>Delete</span>
+          </span>
         </Button>
+        <div className={styles.actionGroup}>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit?.(job);
+            }}
+          >
+            <span className={styles.buttonContent}>
+              <FiEdit2 className={styles.icon} />
+              <span>Edit</span>
+            </span>
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onView?.(job);
+            }}
+          >
+            <span className={styles.buttonContent}>
+              <FiEye className={styles.icon} />
+              <span>View</span>
+            </span>
+          </Button>
+          <Button 
+            variant="primary" 
+            size="sm"
+            className={styles.applicantButton}
+            onClick={(e) => {
+              e.stopPropagation();
+              onView?.(job);
+            }}
+          >
+            <span className={styles.buttonContent}>
+              <FiUsers className={styles.icon} />
+              <span>{job.applicants || job.applicantCount || 0} {(job.applicants || job.applicantCount || 0) === 1 ? 'applicant' : 'applicants'}</span>
+            </span>
+          </Button>
+        </div>
       </div>
     </div>
   );
