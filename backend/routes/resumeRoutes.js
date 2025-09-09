@@ -1,11 +1,89 @@
 const express = require('express');
-const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { verifyToken } = require('../middleware/authMiddleware');
 const Resume = require('../models/Resume');
+const ParsedResume = require('../models/ParsedResume');
+const { verifyToken } = require('../middleware/authMiddleware');
+const nerService = require('../services/nerService');
+
+const router = express.Router();
 const JobSeeker = require('../models/JobSeeker');
+
+// Async function to process resume with NER
+async function processResumeWithNER(resumeId, filePath, userId) {
+  try {
+    console.log(`Starting NER processing for resume ${resumeId}`);
+    
+    // Parse PDF directly with NER service using PyMuPDF
+    const nerResult = await nerService.parseResumeFile(filePath);
+    
+    if (nerResult.success) {
+      // Extract additional AI matching data
+      const industryTags = nerService.extractIndustryTags(nerResult.data);
+      const experienceLevel = nerService.determineExperienceLevel(nerResult.data);
+      
+      // Save parsed data to ParsedResume collection
+      const parsedResumeData = {
+        userId: userId,
+        resumeId: resumeId,
+        personalInfo: nerResult.data.personalInfo,
+        education: nerResult.data.education || [],
+        experience: nerResult.data.experience || [],
+        skills: nerResult.data.skills || [],
+        extractedText: nerResult.data.extractedText,
+        parsingMetadata: {
+          entityCount: nerResult.entityCount || 0,
+          parsedAt: new Date(),
+          nerModelVersion: '1.0',
+          confidence: 0.85
+        },
+        industryTags: nerResult.data.industryTags || [],
+        experienceLevel: nerResult.data.experienceLevel || 'entry'
+      };
+      
+      const parsedResume = new ParsedResume(parsedResumeData);
+      await parsedResume.save();
+      
+      // Update resume status to completed
+      await Resume.findByIdAndUpdate(resumeId, {
+        processingStatus: 'completed',
+        processedAt: new Date(),
+        parsedData: {
+          personalInfo: nerResult.data.personalInfo,
+          education: nerResult.data.education || [],
+          experience: nerResult.data.experience || [],
+          skills: nerResult.data.skills || [],
+          experienceLevel: nerResult.data.experienceLevel || 'entry',
+          industryTags: nerResult.data.industryTags || [],
+          entityCount: nerResult.entityCount || 0
+        }
+      });
+      
+      console.log(`NER processing completed for resume ${resumeId}. Found ${nerResult.entityCount || 0} entities.`);
+      
+    } else {
+      console.error(`NER processing failed for resume ${resumeId}:`, nerResult.error);
+      
+      // Update resume status to failed
+      await Resume.findByIdAndUpdate(resumeId, {
+        processingStatus: 'failed',
+        processedAt: new Date(),
+        errorMessage: nerResult.error
+      });
+    }
+    
+  } catch (error) {
+    console.error(`Error processing resume ${resumeId} with NER:`, error);
+    
+    // Update resume status to failed
+    await Resume.findByIdAndUpdate(resumeId, {
+      processingStatus: 'failed',
+      processedAt: new Date(),
+      errorMessage: error.message
+    });
+  }
+}
 
 // Configure multer for file upload
 const storage = multer.diskStorage({
@@ -77,7 +155,7 @@ router.post('/upload', verifyToken, upload.single('resume'), async (req, res) =>
       fileUrl: `/uploads/resumes/${req.file.filename}`,
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
-      processingStatus: 'pending'
+      processingStatus: 'processing'
     };
 
     const resume = new Resume(resumeData);
@@ -87,9 +165,12 @@ router.post('/upload', verifyToken, upload.single('resume'), async (req, res) =>
     jobSeeker.currentResumeId = resume._id;
     await jobSeeker.save();
 
+    // Process resume with NER service asynchronously
+    processResumeWithNER(resume._id, req.file.path, uid);
+
     res.status(201).json({
       success: true,
-      message: 'Resume uploaded successfully',
+      message: 'Resume uploaded successfully and is being processed',
       data: {
         resumeId: resume._id,
         filename: resume.originalName,
@@ -105,6 +186,79 @@ router.post('/upload', verifyToken, upload.single('resume'), async (req, res) =>
       success: false,
       error: 'Failed to upload resume',
       details: error.message
+    });
+  }
+});
+
+// @route   GET /api/resumes/parsed/:resumeId
+// @desc    Get parsed resume data
+// @access  Private (Job Seeker)
+router.get('/parsed/:resumeId', verifyToken, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { resumeId } = req.params;
+
+    const parsedResume = await ParsedResume.findOne({ 
+      userId: uid, 
+      resumeId: resumeId 
+    });
+
+    if (!parsedResume) {
+      return res.status(404).json({
+        success: false,
+        error: 'Parsed resume data not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: parsedResume
+    });
+
+  } catch (error) {
+    console.error('Error fetching parsed resume:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch parsed resume data'
+    });
+  }
+});
+
+// @route   GET /api/resumes/processing-status/:resumeId
+// @desc    Get resume processing status
+// @access  Private (Job Seeker)
+router.get('/processing-status/:resumeId', verifyToken, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { resumeId } = req.params;
+
+    const resume = await Resume.findOne({ 
+      _id: resumeId, 
+      jobSeekerUid: uid 
+    });
+
+    if (!resume) {
+      return res.status(404).json({
+        success: false,
+        error: 'Resume not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        processingStatus: resume.processingStatus,
+        processedAt: resume.processedAt,
+        errorMessage: resume.errorMessage,
+        parsedData: resume.parsedData
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching processing status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch processing status'
     });
   }
 });
