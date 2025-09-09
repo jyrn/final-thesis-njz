@@ -9,7 +9,8 @@ import {
   JobsTab, 
   UsersTab,
   AdminManagementTab,
-  SystemSettingsTab
+  SystemSettingsTab,
+  AnalyticsTab
 } from '../../components/admin';
 import adminService from '../../services/adminService';
 import './SuperAdminDashboard.css';
@@ -18,7 +19,7 @@ import './SuperAdminDashboard.css';
 
 const SuperAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [activeTab, setActiveTab] = useState<string>('analytics');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [pendingEmployers, setPendingEmployers] = useState<PendingEmployer[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -153,6 +154,10 @@ const SuperAdminDashboard: React.FC = () => {
             </button>
           }
         />
+
+        {activeTab === 'analytics' && (
+          <AnalyticsTab />
+        )}
 
         {activeTab === 'overview' && (
           <OverviewTab 

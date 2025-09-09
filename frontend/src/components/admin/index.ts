@@ -9,3 +9,4 @@ export { default as JobsTab } from './JobsTab';
 export { default as UsersTab } from './UsersTab';
 export { default as AdminManagementTab } from './AdminManagementTab';
 export { default as SystemSettingsTab } from './SystemSettingsTab';
+export { default as AnalyticsTab } from './AnalyticsTab';

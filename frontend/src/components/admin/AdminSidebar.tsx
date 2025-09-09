@@ -6,7 +6,8 @@ import {
   FiTrendingUp, 
   FiLogOut,
   FiSettings,
-  FiUserCheck
+  FiUserCheck,
+  FiBarChart2
 } from 'react-icons/fi';
 import { HiShieldCheck } from 'react-icons/hi2';
 import { HiSparkles } from 'react-icons/hi';
@@ -27,14 +28,21 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
 }) => {
   const navItems = [
     { id: 'overview' as AdminTab, icon: FiTrendingUp, label: 'Overview' },
+  
     { id: 'employers' as AdminTab, icon: FiBriefcase, label: 'Employer Verification' },
-    { id: 'jobs' as AdminTab, icon: FiFileText, label: 'Job Management' },
-    { id: 'users' as AdminTab, icon: FiUsers, label: 'User Analytics' },
-    ...(adminUser.role === 'superadmin' ? [
-      { id: 'admins' as AdminTab, icon: FiUserCheck, label: 'Admin Management' },
-      { id: 'settings' as AdminTab, icon: FiSettings, label: 'System Settings' }
-    ] : [])
+    { id: 'jobs' as AdminTab, icon: FiFileText, label: 'Job Listings' },
+    { id: 'analytics' as AdminTab, icon: FiBarChart2, label: 'User Analytics' },
   ];
+
+  if (adminUser.role === 'superadmin') {
+    navItems.push(
+      { id: 'admins' as AdminTab, icon: HiShieldCheck, label: 'Admin Management' }
+    );
+  }
+
+  navItems.push(
+    { id: 'settings' as AdminTab, icon: FiSettings, label: 'System Settings' }
+  );
 
   return (
     <div className="admin-sidebar">

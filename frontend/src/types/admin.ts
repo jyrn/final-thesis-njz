@@ -53,4 +53,4 @@ export interface AdminFormData {
   adminLevel?: string;
 }
 
-export type AdminTab = 'overview' | 'employers' | 'jobs' | 'users' | 'admins' | 'settings' | 'analytics';
+export type AdminTab = 'overview' | 'analytics' | 'employers' | 'jobs' | 'users' | 'admins' | 'settings';
