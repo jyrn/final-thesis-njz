@@ -1,13 +1,14 @@
 import React from 'react'
-import { FiBookmark, FiMapPin, FiDollarSign, FiClock, FiBriefcase, FiTrendingUp } from 'react-icons/fi'
+import { FiBookmark, FiMapPin, FiDollarSign, FiClock, FiBriefcase, FiTrendingUp, FiCheck, FiX } from 'react-icons/fi'
 import styles from './JobCard.module.css'
 import { Job } from '../../../types/Job'
 
 interface JobCardProps {
   job: Job
-  onSave?: (jobId: number) => void
-  onApply?: (jobId: number) => void
+  onSave?: (jobId: string | number) => void
+  onApply?: (jobId: string | number) => void
   onJobClick?: (job: Job) => void
+  onViewApplication?: (job: Job) => void
   isSaved?: boolean
 }
 
@@ -16,9 +17,22 @@ const JobCard: React.FC<JobCardProps> = ({
   onSave,
   onApply,
   onJobClick,
+  onViewApplication,
   isSaved = false
 }) => {
   const formatPostedDate = () => {
+    // For applications, show applied date instead of posted date
+    if (job.applied && job.appliedDate) {
+      const date = new Date(job.appliedDate);
+      if (!isNaN(date.getTime())) {
+        return `Applied: ${date.toLocaleDateString('en-PH', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        })}`;
+      }
+    }
+    
     if (job.postedDate || job.posted) {
       let date;
       if (typeof (job.postedDate || job.posted) === 'string') {
@@ -67,27 +81,38 @@ const JobCard: React.FC<JobCardProps> = ({
     return 'Recently posted';
   };
   const getCompanyLogo = (company: string) => {
-    switch (company.toLowerCase()) {
-      case 'google':
-        return (
-          <div className={`${styles.companyLogo} ${styles.google}`}>
-            G
-          </div>
-        )
-      case 'apple':
-        return (
-          <div className={`${styles.companyLogo} ${styles.apple}`}>
-            
-          </div>
-        )
-      default:
-        return (
-          <div className={styles.companyLogo}>
-            {company.charAt(0)}
-          </div>
-        )
-    }
+    return (
+      <div className={styles.companyLogo}>
+        {company.charAt(0)}
+      </div>
+    )
   }
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <FiClock className={styles.statusIcon} />;
+      case 'approved':
+        return <FiCheck className={styles.statusIcon} />;
+      case 'rejected':
+        return <FiX className={styles.statusIcon} />;
+      default:
+        return <FiClock className={styles.statusIcon} />;
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return 'Under Review';
+      case 'approved':
+        return 'Approved';
+      case 'rejected':
+        return 'Not Selected';
+      default:
+        return 'Under Review';
+    }
+  };
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Only trigger if clicking on the card itself, not buttons
@@ -110,18 +135,30 @@ const JobCard: React.FC<JobCardProps> = ({
             <h4 className={styles.jobTitle}>{job.title}</h4>
             <p className={styles.companyName}>{job.company}</p>
           </div>
-          <button 
-            className={`${styles.saveJobButton} ${isSaved ? styles.saved : ''}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSave?.(Number(job.id));
-            }}
-            aria-label={isSaved ? 'Unsave job' : 'Save job'}
-          >
-            <span className={styles.buttonContent}>
-              <FiBookmark className={styles.icon} />
-            </span>
-          </button>
+          {job.applied && job.status ? (
+            <div 
+              className={`${styles.statusBadge} ${styles[`status${job.status.charAt(0).toUpperCase() + job.status.slice(1)}`]}`}
+              aria-label={`Application status: ${job.status}`}
+            >
+              <span className={styles.buttonContent}>
+                {getStatusIcon(job.status)}
+                <span className={styles.statusText}>{getStatusText(job.status)}</span>
+              </span>
+            </div>
+          ) : (
+            <button 
+              className={`${styles.saveJobButton} ${isSaved ? styles.saved : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSave?.(job.id);
+              }}
+              aria-label={isSaved ? 'Unsave job' : 'Save job'}
+            >
+              <span className={styles.buttonContent}>
+                <FiBookmark className={styles.icon} />
+              </span>
+            </button>
+          )}
         </div>
         
         <div className={styles.jobDetails}>
@@ -133,71 +170,66 @@ const JobCard: React.FC<JobCardProps> = ({
             <FiClock className={styles.detailIcon} />
             <span>{job.type}</span>
           </div>
-          {job.level && (
-            <div className={styles.detailItem}>
-              <FiTrendingUp className={styles.detailIcon} />
-              <span>{job.level}</span>
-            </div>
-          )}
-          {job.department && (
-            <div className={styles.detailItem}>
-              <FiBriefcase className={styles.detailIcon} />
-              <span>{job.department}</span>
-            </div>
-          )}
-          {(job.salaryMin !== undefined || job.salaryMax !== undefined || job.salary) && (
-            <div className={styles.detailItem}>
-              <span>₱</span>
-              <span>
-                {(job.salaryMin !== undefined || job.salaryMax !== undefined) ? (
-                  job.salaryMin && job.salaryMax 
-                    ? `${job.salaryMin.toLocaleString('en-PH')} - ${job.salaryMax.toLocaleString('en-PH')}`
-                    : job.salaryMin 
-                      ? `${job.salaryMin.toLocaleString('en-PH')}+`
-                      : `Up to ${job.salaryMax?.toLocaleString('en-PH')}`
-                ) : job.salary ? (
-                  job.salary
-                ) : (
-                  'Competitive'
-                )}
-              </span>
-            </div>
-          )}
-          {(job.workplaceType || job.remote) && (
-            <div className={styles.detailItem}>
-              <span>{job.workplaceType || (job.remote ? 'Remote' : 'On-site')}</span>
-            </div>
-          )}
+          <div className={styles.detailItem}>
+            <FiTrendingUp className={styles.detailIcon} />
+            <span>{job.level || 'Mid-level'}</span>
+          </div>
+          <div className={styles.detailItem}>
+            <FiBriefcase className={styles.detailIcon} />
+            <span>{job.department || 'Engineering'}</span>
+          </div>
+          <div className={styles.detailItem}>
+            <span>{job.salary || '₱10,000+'}</span>
+          </div>
+          <div className={styles.detailItem}>
+            <span>{job.workplaceType || (job.remote ? 'Remote' : 'On-site')}</span>
+          </div>
         </div>
         
-        {job.matchScore && (
-          <div className={styles.matchScore}>
-            <div className={styles.matchBar} style={{ width: `${job.matchScore}%` }} />
-            <span className={styles.matchText}>{job.matchScore}% Match</span>
-          </div>
-        )}
         
-        {job.description && (
-          <div className={styles.jobDescription}>
-            <p className={styles.descriptionText}>
-              {job.description}
-            </p>
-          </div>
-        )}
+        <div className={styles.jobDescription}>
+          <p className={styles.descriptionText}>
+            {job.description && job.description.length > 180 ? 
+              `${job.description.substring(0, 180)}...` : 
+              job.description || 'asdfghjkl'
+            }
+          </p>
+        </div>
         
         <div className={styles.jobFooter}>
           <span className={styles.postedDate}>{formatPostedDate()}</span>
-          <button 
-            className={styles.applyButton}
-            onClick={(e) => {
-              e.stopPropagation();
-              onApply?.(Number(job.id));
-            }}
-          >
-            <span className={styles.buttonContent}>
-              <span>Apply Now</span>
-            </span>
-          </button>
+          {job.applied && job.status ? (
+            <button 
+              className={styles.applyButton}
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewApplication?.(job);
+              }}
+            >
+              <span className={styles.buttonContent}>
+                <span>View Application</span>
+              </span>
+            </button>
+          ) : (
+            <button 
+              className={`${styles.applyButton} ${job.applied ? styles.applied : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!job.applied) {
+                  onApply?.(job.id);
+                }
+              }}
+              disabled={job.applied}
+            >
+              <span className={styles.buttonContent}>
+                {job.applied ? (
+                  <span>Applied ✓</span>
+                ) : (
+                  <span>Apply Now</span>
+                )}
+              </span>
+            </button>
+          )}
         </div>
       </div>
     </div>

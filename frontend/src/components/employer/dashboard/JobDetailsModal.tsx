@@ -182,16 +182,17 @@ export const JobDetailsModal: React.FC<JobDetailsModalProps> = (props) => {
           <div className={styles.metaItem}>
             <span className={styles.pesoIcon}>₱</span>
             <span>
-              {job.salaryMin && job.salaryMax 
-                ? `${job.salaryMin.toLocaleString('en-PH')} - ₱${job.salaryMax.toLocaleString('en-PH')}`
-                : job.salaryMin 
-                  ? `${job.salaryMin.toLocaleString('en-PH')}+`
-                  : job.salaryMax
-                    ? `Up to ${job.salaryMax.toLocaleString('en-PH')}`
-                    : job.salary 
-                      ? job.salary
-                      : 'Salary not specified'
-              }
+              {(job.salaryMin > 0 && job.salaryMax > 0) ? (
+                `${job.salaryMin.toLocaleString('en-PH')} - ${job.salaryMax.toLocaleString('en-PH')}`
+              ) : job.salaryMin > 0 ? (
+                `${job.salaryMin.toLocaleString('en-PH')}+`
+              ) : job.salaryMax > 0 ? (
+                `Up to ${job.salaryMax.toLocaleString('en-PH')}`
+              ) : job.salary && typeof job.salary === 'string' && job.salary !== 'Salary not specified' ? (
+                job.salary
+              ) : (
+                'Salary not specified'
+              )}
             </span>
           </div>
           <div 

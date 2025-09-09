@@ -10,6 +10,7 @@ interface JobsListProps {
   onSaveJob?: (jobId: number) => void
   onApplyJob?: (jobId: number) => void
   onJobClick?: (job: Job) => void
+  onViewApplication?: (job: Job) => void
   savedJobs?: Set<number>
   onOpenFilters?: () => void
 }
@@ -20,6 +21,7 @@ const JobsList: React.FC<JobsListProps> = ({
   onSaveJob,
   onApplyJob,
   onJobClick,
+  onViewApplication,
   savedJobs = new Set(),
   onOpenFilters
 }) => {
@@ -47,7 +49,8 @@ const JobsList: React.FC<JobsListProps> = ({
             onSave={onSaveJob}
             onApply={onApplyJob}
             onJobClick={onJobClick}
-            isSaved={savedJobs.has(job.id)}
+            onViewApplication={onViewApplication}
+            isSaved={savedJobs.has(Number(job.id))}
           />
         ))}
       </div>
