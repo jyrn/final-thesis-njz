@@ -1,11 +1,113 @@
 const express = require('express');
-const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { verifyToken } = require('../middleware/authMiddleware');
 const Resume = require('../models/Resume');
+const ParsedResume = require('../models/ParsedResume');
+const { verifyToken } = require('../middleware/authMiddleware');
+const nerService = require('../services/nerService');
+
+const router = express.Router();
 const JobSeeker = require('../models/JobSeeker');
+
+// Async function to process resume with NER
+async function processResumeWithNER(resumeId, filePath, userId) {
+  try {
+    // Parse PDF directly with NER service using PyMuPDF
+    const nerResult = await nerService.parseResumeFile(filePath);
+    
+    if (nerResult.success) {
+      // Extract additional AI matching data
+      const industryTags = nerService.extractIndustryTags(nerResult.data);
+      const experienceLevel = nerService.determineExperienceLevel(nerResult.data);
+      
+      // Save parsed data to ParsedResume collection
+      const parsedResumeData = {
+        userId: userId,
+        resumeId: resumeId,
+        personalInfo: nerResult.data.personalInfo,
+        education: nerResult.data.education || [],
+        experience: nerResult.data.experience || [],
+        skills: nerResult.data.skills || [],
+        languages: nerResult.data.languages || [],
+        trainings: nerResult.data.trainings || [],
+        extractedText: nerResult.data.extractedText,
+        parsingMetadata: {
+          entityCount: nerResult.entityCount || 0,
+          parsedAt: new Date(),
+          nerModelVersion: '1.0',
+          confidence: 0.85
+        },
+        industryTags: nerResult.data.industryTags || [],
+        experienceLevel: nerResult.data.experienceLevel || 'entry'
+      };
+      
+      const parsedResume = new ParsedResume(parsedResumeData);
+      await parsedResume.save();
+      
+      // Update JobSeeker's resumeData with parsed information
+      const jobSeeker = await JobSeeker.findOne({ uid: userId });
+      if (jobSeeker) {
+        jobSeeker.resumeData = {
+          personalInfo: {
+            name: nerResult.data.personalInfo?.name || '',
+            email: nerResult.data.personalInfo?.email || '',
+            phone: nerResult.data.personalInfo?.phone || '',
+            address: nerResult.data.personalInfo?.address || ''
+          },
+          skills: nerResult.data.skills || [],
+          experience: nerResult.data.experience || [],
+          education: nerResult.data.education || [],
+          languages: nerResult.data.languages || [],
+          trainings: nerResult.data.trainings || [],
+          language: nerResult.data.language || 'mixed',
+          uploadedAt: new Date()
+        };
+        await jobSeeker.save();
+        console.log(`Updated JobSeeker resumeData for user ${userId} with ${nerResult.data.trainings?.length || 0} trainings and ${nerResult.data.languages?.length || 0} languages`);
+      }
+      
+      // Update resume status to completed
+      await Resume.findByIdAndUpdate(resumeId, {
+        processingStatus: 'completed',
+        processedAt: new Date(),
+        parsedData: {
+          personalInfo: nerResult.data.personalInfo,
+          education: nerResult.data.education || [],
+          experience: nerResult.data.experience || [],
+          skills: nerResult.data.skills || [],
+          languages: nerResult.data.languages || [],
+          trainings: nerResult.data.trainings || [],
+          experienceLevel: experienceLevel,
+          industryTags: industryTags,
+          entityCount: nerResult.entityCount || 0
+        }
+      });
+      
+      console.log(`NER processing completed for resume ${resumeId}. Found ${nerResult.entityCount || 0} entities.`);
+      
+    } else {
+      console.error(`NER processing failed for resume ${resumeId}:`, nerResult.error);
+      
+      // Update resume status to failed
+      await Resume.findByIdAndUpdate(resumeId, {
+        processingStatus: 'failed',
+        processedAt: new Date(),
+        errorMessage: nerResult.error
+      });
+    }
+    
+  } catch (error) {
+    console.error(`Error processing resume ${resumeId} with NER:`, error);
+    
+    // Update resume status to failed
+    await Resume.findByIdAndUpdate(resumeId, {
+      processingStatus: 'failed',
+      processedAt: new Date(),
+      errorMessage: error.message
+    });
+  }
+}
 
 // Configure multer for file upload
 const storage = multer.diskStorage({
@@ -77,7 +179,7 @@ router.post('/upload', verifyToken, upload.single('resume'), async (req, res) =>
       fileUrl: `/uploads/resumes/${req.file.filename}`,
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
-      processingStatus: 'pending'
+      processingStatus: 'processing'
     };
 
     const resume = new Resume(resumeData);
@@ -87,9 +189,12 @@ router.post('/upload', verifyToken, upload.single('resume'), async (req, res) =>
     jobSeeker.currentResumeId = resume._id;
     await jobSeeker.save();
 
+    // Process resume with NER service asynchronously
+    processResumeWithNER(resume._id, req.file.path, uid);
+
     res.status(201).json({
       success: true,
-      message: 'Resume uploaded successfully',
+      message: 'Resume uploaded successfully and is being processed',
       data: {
         resumeId: resume._id,
         filename: resume.originalName,
@@ -105,6 +210,79 @@ router.post('/upload', verifyToken, upload.single('resume'), async (req, res) =>
       success: false,
       error: 'Failed to upload resume',
       details: error.message
+    });
+  }
+});
+
+// @route   GET /api/resumes/parsed/:resumeId
+// @desc    Get parsed resume data
+// @access  Private (Job Seeker)
+router.get('/parsed/:resumeId', verifyToken, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { resumeId } = req.params;
+
+    const parsedResume = await ParsedResume.findOne({ 
+      userId: uid, 
+      resumeId: resumeId 
+    });
+
+    if (!parsedResume) {
+      return res.status(404).json({
+        success: false,
+        error: 'Parsed resume data not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: parsedResume
+    });
+
+  } catch (error) {
+    console.error('Error fetching parsed resume:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch parsed resume data'
+    });
+  }
+});
+
+// @route   GET /api/resumes/processing-status/:resumeId
+// @desc    Get resume processing status
+// @access  Private (Job Seeker)
+router.get('/processing-status/:resumeId', verifyToken, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { resumeId } = req.params;
+
+    const resume = await Resume.findOne({ 
+      _id: resumeId, 
+      jobSeekerUid: uid 
+    });
+
+    if (!resume) {
+      return res.status(404).json({
+        success: false,
+        error: 'Resume not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        processingStatus: resume.processingStatus,
+        processedAt: resume.processedAt,
+        errorMessage: resume.errorMessage,
+        parsedData: resume.parsedData
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching processing status:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch processing status'
     });
   }
 });
@@ -231,6 +409,86 @@ router.put('/:id/activate', verifyToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to activate resume'
+    });
+  }
+});
+
+// @route   PUT /api/resumes/parsed/:resumeId
+// @desc    Update parsed resume data after user edits
+// @access  Private (Job Seeker)
+router.put('/parsed/:resumeId', verifyToken, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { resumeId } = req.params;
+    const { resumeData } = req.body;
+
+    // Find the parsed resume
+    const parsedResume = await ParsedResume.findOne({ 
+      userId: uid, 
+      resumeId: resumeId 
+    });
+
+    if (!parsedResume) {
+      return res.status(404).json({
+        success: false,
+        error: 'Parsed resume data not found'
+      });
+    }
+
+    // Update the parsed resume data
+    parsedResume.personalInfo = resumeData.personalInfo || parsedResume.personalInfo;
+    parsedResume.skills = resumeData.skills || parsedResume.skills;
+    parsedResume.languages = resumeData.languages || parsedResume.languages;
+    parsedResume.experience = resumeData.experience || parsedResume.experience;
+    parsedResume.education = resumeData.education || parsedResume.education;
+    parsedResume.trainings = resumeData.trainings || parsedResume.trainings;
+    
+    // Update metadata
+    parsedResume.parsingMetadata.parsedAt = new Date();
+    parsedResume.parsingMetadata.confidence = 1.0; // User-edited data has full confidence
+
+    await parsedResume.save();
+
+    // Also update JobSeeker's resumeData
+    const jobSeeker = await JobSeeker.findOne({ uid });
+    if (jobSeeker) {
+      jobSeeker.resumeData = {
+        personalInfo: resumeData.personalInfo,
+        skills: resumeData.skills || [],
+        experience: resumeData.experience || [],
+        education: resumeData.education || [],
+        languages: resumeData.languages || [],
+        trainings: resumeData.trainings || [],
+        language: jobSeeker.resumeData?.language || 'mixed',
+        uploadedAt: jobSeeker.resumeData?.uploadedAt || new Date()
+      };
+      await jobSeeker.save();
+    }
+
+    // Update the Resume record's parsedData
+    await Resume.findByIdAndUpdate(resumeId, {
+      parsedData: {
+        personalInfo: resumeData.personalInfo,
+        education: resumeData.education || [],
+        experience: resumeData.experience || [],
+        skills: resumeData.skills || [],
+        languages: resumeData.languages || [],
+        trainings: resumeData.trainings || [],
+        entityCount: (resumeData.skills?.length || 0) + (resumeData.experience?.length || 0) + (resumeData.education?.length || 0) + (resumeData.trainings?.length || 0)
+      }
+    });
+
+    res.json({
+      success: true,
+      message: 'Resume data updated successfully',
+      data: parsedResume
+    });
+
+  } catch (error) {
+    console.error('Error updating parsed resume:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update resume data'
     });
   }
 });

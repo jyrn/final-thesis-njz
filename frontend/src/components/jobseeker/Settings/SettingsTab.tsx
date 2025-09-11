@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FiUser, FiFileText, FiSave, FiX, FiUpload, FiDownload, FiTrash2, FiEye, FiMail, FiPhone, FiMapPin, FiGlobe, FiDollarSign, FiStar, FiPlus, FiMinus, FiLogOut, FiBell, FiSettings, FiEdit2, FiCheck } from 'react-icons/fi';
 import styles from './SettingsTab.module.css';
 import firebaseAuthService from '../../../services/firebaseAuthService';
@@ -91,6 +91,7 @@ const SettingsTab: React.FC = () => {
   const [updatingPassword, setUpdatingPassword] = useState(false);
   const [showResumeEditModal, setShowResumeEditModal] = useState(false);
   const [parsedResumeData, setParsedResumeData] = useState(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [userAuthMethods, setUserAuthMethods] = useState<{hasPassword: boolean; providers: string[]}>({
     hasPassword: true,
@@ -229,37 +230,8 @@ const SettingsTab: React.FC = () => {
     }
   };
 
-  const handleResumeUpload = async (file: File) => {
-    try {
-      setUploading(true);
-      setError(null);
-
-      const response = await apiService.uploadResume(file);
-
-      if (response.success && response.data) {
-        // If resume data was parsed, show edit modal
-        if (response.data.resumeData) {
-          setParsedResumeData(response.data.resumeData);
-          setShowResumeEditModal(true);
-          setSuccess('Resume uploaded! Please review the extracted information.');
-        } else {
-          setSuccess('Resume uploaded successfully!');
-        }
-        
-        // Update profile to reflect new resume
-        const updatedProfile = { ...profile, resumeUrl: response.data.fileUrl };
-        setProfile(updatedProfile);
-        setEditedProfile(updatedProfile);
-        setTimeout(() => setSuccess(null), 3000);
-      } else {
-        setError(response.error || 'Failed to upload resume');
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to upload resume');
-    } finally {
-      setUploading(false);
-      setResumeFile(null);
-    }
+  const handleResumeUploadClick = () => {
+    fileInputRef.current?.click();
   };
 
   const handleResumeDelete = async () => {
@@ -288,7 +260,7 @@ const SettingsTab: React.FC = () => {
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.type !== 'application/pdf') {
@@ -299,8 +271,64 @@ const SettingsTab: React.FC = () => {
         setError('File size must be less than 5MB.');
         return;
       }
-      setResumeFile(file);
-      handleResumeUpload(file);
+      
+      // Directly upload and process the file
+      try {
+        setUploading(true);
+        setError(null);
+
+        // Use the jobseeker resume endpoint that returns parsed data
+        const formData = new FormData();
+        formData.append('resume', file);
+        
+        // Get Firebase token for authentication
+        const user = firebaseAuthService.getCurrentUser();
+        if (!user) {
+          setError('Please log in to upload resume');
+          return;
+        }
+        
+        const token = await user.getIdToken();
+        const response = await fetch('http://localhost:3001/api/jobseekers/resume', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+        
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          // Store resume ID for confirmation later
+          const resumeId = result.data.resumeId;
+          
+          // If resume data was parsed, show edit modal
+          if (result.data.parsedData) {
+            setParsedResumeData({
+              ...result.data.parsedData,
+              resumeId: resumeId // Store resume ID with parsed data
+            });
+            setShowResumeEditModal(true);
+            setSuccess('Resume uploaded! Please review the extracted information.');
+          } else {
+            setSuccess('Resume uploaded successfully!');
+          }
+          
+          // Update profile to reflect new resume
+          const updatedProfile = { ...profile, resumeUrl: result.data.resumeUrl };
+          setProfile(updatedProfile);
+          setEditedProfile(updatedProfile);
+          setTimeout(() => setSuccess(null), 3000);
+        } else {
+          setError(result.error || 'Failed to upload resume');
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to upload resume');
+      } finally {
+        setUploading(false);
+        setResumeFile(null);
+      }
     }
   };
 
@@ -347,31 +375,6 @@ const SettingsTab: React.FC = () => {
     }));
   };
 
-  const handleResumeEditSave = async (editedResumeData: any) => {
-    try {
-      // Save the edited resume data to backend
-      const response = await apiService.post('/jobseekers/resume-data', {
-        resumeData: editedResumeData
-      });
-      
-      if (response.success) {
-        setShowResumeEditModal(false);
-        setSuccess('Resume data saved successfully!');
-        setParsedResumeData(editedResumeData);
-        setTimeout(() => setSuccess(null), 3000);
-      } else {
-        throw new Error(response.error || 'Failed to save resume data');
-      }
-    } catch (error: any) {
-      console.error('Failed to save resume data:', error);
-      setError(error.message || 'Failed to save resume data. Please try again.');
-    }
-  };
-
-  const handleResumeEditClose = () => {
-    setShowResumeEditModal(false);
-    // Keep the original parsed data if user cancels
-  };
 
   if (loading) {
     return (
@@ -763,17 +766,24 @@ const SettingsTab: React.FC = () => {
                     </>
                   )}
                   
-                  <label className={styles.uploadButton}>
-                    <FiUpload />
-                    {profile.resumeUrl ? 'Replace' : 'Upload'}
+                  <>
                     <input
+                      ref={fileInputRef}
                       type="file"
                       accept=".pdf"
                       onChange={handleFileChange}
                       style={{ display: 'none' }}
                       disabled={uploading}
                     />
-                  </label>
+                    <button 
+                      className={styles.uploadButton}
+                      onClick={handleResumeUploadClick}
+                      disabled={uploading}
+                    >
+                      <FiUpload />
+                      {profile.resumeUrl ? 'Replace' : 'Upload'}
+                    </button>
+                  </>
                 </div>
               </div>
 
@@ -1444,8 +1454,56 @@ const SettingsTab: React.FC = () => {
       {showResumeEditModal && parsedResumeData && (
         <ResumeEditModal
           isOpen={showResumeEditModal}
-          onClose={handleResumeEditClose}
-          onSave={handleResumeEditSave}
+          onClose={() => setShowResumeEditModal(false)}
+          onSave={async (editedResumeData) => {
+            try {
+              // Get Firebase token for authentication
+              const user = firebaseAuthService.getCurrentUser();
+              if (!user) {
+                setError('Please log in to save resume data');
+                return;
+              }
+              
+              const token = await user.getIdToken();
+              const resumeId = (editedResumeData as any).resumeId;
+              
+              // Remove resumeId from the data before sending
+              const { resumeId: _, ...dataToSave } = editedResumeData as any;
+              
+              // Step 4: Save user-confirmed data to ParsedResume collection
+              const response = await fetch('http://localhost:3001/api/jobseekers/resume/confirm', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  resumeId: resumeId,
+                  parsedData: dataToSave
+                })
+              });
+              
+              const result = await response.json();
+              
+              if (response.ok && result.success) {
+                setShowResumeEditModal(false);
+                setSuccess('Resume data confirmed and saved successfully!');
+                setParsedResumeData(null);
+                
+                // Update profile with confirmed resume data
+                const updatedProfile = { ...profile, resumeData: result.data.resumeData };
+                setProfile(updatedProfile);
+                setEditedProfile(updatedProfile);
+                
+                setTimeout(() => setSuccess(null), 3000);
+              } else {
+                throw new Error(result.error || 'Failed to save resume data');
+              }
+            } catch (error: any) {
+              console.error('Failed to save resume data:', error);
+              setError(error.message || 'Failed to save resume data. Please try again.');
+            }
+          }}
           initialData={parsedResumeData}
           fileName={resumeFile?.name || 'resume.pdf'}
         />

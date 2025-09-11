@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const JobSeeker = require('../models/JobSeeker');
 const User = require('../models/User');
+const ParsedResume = require('../models/ParsedResume');
+const Resume = require('../models/Resume');
 const { verifyToken } = require('../middleware/authMiddleware');
 const multer = require('multer');
 const path = require('path');
@@ -206,7 +208,7 @@ router.put('/profile', verifyToken, async (req, res) => {
 });
 
 // @route   POST /api/jobseekers/resume
-// @desc    Upload resume and parse data
+// @desc    Upload resume file and initiate parsing
 // @access  Private
 router.post('/resume', verifyToken, upload.single('resume'), async (req, res) => {
   try {
@@ -228,45 +230,78 @@ router.post('/resume', verifyToken, upload.single('resume'), async (req, res) =>
       });
     }
 
-    // Update resume URL
+    // Step 1: Store file in Resume collection
     const resumeUrl = `/uploads/resumes/${req.file.filename}`;
-    jobseekerProfile.resumeUrl = resumeUrl;
+    
+    // Deactivate previous resumes
+    await Resume.updateMany(
+      { jobSeekerUid: uid, isActive: true },
+      { isActive: false }
+    );
 
-    // Parse resume using NER service
+    // Create new resume record
+    const resumeRecord = new Resume({
+      jobSeekerUid: uid,
+      jobSeekerId: jobseekerProfile._id,
+      originalName: req.file.originalname,
+      filename: req.file.filename,
+      fileUrl: resumeUrl,
+      fileSize: req.file.size,
+      mimeType: req.file.mimetype,
+      processingStatus: 'processing',
+      isActive: true
+    });
+    await resumeRecord.save();
+
+    // Step 2: Parse resume using enhanced NER service
+    let parsedData = null;
     try {
-      const FormData = require('form-data');
+      const fs = require('fs');
       const fetch = require('node-fetch');
       
-      const formData = new FormData();
-      formData.append('file', require('fs').createReadStream(req.file.path));
+      // Read the PDF file and convert to base64
+      const pdfBuffer = fs.readFileSync(req.file.path);
+      const pdfBase64 = pdfBuffer.toString('base64');
       
-      const nerResponse = await fetch('http://localhost:5000/extract', {
+      const nerResponse = await fetch('http://localhost:5000/parse-resume', {
         method: 'POST',
-        body: formData
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          pdf_base64: pdfBase64
+        })
       });
       
       if (nerResponse.ok) {
-        const resumeData = await nerResponse.json();
-        
-        // Save parsed resume data to database
-        jobseekerProfile.resumeData = {
-          ...resumeData,
-          uploadedAt: new Date()
-        };
+        const parseResult = await nerResponse.json();
+        if (parseResult.success) {
+          parsedData = parseResult.data;
+          
+          // Update resume processing status
+          resumeRecord.processingStatus = 'completed';
+          resumeRecord.processedAt = new Date();
+          await resumeRecord.save();
+        }
       }
     } catch (parseError) {
       console.warn('Resume parsing error:', parseError.message);
-      // Continue without parsed data - just save the file URL
+      resumeRecord.processingStatus = 'failed';
+      await resumeRecord.save();
     }
 
+    // Update jobseeker profile with resume URL
+    jobseekerProfile.resumeUrl = resumeUrl;
     await jobseekerProfile.save();
 
+    // Step 3: Return parsed data for edit modal (don't save to ParsedResume yet)
     res.json({
       success: true,
-      message: 'Resume uploaded successfully',
+      message: 'Resume uploaded and parsed successfully',
       data: {
+        resumeId: resumeRecord._id,
         resumeUrl: resumeUrl,
-        resumeData: jobseekerProfile.resumeData
+        parsedData: parsedData // This will be shown in edit modal
       }
     });
 
@@ -275,6 +310,97 @@ router.post('/resume', verifyToken, upload.single('resume'), async (req, res) =>
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to upload resume'
+    });
+  }
+});
+
+// @route   POST /api/jobseekers/resume/confirm
+// @desc    Save user-confirmed parsed data to ParsedResume collection
+// @access  Private
+router.post('/resume/confirm', verifyToken, async (req, res) => {
+  try {
+    const { uid } = req.user;
+    const { resumeId, parsedData } = req.body;
+
+    if (!resumeId || !parsedData) {
+      return res.status(400).json({
+        success: false,
+        error: 'Resume ID and parsed data are required'
+      });
+    }
+
+    // Find the resume record
+    const resumeRecord = await Resume.findOne({ 
+      _id: resumeId, 
+      jobSeekerUid: uid 
+    });
+
+    if (!resumeRecord) {
+      return res.status(404).json({
+        success: false,
+        error: 'Resume not found'
+      });
+    }
+
+    // Find jobseeker profile
+    const jobseekerProfile = await JobSeeker.findOne({ uid });
+    if (!jobseekerProfile) {
+      return res.status(404).json({
+        success: false,
+        error: 'Jobseeker profile not found'
+      });
+    }
+
+    // Step 4: Save user-confirmed data to ParsedResume collection
+    const parsedResumeData = {
+      userId: uid,
+      resumeId: resumeRecord._id,
+      personalInfo: parsedData.personalInfo || {},
+      skills: parsedData.skills || [],
+      languages: parsedData.languages || [],
+      experience: parsedData.experience || [],
+      education: parsedData.education || [],
+      certifications: parsedData.certifications || [],
+      trainings: parsedData.trainings || [],
+      parsingMetadata: {
+        parsedAt: new Date(),
+        parsingVersion: '2.0',
+        confidence: 0.95, // Higher confidence since user confirmed
+        extractionMethod: 'enhanced_ner_user_confirmed'
+      },
+      industryTags: [],
+      experienceLevel: parsedData.experienceLevel || 'entry'
+    };
+
+    // Remove existing ParsedResume for this user (keep only latest)
+    await ParsedResume.deleteMany({ userId: uid });
+
+    // Save new ParsedResume
+    const parsedResume = new ParsedResume(parsedResumeData);
+    await parsedResume.save();
+
+    // Also update JobSeeker profile with confirmed data
+    jobseekerProfile.resumeData = {
+      ...parsedData,
+      uploadedAt: resumeRecord.uploadedAt,
+      confirmedAt: new Date()
+    };
+    await jobseekerProfile.save();
+
+    res.json({
+      success: true,
+      message: 'Resume data confirmed and saved successfully',
+      data: {
+        parsedResumeId: parsedResume._id,
+        resumeData: parsedData
+      }
+    });
+
+  } catch (error) {
+    console.error('Resume confirmation error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to confirm resume data'
     });
   }
 });

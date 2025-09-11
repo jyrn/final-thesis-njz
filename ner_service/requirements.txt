@@ -1,2 +1,5 @@
-spacy
 flask
+flask-cors
+spacy
+PyMuPDF
+numpy<2

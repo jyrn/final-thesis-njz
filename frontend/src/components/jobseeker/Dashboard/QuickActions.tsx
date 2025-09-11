@@ -23,7 +23,10 @@ const QuickActions: React.FC<QuickActionsProps> = ({ onNavigate, onShowResumeUpl
         
         <button 
           className={styles.actionCard}
-          onClick={onShowResumeUpload}
+          onClick={() => {
+            console.log('🎯 Resume upload button clicked!');
+            onShowResumeUpload();
+          }}
         >
           <FiFileText className={styles.actionIcon} />
           <span className={styles.actionLabel}>

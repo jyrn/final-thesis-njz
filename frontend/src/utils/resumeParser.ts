@@ -98,7 +98,7 @@ const performOCR = async (file: File): Promise<string> => {
   }
 }
 
-const parseResumeText = (text: string): ParsedResume => {
+export const parseResumeText = (text: string): ParsedResume => {
   const lines = text
     .split("\n")
     .map((line) => line.trim())

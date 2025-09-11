@@ -4,7 +4,7 @@ import styles from './Dashboard.module.css'
 import { FiHome, FiBriefcase, FiFileText, FiUser, FiBookmark, FiMapPin, FiDollarSign, FiClock, FiBell, FiMenu, FiX, FiFilter, FiSliders, FiLogOut } from 'react-icons/fi'
 import FilterModal from '../../components/jobseeker/FilterModal/FilterModal'
 import SearchBar from '../../components/jobseeker/SearchBar/SearchBar'
-import ResumeUploadPrompt from '../../components/ResumeUploadPrompt';
+import ResumeUploadWithEdit from '../../components/ResumeUploadWithEdit';
 import JobDetailModal from '../../components/jobseeker/JobDetailModal/JobDetailModal';
 import ApplicationSuccessModal from '../../components/ApplicationSuccessModal';
 import DashboardTab from '../../components/jobseeker/Dashboard/tabs/DashboardTab';
@@ -679,7 +679,10 @@ const Dashboard: React.FC = () => {
       hasSkippedResume,
       userProfile,
       onNavigate: setActiveTab,
-      onShowResumeUpload: () => setShowResumeUpload(true),
+      onShowResumeUpload: () => {
+        console.log('🚀 Dashboard: setShowResumeUpload(true) called');
+        setShowResumeUpload(true);
+      },
       getJobsToDisplay,
       onSaveJob: handleSaveJob,
       onApplyJob: handleApplyJob,
@@ -795,12 +798,24 @@ const Dashboard: React.FC = () => {
       />
 
       {showResumeUpload && (
-        <ResumeUploadPrompt 
-          isOpen={showResumeUpload || (isFirstVisit && !hasSkippedResume && !resume)} 
-          onClose={() => setShowResumeUpload(false)} 
-          onUpload={handleResumeUpload}
-          onSkip={handleSkipResume}
-          userProfile={currentResume ? { resumeUrl: currentResume.fileUrl } : null}
+        <ResumeUploadWithEdit 
+          userToken={(() => {
+            const token = localStorage.getItem('token') || '';
+            console.log(' Token from localStorage:', token ? 'exists' : 'missing');
+            console.log(' Token length:', token.length);
+            console.log(' Token preview:', token.substring(0, 50) + '...');
+            return token;
+          })()}
+          onComplete={(resumeData) => {
+            console.log('Resume data saved:', resumeData);
+            setShowResumeUpload(false);
+            // Refresh user data after resume upload
+            // fetchUserProfile(); // TODO: Implement user profile refresh
+          }}
+          onError={(error) => {
+            console.error('Resume upload error:', error);
+            setShowResumeUpload(false);
+          }}
         />
       )}
 

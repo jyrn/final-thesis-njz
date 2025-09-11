@@ -90,6 +90,51 @@ const JobSeekerSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Resume'
   },
+  resumeData: {
+    personalInfo: {
+      name: String,
+      email: String,
+      phone: String,
+      address: String
+    },
+    skills: [String],
+    experience: [{
+      position: String,
+      company: String,
+      duration: String,
+      location: String,
+      description: String
+    }],
+    education: [{
+      degree: String,
+      institution: String,
+      year: String,
+      location: String
+    }],
+    languages: [String],
+    trainings: [{
+      name: String,
+      provider: String,
+      date: String,
+      location: String,
+      duration: String,
+      type: {
+        type: String,
+        enum: ['training', 'seminar', 'workshop', 'certification', 'course'],
+        default: 'training'
+      },
+      description: String
+    }],
+    language: {
+      type: String,
+      enum: ['english', 'filipino', 'mixed', 'other'],
+      default: 'mixed'
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    }
+  },
   portfolioUrl: {
     type: String
   },

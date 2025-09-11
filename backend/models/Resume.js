@@ -41,47 +41,10 @@ const ResumeSchema = new mongoose.Schema({
     default: 'pending'
   },
   
-  // Parsed Resume Data (from NER service)
-  parsedData: {
-    personalInfo: {
-      name: String,
-      email: String,
-      phone: String,
-      address: String
-    },
-    summary: String,
-    skills: [String],
-    experience: [{
-      company: String,
-      position: String,
-      duration: String,
-      description: String,
-      startDate: String,
-      endDate: String,
-      location: String
-    }],
-    education: [{
-      institution: String,
-      degree: String,
-      year: String,
-      fieldOfStudy: String,
-      gpa: String,
-      honors: String
-    }],
-    certifications: [String],
-    languages: [String],
-    projects: [{
-      name: String,
-      description: String,
-      technologies: [String],
-      duration: String
-    }],
-    references: [{
-      name: String,
-      position: String,
-      company: String,
-      contact: String
-    }]
+  // Raw extracted text from OCR/AI processing
+  extractedText: {
+    type: String,
+    default: ''
   },
   
   // Processing Metadata
@@ -139,9 +102,9 @@ ResumeSchema.methods.addProcessingLog = function(status, message, details = null
 };
 
 // Method to mark as processed
-ResumeSchema.methods.markAsProcessed = function(parsedData) {
+ResumeSchema.methods.markAsProcessed = function(extractedText) {
   this.processingStatus = 'completed';
-  this.parsedData = parsedData;
+  this.extractedText = extractedText;
   this.processedAt = new Date();
 };
 
