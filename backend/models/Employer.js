@@ -76,11 +76,86 @@ const EmployerSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  verificationDocuments: [{
-    type: String,
-    url: String,
-    uploadedAt: { type: Date, default: Date.now }
+  // Document verification array
+  documents: [{
+    documentType: {
+      type: String,
+      enum: [
+        'companyProfile',
+        'businessPermit',
+        'philjobnetRegistration',
+        'doleNoPendingCase'
+      ],
+      required: true
+    },
+    documentName: {
+      type: String,
+      required: true
+    },
+    documentUrl: {
+      type: String,
+      required: true
+    },
+    fileSize: {
+      type: Number,
+      required: true
+    },
+    mimeType: {
+      type: String,
+      required: true
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    },
+    isRequired: {
+      type: Boolean,
+      default: true
+    },
+    expiryDate: {
+      type: Date
+    },
+    documentNumber: {
+      type: String
+    },
+    // Individual document verification status
+    verificationStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected', 'requires_resubmission'],
+      default: 'pending'
+    },
+    verifiedAt: {
+      type: Date
+    },
+    verifiedBy: {
+      type: String // Admin UID who verified this document
+    },
+    rejectionReason: {
+      type: String
+    },
+    adminNotes: {
+      type: String
+    }
   }],
+  
+  // Overall document verification status
+  documentVerificationStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'requires_resubmission'],
+    default: 'pending'
+  },
+  documentVerifiedAt: {
+    type: Date
+  },
+  documentVerifiedBy: {
+    type: String // Admin UID who verified documents
+  },
+  documentRejectionReason: {
+    type: String
+  },
+  documentAdminNotes: {
+    type: String
+  },
   
   // Social Media and Online Presence
   socialMedia: {
@@ -139,7 +214,8 @@ const EmployerSchema = new mongoose.Schema({
   },
   verifiedBy: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'User',
+    required: false
   },
   
   createdAt: {

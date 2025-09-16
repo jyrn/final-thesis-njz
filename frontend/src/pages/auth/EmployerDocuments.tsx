@@ -53,13 +53,55 @@ const EmployerDocuments: React.FC = () => {
 
     setIsUploading(true)
     try {
-      console.log("Uploading employer documents...")
-      await new Promise(resolve => setTimeout(resolve, 3000))
-      console.log("Documents uploaded successfully")
+      // Create FormData for file upload
+      const formData = new FormData()
+      
+      // Add each document to FormData
+      Object.entries(employerDocuments).forEach(([key, doc]) => {
+        if (doc.file) {
+          formData.append(key, doc.file)
+        }
+      })
+
+      // Get Firebase auth token
+      const { auth } = await import('../../config/firebase')
+      const user = auth.currentUser
+      if (!user) {
+        throw new Error('User not authenticated')
+      }
+
+      const token = await user.getIdToken()
+
+      // Upload documents to backend
+      const response = await fetch('http://localhost:3001/api/employers/upload-documents', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      })
+
+      let result
+      try {
+        result = await response.json()
+      } catch (jsonError) {
+        console.error('Failed to parse response as JSON:', jsonError)
+        throw new Error(`Server error: ${response.status} ${response.statusText}`)
+      }
+
+      if (!response.ok) {
+        console.error('Upload failed with response:', result)
+        throw new Error(result.message || result.error || 'Failed to upload documents')
+      }
+
+      console.log("Documents uploaded successfully:", result)
       setShowSuccessModal(true)
     } catch (error) {
       console.error("Document upload failed:", error)
-      setErrors(prev => ({ ...prev, general: "Failed to upload documents. Please try again." }))
+      setErrors(prev => ({ 
+        ...prev, 
+        general: error instanceof Error ? error.message : "Failed to upload documents. Please try again." 
+      }))
     } finally {
       setIsUploading(false)
     }

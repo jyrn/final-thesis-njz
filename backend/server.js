@@ -10,6 +10,7 @@ const jobRoutes = require('./routes/jobRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
 const resumeRoutes = require('./routes/resumeRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const fixAdminIndexes = require('./routes/fixAdminIndexes');
 
 // Initialize Express app
 const app = express();
@@ -34,6 +35,7 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/resumes', resumeRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/fix', fixAdminIndexes);
 
 // Basic route for testing
 app.get('/', (req, res) => {

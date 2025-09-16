@@ -19,7 +19,7 @@ import './SuperAdminDashboard.css';
 
 const SuperAdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<string>('analytics');
+  const [activeTab, setActiveTab] = useState<string>('overview');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [pendingEmployers, setPendingEmployers] = useState<PendingEmployer[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -50,17 +50,17 @@ const SuperAdminDashboard: React.FC = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [statsData, employersData, jobsData, adminsData] = await Promise.all([
+      const [statsData, employersData, jobsData, usersResponse] = await Promise.all([
         adminService.getDashboardStats(),
-        adminService.getPendingEmployers(),
+        adminService.getAllEmployers(), // Changed to get all employers instead of just pending
         adminService.getJobs({ limit: 10 }),
-        adminService.getAdminUsers()
+        adminService.getUsers({ role: 'admin' })
       ]);
 
       setStats(statsData);
       setPendingEmployers(employersData);
       setJobs(jobsData.jobs || []);
-      setAdminUsers(adminsData);
+      setAdminUsers(usersResponse.users || []);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -70,35 +70,66 @@ const SuperAdminDashboard: React.FC = () => {
 
   const handleEmployerAction = async (employerId: string, action: 'approve' | 'reject', reason?: string) => {
     try {
+      console.log('🚀 SuperAdmin handleEmployerAction called:', { employerId, action, reason });
+      setLoading(true);
       await adminService.verifyEmployer(employerId, action, reason);
-      fetchDashboardData();
+      console.log('✅ Employer verification successful, refreshing data...');
+      await fetchDashboardData();
+      console.log('✅ Dashboard data refreshed');
     } catch (error) {
-      console.error('Error updating employer status:', error);
+      console.error('❌ Error updating employer status:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleCreateAdmin = async (adminData: any) => {
     try {
-      await adminService.createAdmin(adminData);
-      fetchDashboardData();
+      console.log('🔄 Creating admin with data:', adminData);
+      const newAdmin = await adminService.createAdmin(adminData);
+      console.log('✅ Admin created successfully:', newAdmin);
+      
+      // Refresh the dashboard data to show the new admin
+      await fetchDashboardData();
+      
+      // Show success message
+      alert('Admin user created successfully!');
     } catch (error) {
-      console.error('Error creating admin:', error);
+      console.error('❌ Error creating admin:', error);
+      alert(`Failed to create admin: ${error.message}`);
     }
   };
 
   const handleEditAdmin = async (adminId: string, adminData: any) => {
-    // Implementation for editing admin
-    console.log('Edit admin:', adminId, adminData);
+    try {
+      console.log('🔄 Updating admin:', adminId, adminData);
+      await adminService.updateUser(adminId, adminData);
+      
+      // Refresh the dashboard data to show the updated admin
+      await fetchDashboardData();
+      
+      // Show success message
+      alert('Admin user updated successfully!');
+    } catch (error) {
+      console.error('❌ Error editing admin:', error);
+      alert(`Failed to update admin: ${error.message}`);
+    }
   };
 
   const handleDeleteAdmin = async (adminId: string) => {
     if (window.confirm('Are you sure you want to delete this admin?')) {
       try {
-        // Implementation for deleting admin
-        console.log('Delete admin:', adminId);
-        fetchDashboardData();
+        console.log('🔄 Deleting admin:', adminId);
+        await adminService.deleteUser(adminId);
+        
+        // Refresh the dashboard data to remove the deleted admin
+        await fetchDashboardData();
+        
+        // Show success message
+        alert('Admin user deleted successfully!');
       } catch (error) {
-        console.error('Error deleting admin:', error);
+        console.error('❌ Error deleting admin:', error);
+        alert(`Failed to delete admin: ${error.message}`);
       }
     }
   };
@@ -169,6 +200,7 @@ const SuperAdminDashboard: React.FC = () => {
           <EmployersTab 
             pendingEmployers={pendingEmployers}
             onEmployerAction={handleEmployerAction}
+            loading={loading}
           />
         )}
 

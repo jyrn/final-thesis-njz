@@ -7,13 +7,15 @@ interface EmployerCardProps {
   onApprove: (employerId: string) => void;
   onReject: (employerId: string) => void;
   loading?: boolean;
+  showActions?: boolean;
 }
 
 const EmployerCard: React.FC<EmployerCardProps> = ({
   employer,
   onApprove,
   onReject,
-  loading = false
+  loading = false,
+  showActions = true
 }) => {
   return (
     <div className="employer-card">
@@ -48,22 +50,24 @@ const EmployerCard: React.FC<EmployerCardProps> = ({
         )}
       </div>
 
-      <div className="employer-actions">
-        <button
-          className="approve-btn"
-          onClick={() => onApprove(employer._id)}
-          disabled={loading}
-        >
-          <FiCheck /> Approve
-        </button>
-        <button
-          className="reject-btn"
-          onClick={() => onReject(employer._id)}
-          disabled={loading}
-        >
-          <FiX /> Reject
-        </button>
-      </div>
+      {showActions && (
+        <div className="employer-actions">
+          <button
+            className="approve-btn"
+            onClick={() => onApprove(employer._id)}
+            disabled={loading}
+          >
+            <FiCheck /> Approve
+          </button>
+          <button
+            className="reject-btn"
+            onClick={() => onReject(employer._id)}
+            disabled={loading}
+          >
+            <FiX /> Reject
+          </button>
+        </div>
+      )}
     </div>
   );
 };

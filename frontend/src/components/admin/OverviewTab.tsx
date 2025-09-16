@@ -25,17 +25,18 @@ const OverviewTab: React.FC<OverviewTabProps> = ({ stats }) => {
           iconClassName="employers"
         />
         <StatsCard
-          icon={FiFileText}
-          value={stats?.totalJobs || 0}
-          label="Job Postings"
-          iconClassName="jobs"
-        />
-        <StatsCard
           icon={HiCheckCircle}
           value={stats?.totalApplications || 0}
           label="Jobseekers"
           iconClassName="applications"
         />
+        <StatsCard
+          icon={FiFileText}
+          value={stats?.totalJobs || 0}
+          label="Job Postings"
+          iconClassName="jobs"
+        />
+    
         <StatsCard
           icon={FiClock}
           value={stats?.pendingEmployers || 0}

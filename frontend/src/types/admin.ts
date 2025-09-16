@@ -23,6 +23,26 @@ export interface AdminUser {
   lastLoginAt?: string;
 }
 
+export interface EmployerDocument {
+  _id: string;
+  employerId: string;
+  employerUid: string;
+  documentType: 'business_permit' | 'dti_registration' | 'bir_certificate' | 'sec_certificate' | 'mayor_permit' | 'barangay_clearance' | 'other';
+  documentName: string;
+  documentUrl: string;
+  fileSize: number;
+  mimeType: string;
+  uploadedAt: string;
+  verificationStatus: 'pending' | 'approved' | 'rejected' | 'requires_resubmission';
+  verifiedAt?: string;
+  verifiedBy?: string;
+  rejectionReason?: string;
+  adminNotes?: string;
+  isRequired: boolean;
+  expiryDate?: string;
+  documentNumber?: string;
+}
+
 export interface PendingEmployer {
   _id: string;
   userId: {
@@ -33,6 +53,7 @@ export interface PendingEmployer {
   businessPermitUrl?: string;
   dtiRegistrationUrl?: string;
   accountStatus: string;
+  documents?: EmployerDocument[];
 }
 
 export interface Job {

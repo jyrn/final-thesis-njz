@@ -7,7 +7,8 @@ import {
   OverviewTab, 
   EmployersTab, 
   JobsTab, 
-  UsersTab 
+  UsersTab,
+  AnalyticsTab
 } from '../../components/admin';
 import adminService from '../../services/adminService';
 import './AdminDashboard.css';
@@ -37,10 +38,11 @@ const AdminDashboard: React.FC = () => {
   }, [navigate]);
 
   const fetchDashboardData = async () => {
+    setLoading(true);
     try {
       const [statsData, employersData, jobsData] = await Promise.all([
         adminService.getDashboardStats(),
-        adminService.getPendingEmployers(),
+        adminService.getAllEmployers(),
         adminService.getJobs({ limit: 10 })
       ]);
 
@@ -60,6 +62,31 @@ const AdminDashboard: React.FC = () => {
       fetchDashboardData();
     } catch (error) {
       console.error('Error updating employer status:', error);
+    }
+  };
+
+  const handleDocumentAction = async (documentId: string, action: 'approve' | 'reject', reason?: string, notes?: string) => {
+    try {
+      await adminService.verifyDocument(documentId, action, reason, notes);
+      fetchDashboardData(); // Refresh to get updated document statuses
+    } catch (error) {
+      console.error('Error updating document status:', error);
+    }
+  };
+
+  const handleBulkDocumentAction = async (documentIds: string[], action: 'approve' | 'reject', reason?: string) => {
+    try {
+      // Find the employer ID from the first document (all should belong to same employer)
+      const firstDoc = pendingEmployers
+        .flatMap(emp => emp.documents || [])
+        .find(doc => documentIds.includes(doc._id));
+      
+      if (firstDoc) {
+        await adminService.bulkVerifyDocuments(firstDoc.employerId, documentIds, action, reason);
+        fetchDashboardData(); // Refresh to get updated document statuses
+      }
+    } catch (error) {
+      console.error('Error bulk updating document status:', error);
     }
   };
 
@@ -92,6 +119,10 @@ const AdminDashboard: React.FC = () => {
 
       <div className="admin-main">
         <AdminHeader title="Admin Dashboard" />
+
+        {activeTab === 'analytics' && (
+          <AnalyticsTab />
+        )}
 
         {activeTab === 'overview' && <OverviewTab stats={stats} />}
         
