@@ -1077,6 +1077,59 @@ body {
     font-size: 0.875rem;
   }
 
+  /* Mobile Applications Grid */
+  .applicationsGrid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    margin-top: 16px;
+  }
+
+  .applicationCard {
+    padding: 20px;
+    height: auto;
+    min-height: 360px;
+  }
+
+  .applicationHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .applicationHeader .jobTitle {
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .statusBadge {
+    align-self: flex-start;
+  }
+
+  .applicationDetails {
+    grid-template-columns: 1fr;
+    height: auto;
+    gap: 8px;
+  }
+
+  .applicationDetails .company {
+    margin-bottom: 8px;
+  }
+
+  .applicationFooter {
+    position: static;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+  }
+
+  .viewButton {
+    width: 100%;
+    justify-content: center;
+  }
+
   .initialResumeModal {
     padding: 1.5rem;
     margin: 1rem;
@@ -1140,6 +1193,28 @@ body {
 
   .pageContent {
     padding: 1.25rem;
+  }
+
+  /* Tablet Applications Grid */
+  .applicationsGrid {
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 20px;
+  }
+
+  .applicationCard {
+    padding: 24px;
+    height: 400px;
+  }
+
+  .applicationDetails {
+    grid-template-columns: repeat(2, 1fr);
+    height: 100px;
+  }
+
+  .applicationFooter {
+    bottom: 24px;
+    left: 24px;
+    right: 24px;
   }
 }
 
@@ -1212,9 +1287,9 @@ body {
   justify-content: center;
   padding: 64px 32px;
   text-align: center;
-  background: white;
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow);
+  background: var(--white);
+  border-radius: 12px;
+  border: 1px solid var(--gray-200);
   margin: 24px 0;
 }
 
@@ -1234,6 +1309,329 @@ body {
   color: var(--gray-600);
   margin: 0;
   font-size: 0.875rem;
+}
+
+/* Applications Grid Styles - Exact Job Card Copy */
+.applicationsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.applicationCard {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid #edf2f7;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  height: 480px;
+  display: flex;
+  flex-direction: column;
+}
+
+.applicationCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  border-color: #cbd5e1;
+}
+
+.applicationCardHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex: 1;
+}
+
+.applicationTitleRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+  width: 100%;
+}
+
+.applicationCompanyLogo {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1.125rem;
+  color: white;
+  background: #e2e8f0;
+  flex-shrink: 0;
+}
+
+.applicationInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.applicationTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1a202c;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.applicationCompanyName {
+  font-size: 0.9375rem;
+  color: #4a5568;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  line-clamp: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status Badge - Exact Save Button Copy */
+.statusBadge {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #f8fafc;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 10;
+  position: relative;
+  color: #94a3b8;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.statusBadge:hover {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.statusPending {
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.statusPending:hover {
+  color: #2563eb;
+  background: #dbeafe;
+}
+
+.statusApproved {
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.statusApproved:hover {
+  color: #2563eb;
+  background: #dbeafe;
+}
+
+.statusRejected {
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.statusRejected:hover {
+  color: #2563eb;
+  background: #dbeafe;
+}
+
+.statusIconPending {
+  color: inherit;
+}
+
+.statusIconApproved {
+  color: inherit;
+}
+
+.statusIconRejected {
+  color: inherit;
+}
+
+/* Button content wrapper - Exact Job Card Copy */
+.statusBadge .buttonContent {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 100%;
+  line-height: 1;
+  width: 100%;
+}
+
+.statusText {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.statusBadge .icon {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Job Details - Exact Job Card Copy */
+.applicationDetails {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: #4a5568;
+  align-items: start;
+  height: 110px;
+  align-content: start;
+}
+
+.detailItem {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  color: #4b5563;
+  white-space: nowrap;
+  border: 1px solid #e2e8f0;
+  height: 40px;
+}
+
+.detailIcon {
+  color: #6b7280;
+  flex-shrink: 0;
+  font-size: 0.9em;
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* Application Description - Exact Job Card Copy */
+.applicationDescription {
+  margin-bottom: 1rem;
+}
+
+.applicationDescription .descriptionText {
+  font-size: 0.875rem;
+  color: var(--gray-700);
+  line-height: 1.6;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Job Footer - Exact Job Card Copy */
+.applicationFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid #f3f4f6;
+}
+
+.postedDate {
+  font-size: 0.8125rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Apply button - Exact Job Card Copy */
+.applyButton {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+  height: 36px;
+}
+
+.applyButton:hover {
+  background: linear-gradient(90deg, #1d4ed8, #1e40af);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(29, 78, 216, 0.2);
+}
+
+.loadingState {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 64px 32px;
+  background: var(--white);
+  border-radius: 12px;
+  border: 1px solid var(--gray-200);
+  margin: 24px 0;
+}
+
+.loadingState p {
+  color: var(--gray-600);
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+.errorState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 32px;
+  text-align: center;
+  background: var(--white);
+  border-radius: 12px;
+  border: 1px solid var(--red-200);
+  margin: 24px 0;
+}
+
+.errorState p {
+  color: var(--red-600);
+  margin: 0 0 16px 0;
+  font-size: 0.875rem;
+}
+
+.retryButton {
+  padding: 8px 16px;
+  background: var(--primary-600);
+  color: var(--white);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.retryButton:hover {
+  background: var(--primary-700);
 }
 
 /* Search Bar Styles */
@@ -1685,18 +2083,16 @@ body {
   margin-top: 1.5rem;
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1024px) {
   .jobsGrid {
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1.25rem;
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .jobsGrid {
     grid-template-columns: 1fr;
-    gap: 1rem;
-    margin-top: 1rem;
+    height: auto; /* allow wrapping on small screens */
   }
 }
 
@@ -1932,6 +2328,24 @@ body {
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--gray-900);
+}
+
+/* Status Badge Styles */
+.statusBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  min-width: auto;
+  height: auto;
+  border: none;
+  cursor: default;
+  transition: var(--transition);
+  white-space: nowrap;
 }
 
 /* Buttons */

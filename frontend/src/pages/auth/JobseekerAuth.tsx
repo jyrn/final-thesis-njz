@@ -7,6 +7,7 @@ import styles from "./AuthPage.module.css"
 import RoleAgreementModal, { type UserRole } from "../../components/RoleAgreementModal"
 import TermsModal from "../../components/TermsModal"
 import SuccessModal from '../../components/SuccessModal'
+import ResumeEditModal from '../../components/ResumeEditModal/ResumeEditModal'
 import { FormErrors, JobseekerFormData } from "./shared/authTypes"
 import { validateEmail, validatePassword, validateName, validateConfirmPassword } from "./shared/authValidation"
 import firebaseAuthService from "../../services/firebaseAuthService"
@@ -33,6 +34,8 @@ const JobseekerAuth: React.FC = () => {
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [privacyAccepted, setPrivacyAccepted] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [showResumeEditModal, setShowResumeEditModal] = useState(false)
+  const [parsedResumeData, setParsedResumeData] = useState(null)
 
   const [formData, setFormData] = useState<JobseekerFormData>({
     email: "",
@@ -336,7 +339,16 @@ const JobseekerAuth: React.FC = () => {
       
       if (response.success) {
         console.log("Resume uploaded successfully:", response.data)
-        setSuccessMessage("Resume uploaded successfully!")
+        
+        // If resume data was parsed, show edit modal
+        if (response.data.resumeData) {
+          setParsedResumeData(response.data.resumeData)
+          setShowResumeEditModal(true)
+          setSuccessMessage("Resume uploaded! Please review the extracted information.")
+        } else {
+          setSuccessMessage("Resume uploaded successfully!")
+        }
+        
         return response.data // Return the upload result for use in registration
       } else {
         throw new Error(response.error || "Failed to upload resume")
@@ -518,6 +530,31 @@ const JobseekerAuth: React.FC = () => {
   const handleSuccessModalClose = () => {
     setShowSuccessModal(false)
     navigate("/jobseeker/dashboard")
+  }
+
+  const handleResumeEditSave = async (editedResumeData: any) => {
+    try {
+      // Save the edited resume data to backend
+      const response = await apiService.post('/jobseekers/resume-data', {
+        resumeData: editedResumeData
+      })
+      
+      if (response.success) {
+        setShowResumeEditModal(false)
+        setSuccessMessage("Resume data saved successfully!")
+        setParsedResumeData(editedResumeData)
+      } else {
+        throw new Error(response.error || "Failed to save resume data")
+      }
+    } catch (error: any) {
+      console.error("Failed to save resume data:", error)
+      setErrors(prev => ({ ...prev, resume: error.message || "Failed to save resume data. Please try again." }))
+    }
+  }
+
+  const handleResumeEditClose = () => {
+    setShowResumeEditModal(false)
+    // Keep the original parsed data if user cancels
   }
 
   return (
@@ -952,14 +989,6 @@ const JobseekerAuth: React.FC = () => {
         }}
         type="terms"
         userRole="jobseeker"
-      />
-
-      <SuccessModal
-        isOpen={showSuccessModal}
-        title={isLogin ? "Login Successful!" : "Account Created Successfully!"}
-        message={isLogin ? "Welcome back to PESO Job Portal! Redirecting to your dashboard..." : "Welcome to PESO Job Portal! Your jobseeker account has been created successfully. You can now access your dashboard and start exploring job opportunities."}
-        onClose={isLogin ? handleLoginSuccessModalClose : handleSuccessModalClose}
-        buttonText={isLogin ? "Go to Dashboard" : "Go to Dashboard"}
       />
 
       <TermsModal

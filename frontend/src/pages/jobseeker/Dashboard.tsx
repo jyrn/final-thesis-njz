@@ -77,7 +77,7 @@ const Dashboard: React.FC = () => {
   const [isFirstVisit, setIsFirstVisit] = useState(true)
   const [hasSkippedResume, setHasSkippedResume] = useState(false)
   const [showInitialResumePrompt, setShowInitialResumePrompt] = useState(false)
-  const [attemptedJobId, setAttemptedJobId] = useState<number | null>(null)
+  const [attemptedJobId, setAttemptedJobId] = useState<string | number | null>(null)
   const [showFilterModal, setShowFilterModal] = useState(false)
   const [userProfile, setUserProfile] = useState<any>(null)
   const [currentResume, setCurrentResume] = useState<any>(null)
@@ -234,8 +234,31 @@ const Dashboard: React.FC = () => {
         // Load jobs from backend API
         const jobService = JobService.getInstance();
         const backendJobs = await jobService.getRecommendedJobs();
-        setJobs(backendJobs);
-        setApplications([]);
+        
+        // Load user's applications to mark applied jobs
+        try {
+          const applicationsResponse = await apiService.getUserApplications();
+          if (applicationsResponse.success && applicationsResponse.data) {
+            const userApplications = applicationsResponse.data;
+            setApplications(userApplications);
+            
+            // Mark jobs as applied based on user's applications
+            const appliedJobIds = new Set(userApplications.map((app: any) => app.jobId));
+            const jobsWithAppliedState = backendJobs.map(job => ({
+              ...job,
+              applied: appliedJobIds.has(job.id)
+            }));
+            
+            setJobs(jobsWithAppliedState);
+          } else {
+            setJobs(backendJobs);
+            setApplications([]);
+          }
+        } catch (err) {
+          console.log('Failed to load applications, proceeding without applied state');
+          setJobs(backendJobs);
+          setApplications([]);
+        }
 
         // Check if user has visited before
         const hasVisited = localStorage.getItem('hasVisitedDashboard')
@@ -436,26 +459,28 @@ const Dashboard: React.FC = () => {
     }
   }
 
-  const handleApplyJob = async (jobId: number) => {
-    // Check if user has resume before allowing application
-    // Priority: currentResume from Resume collection, then parsed resume data, then profile resumeUrl
+  const handleApplyJob = async (jobId: string | number) => {
+    // More permissive resume validation - allow application if user has any resume data or profile info
     const hasCurrentResume = currentResume && currentResume.fileUrl
-    const hasResumeData = resume && resume.personalInfo && resume.personalInfo.name
+    const hasResumeData = resume && (resume.personalInfo || resume.skills || resume.experience)
     const hasResumeFile = userProfile?.resumeUrl && userProfile.resumeUrl.trim() !== ''
-    const hasResume = hasCurrentResume || hasResumeData || hasResumeFile
+    const hasBasicProfile = userProfile && (userProfile.firstName || userProfile.email)
+    const hasResume = hasCurrentResume || hasResumeData || hasResumeFile || hasBasicProfile
     
     console.log('Resume validation check:', {
       hasCurrentResume,
       hasResumeData,
       hasResumeFile,
+      hasBasicProfile,
       hasResume,
       currentResume: currentResume ? 'exists' : 'null',
       resume: resume ? 'exists' : 'null',
-      resumeUrl: userProfile?.resumeUrl || 'none'
+      resumeUrl: userProfile?.resumeUrl || 'none',
+      userProfile: userProfile ? 'exists' : 'null'
     })
     
     if (!hasResume) {
-      console.log('No resume found, showing upload prompt')
+      console.log('No resume or profile found, showing upload prompt')
       setAttemptedJobId(jobId)
       setShowResumeUpload(true)
       return
@@ -465,7 +490,14 @@ const Dashboard: React.FC = () => {
     
     // Find the job details for the success modal
     const job = jobs.find(j => j.id === jobId);
-    if (!job) return;
+    console.log('Looking for job with ID:', jobId, 'in jobs array:', jobs.map(j => ({id: j.id, title: j.title})));
+    
+    if (!job) {
+      console.error('Job not found with ID:', jobId);
+      return;
+    }
+    
+    console.log('Job found:', job.title, 'proceeding with Firebase auth...');
     
     try {
       // Get Firebase auth token directly instead of localStorage
@@ -484,6 +516,13 @@ const Dashboard: React.FC = () => {
       console.log('Token length:', token?.length || 0);
 
       // Submit application to backend
+      console.log('Submitting application to backend...', {
+        jobId,
+        hasToken: !!token,
+        tokenLength: token?.length,
+        resumeData: resume ? 'present' : 'missing'
+      });
+
       const response = await fetch('http://localhost:3001/api/applications', {
         method: 'POST',
         headers: {
@@ -497,12 +536,15 @@ const Dashboard: React.FC = () => {
         })
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
+      console.log('Response received:', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
+      });
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Error response:', errorText);
+        console.error('Error response body:', errorText);
         
         if (response.status === 401) {
           alert('Authentication failed. Please log in again.');
@@ -519,12 +561,12 @@ const Dashboard: React.FC = () => {
       
       // Apply through JobService
       const jobService = JobService.getInstance();
-      const updatedJob = jobService.applyToJob(jobId);
+      const updatedJob = jobService.applyToJob(Number(jobId));
       
       // Create application record
       const newApplication: Application = {
         id: Date.now(),
-        jobId: jobId,
+        jobId: Number(jobId),
         status: 'pending',
         appliedDate: new Date().toISOString().split('T')[0],
         updatedAt: new Date().toISOString()
@@ -543,11 +585,19 @@ const Dashboard: React.FC = () => {
       console.log('Application submitted successfully for job:', jobId)
       
       // Update the jobs list to reflect the applied status
-      if (updatedJob) {
-        setJobs(prev => prev.map(job => 
-          job.id === jobId ? { ...job, applied: updatedJob.applied } : job
-        ));
-      }
+      console.log('Updating job applied status for jobId:', jobId);
+      setJobs(prev => {
+        const updated = prev.map(job => 
+          job.id === jobId ? { ...job, applied: true } : job
+        );
+        console.log('Updated jobs array:', updated.find(j => j.id === jobId));
+        return updated;
+      });
+      
+      // Also update filteredJobs if it's being used
+      setFilteredJobs(prev => prev.map(job => 
+        job.id === jobId ? { ...job, applied: true } : job
+      ));
       
       // Show success message
       setError(null)

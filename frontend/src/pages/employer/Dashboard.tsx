@@ -535,14 +535,17 @@ const EmployerDashboard: React.FC = () => {
       const normalizedLevel = jobData.level === 'Entry-level' ? 'Entry Level' : 
                            (jobData.level || 'Mid-level');
       
-      // Format salary based on what's provided
+      // Format salary based on what's provided - handle empty strings properly
+      const minSalary = jobData.salaryMin?.toString().trim() ? Number(jobData.salaryMin) : undefined;
+      const maxSalary = jobData.salaryMax?.toString().trim() ? Number(jobData.salaryMax) : undefined;
+      
       let formattedSalary = '';
-      if (jobData.salaryMin && jobData.salaryMax) {
-        formattedSalary = `${Number(jobData.salaryMin).toLocaleString()} - ${Number(jobData.salaryMax).toLocaleString()}`;
-      } else if (jobData.salaryMin) {
-        formattedSalary = `${Number(jobData.salaryMin).toLocaleString()}+`;
-      } else if (jobData.salaryMax) {
-        formattedSalary = `Up to ${Number(jobData.salaryMax).toLocaleString()}`;
+      if (minSalary && maxSalary && !isNaN(minSalary) && !isNaN(maxSalary)) {
+        formattedSalary = `₱${minSalary.toLocaleString()} - ₱${maxSalary.toLocaleString()}`;
+      } else if (minSalary && !isNaN(minSalary)) {
+        formattedSalary = `₱${minSalary.toLocaleString()}+`;
+      } else if (maxSalary && !isNaN(maxSalary)) {
+        formattedSalary = `Up to ₱${maxSalary.toLocaleString()}`;
       }
       
       const backendJobData = {
@@ -550,8 +553,8 @@ const EmployerDashboard: React.FC = () => {
         description: jobData.description || '',
         location: jobData.location || '',
         salary: formattedSalary,
-        salaryMin: jobData.salaryMin ? Number(jobData.salaryMin) : undefined,
-        salaryMax: jobData.salaryMax ? Number(jobData.salaryMax) : undefined,
+        salaryMin: minSalary,
+        salaryMax: maxSalary,
         type: jobData.type || 'Full-time',
         level: normalizedLevel,
         department: jobData.department || 'General',
@@ -612,14 +615,17 @@ const EmployerDashboard: React.FC = () => {
                            (jobData.level || 'Mid-level');
       
       // Convert Job data to backend format
-      // Format salary based on what's provided
+      // Format salary based on what's provided - handle empty strings properly
+      const minSalary = jobData.salaryMin?.toString().trim() ? Number(jobData.salaryMin) : undefined;
+      const maxSalary = jobData.salaryMax?.toString().trim() ? Number(jobData.salaryMax) : undefined;
+      
       let formattedSalary = '';
-      if (jobData.salaryMin && jobData.salaryMax) {
-        formattedSalary = `${Number(jobData.salaryMin).toLocaleString()} - ${Number(jobData.salaryMax).toLocaleString()}`;
-      } else if (jobData.salaryMin) {
-        formattedSalary = `${Number(jobData.salaryMin).toLocaleString()}+`;
-      } else if (jobData.salaryMax) {
-        formattedSalary = `Up to ${Number(jobData.salaryMax).toLocaleString()}`;
+      if (minSalary && maxSalary && !isNaN(minSalary) && !isNaN(maxSalary)) {
+        formattedSalary = `₱${minSalary.toLocaleString()} - ₱${maxSalary.toLocaleString()}`;
+      } else if (minSalary && !isNaN(minSalary)) {
+        formattedSalary = `₱${minSalary.toLocaleString()}+`;
+      } else if (maxSalary && !isNaN(maxSalary)) {
+        formattedSalary = `Up to ₱${maxSalary.toLocaleString()}`;
       }
       
       const backendJobData = {
@@ -636,8 +642,8 @@ const EmployerDashboard: React.FC = () => {
         responsibilities: jobData.responsibilities || [],
         benefits: jobData.benefits || [],
         status: jobData.status || 'active',
-        salaryMin: jobData.salaryMin,
-        salaryMax: jobData.salaryMax
+        salaryMin: minSalary,
+        salaryMax: maxSalary
       };
 
       await jobApiService.updateJob(jobData.id.toString(), backendJobData);

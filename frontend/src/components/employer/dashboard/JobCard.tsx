@@ -107,24 +107,18 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onView, onEdit, onDelete,
               <span>{job.department}</span>
             </div>
           )}
-          {(job.salaryMin !== undefined || job.salaryMax !== undefined || job.salary) && (
-            <div className={styles.metaItem}>
-              <span>₱</span>
-              <span>
-                {(job.salaryMin !== undefined || job.salaryMax !== undefined) ? (
-                  job.salaryMin && job.salaryMax 
-                    ? `${job.salaryMin.toLocaleString('en-PH')} - ${job.salaryMax.toLocaleString('en-PH')}`
-                    : job.salaryMin 
-                      ? `${job.salaryMin.toLocaleString('en-PH')}+`
-                      : `Up to ${job.salaryMax?.toLocaleString('en-PH')}`
-                ) : job.salary ? (
-                  job.salary
-                ) : (
-                  'Competitive'
-                )}
-              </span>
-            </div>
-          )}
+          <div className={styles.metaItem}>
+            <span>₱</span>
+            <span>
+              {job.salaryMin > 0 && job.salaryMax > 0 ? (
+                `${job.salaryMin.toLocaleString('en-PH')} - ${job.salaryMax.toLocaleString('en-PH')}`
+              ) : job.salaryMin > 0 ? (
+                `From ${job.salaryMin.toLocaleString('en-PH')}`
+              ) : job.salaryMax > 0 ? (
+                `Up to ${job.salaryMax.toLocaleString('en-PH')}`
+              ) : 'Salary not specified'}
+            </span>
+          </div>
           {(job.workplaceType || job.remote) && (
             <div className={styles.metaItem}>
               <span>{job.workplaceType || (job.remote ? 'Remote' : 'On-site')}</span>
@@ -134,13 +128,11 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onView, onEdit, onDelete,
       </div>
       
       {/* Job Description */}
-      {job.description && (
-        <div className={styles.jobDescription}>
-          <p className={styles.descriptionText}>
-            {job.description}
-          </p>
-        </div>
-      )}
+      <div className={styles.jobDescription}>
+        <p className={styles.descriptionText}>
+          {job.description || "This is a very long test description to verify that the ellipsis functionality is working correctly. We need to see if the text gets truncated after three lines and shows the ellipsis indicator. This should be enough text to span multiple lines and test the CSS line-clamp property. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat."}
+        </p>
+      </div>
 
       <div className={styles.jobActions}>
         <Button 
@@ -190,6 +182,12 @@ export const JobCard: React.FC<JobCardProps> = ({ job, onView, onEdit, onDelete,
             className={styles.applicantButton}
             onClick={(e) => {
               e.stopPropagation();
+              console.log('Job data for applicant count:', {
+                id: job.id,
+                title: job.title,
+                applicants: job.applicants,
+                applicantCount: job.applicantCount
+              });
               onView?.(job);
             }}
           >

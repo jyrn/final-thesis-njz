@@ -8,7 +8,7 @@ interface JobDetailModalProps {
   job: Job | null
   isOpen: boolean
   onClose: () => void
-  onApply: (jobId: number) => void
+  onApply: (jobId: string | number) => void
 }
 
 const getCompanyLogo = (company: string) => {
@@ -36,16 +36,16 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ job, isOpen, onClose, o
   const formatSalary = () => {
     // Handle individual salary values first
     if (job.salaryMin && job.salaryMax) {
-      return `₱${job.salaryMin.toLocaleString('en-PH')} - ₱${job.salaryMax.toLocaleString('en-PH')}`;
+      return `${job.salaryMin.toLocaleString('en-PH')} - ${job.salaryMax.toLocaleString('en-PH')}`;
     }
     if (job.salaryMin && !job.salaryMax) {
-      return `₱${job.salaryMin.toLocaleString('en-PH')}+`;
+      return `${job.salaryMin.toLocaleString('en-PH')}+`;
     }
     if (!job.salaryMin && job.salaryMax) {
       return `Up to ₱${job.salaryMax.toLocaleString('en-PH')}`;
     }
     if (job.salary) {
-      return `₱${job.salary.toLocaleString('en-PH')}`;
+      return `${job.salary.toLocaleString('en-PH')}`;
     }
     return 'Salary not specified';
   };
@@ -316,11 +316,16 @@ const JobDetailModal: React.FC<JobDetailModalProps> = ({ job, isOpen, onClose, o
             Save Job
           </button>
           <button 
-            className={styles.applyButton}
-            onClick={() => onApply(typeof job.id === 'string' ? parseInt(job.id) : job.id)}
+            className={`${styles.applyButton} ${job.applied ? styles.applied : ''}`}
+            onClick={() => {
+              if (!job.applied) {
+                onApply(job.id);
+              }
+            }}
+            disabled={job.applied}
           >
-            <FiTrendingUp className={styles.buttonIcon} />
-            Apply
+            {!job.applied && <FiTrendingUp className={styles.buttonIcon} />}
+            {job.applied ? 'Applied ✓' : 'Apply'}
           </button>
         </div>
       </div>

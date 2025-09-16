@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { auth } from '../../../../config/firebase';
 import styles from '../../../../pages/jobseeker/Dashboard.module.css';
-import { FiFileText, FiClock, FiCheck, FiX, FiEye } from 'react-icons/fi';
+import JobsList from '../../JobsList/JobsList';
+import ApplicationDetailModal from '../../ApplicationDetailModal/ApplicationDetailModal';
+import { Job } from '../../../../types/Job';
 
 interface Application {
   id: string;
@@ -10,16 +13,28 @@ interface Application {
   company: string;
   location: string;
   type: string;
+  level?: string;
+  department?: string;
+  workplaceType?: string;
   salary: string;
+  description?: string;
   status: 'pending' | 'approved' | 'rejected';
   appliedDate: string;
   updatedAt: string;
 }
 
-const ApplicationsTab: React.FC = () => {
+const ApplicationsTab: React.FC<any> = ({
+  onSaveJob,
+  onApplyJob,
+  onJobClick,
+  savedJobs,
+  onOpenFilters,
+}) => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     fetchApplications();
@@ -52,33 +67,41 @@ const ApplicationsTab: React.FC = () => {
       } else {
         setError(data.error || 'Failed to fetch applications');
       }
-    } catch (error) {
-      console.error('Error fetching applications:', error);
+    } catch (err) {
+      console.error('Error fetching applications:', err);
       setError('Failed to load applications');
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return <FiClock className={styles.statusIconPending} />;
-      case 'approved':
-        return <FiCheck className={styles.statusIconApproved} />;
-      case 'rejected':
-        return <FiX className={styles.statusIconRejected} />;
-      default:
-        return <FiClock className={styles.statusIconPending} />;
+  const handleViewApplication = (job: Job) => {
+    // Find the corresponding application data
+    const application = applications.find(app => app.jobId === job.id);
+    if (application) {
+      setSelectedApplication(application);
+      setIsModalOpen(true);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-PH', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+  // Convert applications to Job format for JobsList component
+  const convertApplicationsToJobs = (): Job[] => {
+    return applications.map(app => ({
+      id: app.jobId,
+      title: app.jobTitle,
+      company: app.company,
+      location: app.location,
+      description: app.description || '',
+      type: app.type,
+      level: app.level || '',
+      department: app.department,
+      workplaceType: app.workplaceType as 'On-site' | 'Hybrid' | 'Remote' | undefined,
+      salary: app.salary || '₱10,000+',
+      applied: true, // All applications are already applied
+      status: app.status,
+      appliedDate: app.appliedDate,
+      postedDate: app.appliedDate // Use applied date as posted date for display
+    }));
   };
 
   if (loading) {
@@ -116,48 +139,44 @@ const ApplicationsTab: React.FC = () => {
     <div className={styles.pageContent}>
       <div className={styles.pageHeader}>
         <h1 className={styles.pageTitle}>My Applications</h1>
-        <p className={styles.pageSubtitle}>Track your job application progress</p>
+        <p className={styles.pageSubtitle}>
+          {applications.length > 0 
+            ? `Track your ${applications.length} job application${applications.length === 1 ? '' : 's'}`
+            : 'Your job applications will appear here'}
+        </p>
       </div>
+      <JobsList
+        jobs={convertApplicationsToJobs()}
+        title=""
+        onSaveJob={onSaveJob}
+        onApplyJob={onApplyJob}
+        onJobClick={onJobClick}
+        onViewApplication={handleViewApplication}
+        savedJobs={savedJobs}
+        onOpenFilters={onOpenFilters}
+      />
       
-      {applications.length === 0 ? (
-        <div className={styles.emptyState}>
-          <FiFileText size={48} className={styles.emptyIcon} />
-          <h3>No applications yet</h3>
-          <p>Your job applications will appear here</p>
-        </div>
-      ) : (
-        <div className={styles.applicationsGrid}>
-          {applications.map((application) => (
-            <div key={application.id} className={styles.applicationCard}>
-              <div className={styles.applicationHeader}>
-                <h3 className={styles.jobTitle}>{application.jobTitle}</h3>
-                <div className={styles.statusBadge}>
-                  {getStatusIcon(application.status)}
-                  <span className={`${styles.statusText} ${styles[`status${application.status.charAt(0).toUpperCase() + application.status.slice(1)}`]}`}>
-                    {application.status.charAt(0).toUpperCase() + application.status.slice(1)}
-                  </span>
-                </div>
-              </div>
-              
-              <div className={styles.applicationDetails}>
-                <p className={styles.company}>{application.company}</p>
-                <p className={styles.location}>{application.location}</p>
-                <p className={styles.salary}>{application.salary}</p>
-                <p className={styles.type}>{application.type}</p>
-              </div>
-              
-              <div className={styles.applicationFooter}>
-                <span className={styles.appliedDate}>
-                  Applied: {formatDate(application.appliedDate)}
-                </span>
-                <button className={styles.viewButton}>
-                  <FiEye size={16} />
-                  View Details
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+      {selectedApplication && isModalOpen && createPortal(
+        <ApplicationDetailModal
+          application={selectedApplication}
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedApplication(null);
+          }}
+          onViewJob={(jobId) => {
+            // Close the application modal first
+            setIsModalOpen(false);
+            setSelectedApplication(null);
+            
+            // Find the job and trigger the job click handler
+            const job = convertApplicationsToJobs().find(j => j.id === jobId);
+            if (job && onJobClick) {
+              onJobClick(job);
+            }
+          }}
+        />,
+        document.body
       )}
     </div>
   );

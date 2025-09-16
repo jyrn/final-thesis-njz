@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { FiUser, FiFileText, FiSave, FiX, FiUpload, FiDownload, FiTrash2, FiEye, FiMail, FiPhone, FiMapPin, FiGlobe, FiDollarSign, FiStar, FiPlus, FiMinus, FiLogOut, FiBell, FiSettings, FiEdit2, FiCheck } from 'react-icons/fi';
 import styles from './SettingsTab.module.css';
-import { apiService } from '../../../services/apiService';
 import firebaseAuthService from '../../../services/firebaseAuthService';
+import { apiService } from '../../../services/apiService';
+import ResumeEditModal from '../../ResumeEditModal/ResumeEditModal';
 import { useNavigate } from 'react-router-dom';
 import PDFPreview from '../../shared/PDFPreview';
 
@@ -82,17 +83,41 @@ const SettingsTab: React.FC = () => {
     newPassword: '',
     confirmPassword: ''
   });
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [updatingPassword, setUpdatingPassword] = useState(false);
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
     confirm: false
   });
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [showResumeEditModal, setShowResumeEditModal] = useState(false);
+  const [parsedResumeData, setParsedResumeData] = useState(null);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [userAuthMethods, setUserAuthMethods] = useState<{hasPassword: boolean; providers: string[]}>({
+    hasPassword: true,
+    providers: []
+  });
+  const [checkingAuthMethods, setCheckingAuthMethods] = useState(false);
 
   useEffect(() => {
     fetchProfile();
+    checkUserAuthMethods();
   }, []);
+
+  const checkUserAuthMethods = async () => {
+    try {
+      setCheckingAuthMethods(true);
+      console.log('SettingsTab: Checking user auth methods...');
+      const methods = await firebaseAuthService.checkUserAuthMethods();
+      console.log('SettingsTab: Auth methods result:', methods);
+      setUserAuthMethods(methods);
+    } catch (error) {
+      console.error('SettingsTab: Error checking user auth methods:', error);
+      // Default to showing password form if there's an error
+      setUserAuthMethods({ hasPassword: true, providers: [] });
+    } finally {
+      setCheckingAuthMethods(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -212,11 +237,19 @@ const SettingsTab: React.FC = () => {
       const response = await apiService.uploadResume(file);
 
       if (response.success && response.data) {
+        // If resume data was parsed, show edit modal
+        if (response.data.resumeData) {
+          setParsedResumeData(response.data.resumeData);
+          setShowResumeEditModal(true);
+          setSuccess('Resume uploaded! Please review the extracted information.');
+        } else {
+          setSuccess('Resume uploaded successfully!');
+        }
+        
         // Update profile to reflect new resume
         const updatedProfile = { ...profile, resumeUrl: response.data.fileUrl };
         setProfile(updatedProfile);
         setEditedProfile(updatedProfile);
-        setSuccess('Resume uploaded successfully!');
         setTimeout(() => setSuccess(null), 3000);
       } else {
         setError(response.error || 'Failed to upload resume');
@@ -284,14 +317,23 @@ const SettingsTab: React.FC = () => {
     }
     
     setUpdatingPassword(true);
+    setError(null); // Clear any previous errors
+    
     try {
       // Update password via Firebase Auth
-      await firebaseAuthService.updatePassword(passwordData.currentPassword, passwordData.newPassword);
-      setSuccess('Password updated successfully');
-      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setShowPasswordForm(false);
-      setShowPasswords({ current: false, new: false, confirm: false });
+      const result = await firebaseAuthService.updatePassword(passwordData.currentPassword, passwordData.newPassword);
+      
+      if (result.success) {
+        setSuccess('Password updated successfully');
+        setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setShowPasswordForm(false);
+        setShowPasswords({ current: false, new: false, confirm: false });
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        setError(result.error || 'Failed to update password');
+      }
     } catch (error: any) {
+      console.error('Password update error:', error);
       setError(error.message || 'Failed to update password');
     } finally {
       setUpdatingPassword(false);
@@ -303,6 +345,32 @@ const SettingsTab: React.FC = () => {
       ...prev,
       [field]: !prev[field]
     }));
+  };
+
+  const handleResumeEditSave = async (editedResumeData: any) => {
+    try {
+      // Save the edited resume data to backend
+      const response = await apiService.post('/jobseekers/resume-data', {
+        resumeData: editedResumeData
+      });
+      
+      if (response.success) {
+        setShowResumeEditModal(false);
+        setSuccess('Resume data saved successfully!');
+        setParsedResumeData(editedResumeData);
+        setTimeout(() => setSuccess(null), 3000);
+      } else {
+        throw new Error(response.error || 'Failed to save resume data');
+      }
+    } catch (error: any) {
+      console.error('Failed to save resume data:', error);
+      setError(error.message || 'Failed to save resume data. Please try again.');
+    }
+  };
+
+  const handleResumeEditClose = () => {
+    setShowResumeEditModal(false);
+    // Keep the original parsed data if user cancels
   };
 
   if (loading) {
@@ -1195,7 +1263,27 @@ const SettingsTab: React.FC = () => {
                 <div className={styles.passwordSection}>
                   <div className={styles.passwordHeader}>
                     <h3>Password & Security</h3>
-                    {!showPasswordForm && (
+                    {checkingAuthMethods ? (
+                      <div className={styles.loadingText}>Checking account type...</div>
+                    ) : !userAuthMethods.hasPassword ? (
+                      <div className={styles.googleAuthInfo}>
+                        <div className={styles.infoCard}>
+                          <FiSettings className={styles.infoIcon} />
+                          <div>
+                            <h4>Google Account</h4>
+                            <p>Your account uses Google sign-in. To change your password, please visit your Google Account settings.</p>
+                            <a 
+                              href="https://myaccount.google.com/security" 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className={styles.googleLink}
+                            >
+                              Manage Google Account →
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    ) : !showPasswordForm ? (
                       <button 
                         className={styles.changePasswordButton}
                         onClick={() => setShowPasswordForm(true)}
@@ -1203,10 +1291,10 @@ const SettingsTab: React.FC = () => {
                         <FiEdit2 />
                         Change Password
                       </button>
-                    )}
+                    ) : null}
                   </div>
                   
-                  {showPasswordForm && (
+                  {showPasswordForm && userAuthMethods.hasPassword && (
                     <form onSubmit={handlePasswordUpdate} className={styles.passwordForm}>
                       <div className={styles.formGroup}>
                         <label>Current Password</label>
@@ -1270,6 +1358,12 @@ const SettingsTab: React.FC = () => {
                           </button>
                         </div>
                       </div>
+                      {error && (
+                        <div className={styles.passwordError}>
+                          <FiX className={styles.errorIcon} />
+                          {error}
+                        </div>
+                      )}
                       <div className={styles.passwordActions}>
                         <button type="submit" className={styles.updateButton} disabled={updatingPassword}>
                           <FiSave />
@@ -1281,6 +1375,7 @@ const SettingsTab: React.FC = () => {
                           onClick={() => {
                             setShowPasswordForm(false);
                             setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                            setError(null);
                           }}
                         >
                           <FiX />
@@ -1345,6 +1440,16 @@ const SettingsTab: React.FC = () => {
           )}
         </div>
       </div>
+
+      {showResumeEditModal && parsedResumeData && (
+        <ResumeEditModal
+          isOpen={showResumeEditModal}
+          onClose={handleResumeEditClose}
+          onSave={handleResumeEditSave}
+          initialData={parsedResumeData}
+          fileName={resumeFile?.name || 'resume.pdf'}
+        />
+      )}
     </div>
   );
 };

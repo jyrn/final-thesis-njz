@@ -137,6 +137,8 @@ router.get('/employer/my-jobs', verifyToken, requireRole('employer'), async (req
       description: job.description,
       location: job.location,
       salary: job.salary,
+      salaryMin: job.salaryMin,
+      salaryMax: job.salaryMax,
       type: job.type,
       level: job.level,
       department: job.department,
@@ -147,6 +149,8 @@ router.get('/employer/my-jobs', verifyToken, requireRole('employer'), async (req
       benefits: job.benefits,
       status: job.status,
       applicationCount: job.applicationCount,
+      applicantCount: job.applicationCount, // Add this for frontend compatibility
+      applicants: job.applicationCount, // Add this for frontend compatibility
       viewCount: job.viewCount,
       postedDate: job.postedDate,
       lastUpdated: job.lastUpdated,

@@ -362,6 +362,17 @@ class ApiService {
     return response; // Return raw response for file download
   }
 
+  // Get user's job applications
+  async getUserApplications(): Promise<ApiResponse> {
+    const headers = await this.getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/applications/user`, {
+      method: 'GET',
+      headers
+    });
+    
+    return this.handleResponse(response);
+  }
+
   // Utility methods
   async testConnection(): Promise<boolean> {
     try {

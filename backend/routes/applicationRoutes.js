@@ -93,9 +93,9 @@ router.post('/', verifyToken, async (req, res) => {
     const application = new Application(applicationData);
     await application.save();
 
-    // Update job applicant count
+    // Update job application count
     await Job.findByIdAndUpdate(jobId, {
-      $inc: { applicantCount: 1 }
+      $inc: { applicationCount: 1 }
     });
 
     res.status(201).json({
@@ -263,6 +263,40 @@ router.get('/jobseeker', verifyToken, async (req, res) => {
 
   } catch (error) {
     console.error('Error fetching job seeker applications:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch applications'
+    });
+  }
+});
+
+// @route   GET /api/applications/user
+// @desc    Get user's job applications
+// @access  Private (Job Seeker)
+router.get('/user', verifyToken, async (req, res) => {
+  try {
+    const { uid } = req.user;
+
+    if (!uid) {
+      return res.status(401).json({
+        success: false,
+        error: 'User authentication failed'
+      });
+    }
+
+    // Find all applications by this user
+    const applications = await Application.find({ jobSeekerUid: uid })
+      .sort({ appliedDate: -1 }); // Most recent first
+
+    console.log(`Found ${applications.length} applications for user ${uid}`);
+
+    res.status(200).json({
+      success: true,
+      data: applications
+    });
+
+  } catch (error) {
+    console.error('Error fetching user applications:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch applications'

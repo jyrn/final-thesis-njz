@@ -23,7 +23,7 @@ export interface Job {
   description: string
   
   // Salary information (unified format)
-  salary?: number
+  salary?: number | string
   salaryMin?: number
   salaryMax?: number
   
@@ -60,6 +60,7 @@ export interface Job {
   matchingSkills?: string[]
   saved?: boolean
   applied?: boolean
+  appliedDate?: string
   
   // Additional metadata
   urgency?: 'high' | 'medium' | 'low'

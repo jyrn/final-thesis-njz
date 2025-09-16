@@ -38,17 +38,16 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
 }) => {
   const [formData, setFormData] = useState(() => {
     if (isEditing && job) {
-      // Parse existing salary range if it exists
+      // Parse existing salary range if it exists - use only numeric values
       let salaryMin = '';
       let salaryMax = '';
-      if (job.salaryMin && job.salaryMax) {
+      
+      // Use salaryMin and salaryMax if they exist as numbers
+      if (typeof job.salaryMin === 'number' && job.salaryMin > 0) {
         salaryMin = job.salaryMin.toString();
+      }
+      if (typeof job.salaryMax === 'number' && job.salaryMax > 0) {
         salaryMax = job.salaryMax.toString();
-      } else if (job.salary) {
-        // If only main salary is provided, use it as both min and max
-        const salaryValue = job.salary.toString();
-        salaryMin = salaryValue;
-        salaryMax = salaryValue;
       }
       
       return {
@@ -84,17 +83,16 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
     if (isOpen && isEditing && job) {
       console.log('Loading job data for editing:', job);
       
-      // Parse existing salary range if it exists
+      // Parse existing salary range if it exists - use only numeric values
       let salaryMin = '';
       let salaryMax = '';
-      if (job.salaryMin && job.salaryMax) {
+      
+      // Use salaryMin and salaryMax if they exist as numbers
+      if (typeof job.salaryMin === 'number' && job.salaryMin > 0) {
         salaryMin = job.salaryMin.toString();
+      }
+      if (typeof job.salaryMax === 'number' && job.salaryMax > 0) {
         salaryMax = job.salaryMax.toString();
-      } else if (job.salary) {
-        // If only main salary is provided, use it as both min and max
-        const salaryValue = job.salary.toString();
-        salaryMin = salaryValue;
-        salaryMax = salaryValue;
       }
       
       // Use setTimeout to ensure the form is ready
@@ -204,6 +202,38 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
       newErrors.requirements = 'At least one requirement is needed';
     }
 
+    // Salary validation - completely optional, validate only when at least one field is filled
+    const minSalaryValue = formData.salaryMin?.toString().trim() || '';
+    const maxSalaryValue = formData.salaryMax?.toString().trim() || '';
+    
+    // Validate individual fields if they have values
+    if (minSalaryValue !== '') {
+      const minSalary = parseInt(minSalaryValue);
+      if (isNaN(minSalary) || minSalary <= 0) {
+        newErrors.salaryMin = 'Please enter a valid minimum salary';
+      }
+    }
+    
+    if (maxSalaryValue !== '') {
+      const maxSalary = parseInt(maxSalaryValue);
+      if (isNaN(maxSalary) || maxSalary <= 0) {
+        newErrors.salaryMax = 'Please enter a valid maximum salary';
+      }
+    }
+    
+    // Only validate range if both fields have valid values
+    if (minSalaryValue !== '' && maxSalaryValue !== '') {
+      const minSalary = parseInt(minSalaryValue);
+      const maxSalary = parseInt(maxSalaryValue);
+      
+      if (!isNaN(minSalary) && !isNaN(maxSalary) && minSalary > 0 && maxSalary > 0) {
+        if (maxSalary < minSalary) {
+          newErrors.salaryMax = 'Maximum salary must be higher than minimum salary';
+        }
+      }
+    }
+    // If both are empty or only one is filled, no range validation error - this is allowed
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -219,10 +249,21 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
     const filteredResponsibilities = formData.responsibilities.filter(resp => resp.trim());
     const filteredBenefits = formData.benefits.filter(ben => ben.trim());
     
-    // Calculate average salary as a number
-    const salary = formData.salaryMin && formData.salaryMax 
-      ? Math.round((parseInt(formData.salaryMin) + parseInt(formData.salaryMax)) / 2)
-      : undefined;
+    // Handle salary fields - properly handle empty strings and whitespace
+    const salaryMin = formData.salaryMin?.trim() ? parseInt(formData.salaryMin.trim()) : undefined;
+    const salaryMax = formData.salaryMax?.trim() ? parseInt(formData.salaryMax.trim()) : undefined;
+    
+    // Calculate average salary if both are provided and valid
+    let salary = undefined;
+    if (salaryMin !== undefined && salaryMax !== undefined && !isNaN(salaryMin) && !isNaN(salaryMax)) {
+      salary = Math.round((salaryMin + salaryMax) / 2);
+    } else if (salaryMin !== undefined && !isNaN(salaryMin)) {
+      // If only min is provided, use it as the salary
+      salary = salaryMin;
+    } else if (salaryMax !== undefined && !isNaN(salaryMax)) {
+      // If only max is provided, use it as the salary
+      salary = salaryMax;
+    }
     
     const jobData: Partial<Job> = {
       title: formData.title,
@@ -234,8 +275,8 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
       workplaceType: formData.workplaceType as 'On-site' | 'Hybrid' | 'Remote',
       status: formData.status,
       salary,
-      salaryMin: formData.salaryMin ? parseInt(formData.salaryMin) : undefined,
-      salaryMax: formData.salaryMax ? parseInt(formData.salaryMax) : undefined,
+      salaryMin,
+      salaryMax,
       requirements: filteredRequirements,
       responsibilities: filteredResponsibilities,
       benefits: filteredBenefits,
@@ -391,10 +432,10 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
                     <label className={styles.compactLabel}>Salary Range</label>
                     <div className={styles.compactSalaryRange}>
                       <div className={styles.compactSalaryInput}>
-                        <span className={styles.currencySymbol}>₱</span>
+                        <span className={styles.currencySymbol}></span>
                         <input
                           type="number"
-                          value={formData.salaryMin}
+                          value={formData.salaryMin || ''}
                           onChange={(e) => handleInputChange('salaryMin', e.target.value)}
                           className={`${styles.compactInput} ${errors.salaryMin ? styles.inputError : ''}`}
                           placeholder="Min"
@@ -402,10 +443,10 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
                       </div>
                       <span className={styles.salaryDivider}>-</span>
                       <div className={styles.compactSalaryInput}>
-                        <span className={styles.currencySymbol}>₱</span>
+                        <span className={styles.currencySymbol}></span>
                         <input
                           type="number"
-                          value={formData.salaryMax}
+                          value={formData.salaryMax || ''}
                           onChange={(e) => handleInputChange('salaryMax', e.target.value)}
                           className={`${styles.compactInput} ${errors.salaryMax ? styles.inputError : ''}`}
                           placeholder="Max"

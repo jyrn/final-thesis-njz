@@ -356,40 +356,118 @@ const firebaseAuthService = {
   updateUserInDatabase,
   getUserFromDatabase,
 
+  // Check if user has password authentication
+  async checkUserAuthMethods(): Promise<{ hasPassword: boolean; providers: string[] }> {
+    try {
+      const user = auth.currentUser;
+      if (!user || !user.email) {
+        console.log('No current user or email found');
+        return { hasPassword: false, providers: [] };
+      }
+
+      console.log('Current user:', {
+        email: user.email,
+        providerId: user.providerId,
+        providerData: user.providerData
+      });
+
+      const methods = await fetchSignInMethodsForEmail(auth, user.email);
+      console.log('User sign-in methods for', user.email, ':', methods);
+      console.log('Provider data:', user.providerData);
+      
+      // Check provider data for more reliable detection
+      const hasGoogleProvider = user.providerData.some(provider => provider.providerId === 'google.com');
+      const hasEmailProvider = user.providerData.some(provider => provider.providerId === 'password');
+      
+      console.log('Has Google provider:', hasGoogleProvider);
+      console.log('Has email provider:', hasEmailProvider);
+      
+      // If fetchSignInMethodsForEmail returns empty but user exists, 
+      // check if they have a password provider in providerData
+      let hasPassword = methods.includes('password') || hasEmailProvider;
+      
+      // If no methods detected but user is authenticated with email, assume password auth
+      if (methods.length === 0 && !hasGoogleProvider && user.email) {
+        console.log('No methods detected but user authenticated with email, assuming password auth');
+        hasPassword = true;
+      }
+      
+      console.log('Final hasPassword decision:', hasPassword);
+      
+      return {
+        hasPassword: hasPassword,
+        providers: methods
+      };
+    } catch (error) {
+      console.error('Error checking auth methods:', error);
+      // If there's an error, assume they have password auth to show the form
+      return { hasPassword: true, providers: [] };
+    }
+  },
+
   // Update password
   async updatePassword(currentPassword: string, newPassword: string): Promise<AuthResponse> {
     try {
+      console.log('Starting password update process...');
       const user = auth.currentUser;
       
       if (!user || !user.email) {
+        console.error('No authenticated user found for password update');
         return {
           success: false,
-          error: 'No authenticated user found'
+          error: 'No authenticated user found. Please sign in again.'
         };
       }
+
+      // Check if user has password authentication
+      const authMethods = await this.checkUserAuthMethods();
+      console.log('User auth methods:', authMethods);
+
+      if (!authMethods.hasPassword) {
+        console.log('User signed up with Google OAuth, no password set');
+        return {
+          success: false,
+          error: 'Your account was created with Google sign-in. You cannot change your password here. Please use Google Account settings to manage your password.'
+        };
+      }
+      
+      console.log('User has password auth, attempting re-authentication...');
       
       // Re-authenticate user with current password
       const credential = EmailAuthProvider.credential(user.email, currentPassword);
       await reauthenticateWithCredential(user, credential);
       
+      console.log('Re-authentication successful, updating password...');
+      
       // Update password
       await updatePassword(user, newPassword);
       
+      console.log('Password updated successfully');
       return {
         success: true,
         message: 'Password updated successfully!'
       };
     } catch (error: any) {
-      console.error('Update password error:', error);
+      console.error('Update password error details:', {
+        code: error.code,
+        message: error.message,
+        stack: error.stack
+      });
       
       let errorMessage = 'Failed to update password';
       
       if (error.code === 'auth/wrong-password') {
         errorMessage = 'Current password is incorrect';
       } else if (error.code === 'auth/weak-password') {
-        errorMessage = 'New password is too weak';
+        errorMessage = 'New password is too weak (minimum 6 characters required)';
       } else if (error.code === 'auth/requires-recent-login') {
         errorMessage = 'Please sign out and sign back in before changing your password';
+      } else if (error.code === 'auth/invalid-credential') {
+        errorMessage = 'Current password is incorrect';
+      } else if (error.code === 'auth/user-mismatch') {
+        errorMessage = 'Authentication error. Please try signing out and back in.';
+      } else if (error.code === 'auth/user-not-found') {
+        errorMessage = 'User account not found. Please sign in again.';
       } else if (error.message) {
         errorMessage = error.message;
       }
