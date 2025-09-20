@@ -170,12 +170,32 @@ class EnhancedResumeParser:
         combined_results['language'] = self.detect_language(text)
         
         # Add training/seminar extraction
-        combined_results['trainings'] = self.extract_trainings(text)
+        all_trainings = self.extract_trainings(text)
+        
+        # Separate certifications from trainings based on type
+        actual_trainings = []
+        training_certifications = []
+        
+        for training in all_trainings:
+            if training.get('type') == 'certification':
+                # Extract just the name for certifications
+                training_certifications.append(training['name'])
+            else:
+                actual_trainings.append(training)
+        
+        combined_results['trainings'] = actual_trainings
+        
+        # Add dedicated certification extraction
+        dedicated_certifications = self.extract_certifications_dedicated(text)
+        
+        # Combine certifications from both sources and remove duplicates
+        all_certifications = list(set(dedicated_certifications + training_certifications))
+        combined_results['certifications'] = all_certifications
         
         # Add languages extraction
         combined_results['languages'] = self.extract_languages(text)
         
-        print(f"✅ Extraction complete. Found {len(combined_results.get('skills', []))} skills, {len(combined_results.get('experience', []))} experiences, {len(combined_results.get('trainings', []))} trainings")
+        print(f"✅ Extraction complete. Found {len(combined_results.get('skills', []))} skills, {len(combined_results.get('experience', []))} experiences, {len(combined_results.get('trainings', []))} trainings, {len(combined_results.get('certifications', []))} certifications")
         return combined_results
     
     def extract_with_spacy(self, text):
@@ -554,8 +574,13 @@ class EnhancedResumeParser:
         """Extract trainings, seminars, workshops, and certifications"""
         trainings = []
         
-        # Look for training-related sections
-        training_sections = ['TRAINING', 'SEMINAR', 'WORKSHOP', 'CERTIFICATION', 'COURSE', 'PROFESSIONAL DEVELOPMENT']
+        # Enhanced training-related sections with more patterns
+        training_sections = [
+            'TRAINING', 'TRAININGS', 'SEMINAR', 'SEMINARS', 'WORKSHOP', 'WORKSHOPS', 
+            'CERTIFICATION', 'CERTIFICATIONS', 'CERTIFICATES', 'COURSE', 'COURSES',
+            'PROFESSIONAL DEVELOPMENT', 'CONTINUING EDUCATION', 'LICENSES & CERTIFICATIONS',
+            'PROFESSIONAL CERTIFICATIONS', 'AWARDS & CERTIFICATIONS', 'CREDENTIALS'
+        ]
         lines = text.split('\n')
         in_training_section = False
         current_section_type = 'training'
@@ -619,11 +644,287 @@ class EnhancedResumeParser:
                     # Simple format: just the training name
                     training_entry['name'] = line_stripped.replace('•', '').strip()
                 
-                # Only add if we have a meaningful name
+                # Enhanced validation for training entries
                 if training_entry['name'] and len(training_entry['name']) > 3:
-                    trainings.append(training_entry)
+                    # Check if this is actually a certification (even if in training section)
+                    if self.is_comprehensive_certification(training_entry['name']):
+                        # This is a certification, mark it as such
+                        training_entry['type'] = 'certification'
+                        trainings.append(training_entry)
+                    elif current_section_type == 'certification':
+                        if self.is_valid_certification(training_entry['name']):
+                            training_entry['type'] = 'certification'
+                            trainings.append(training_entry)
+                    else:
+                        # Regular training/seminar - always include if it has a name
+                        training_entry['type'] = 'training'
+                        trainings.append(training_entry)
         
         return trainings
+    
+    def is_valid_certification(self, cert_text):
+        """Validate if text is likely a certification"""
+        if not cert_text or len(cert_text) < 5:
+            return False
+        
+        cert_lower = cert_text.lower()
+        
+        # Certification keywords
+        cert_keywords = [
+            'certified', 'certificate', 'certification', 'professional', 'associate',
+            'specialist', 'expert', 'foundation', 'advanced', 'master', 'practitioner',
+            'aws', 'microsoft', 'google', 'oracle', 'cisco', 'comptia', 'pmp', 'scrum',
+            'agile', 'itil', 'prince2', 'azure', 'cloud', 'security', 'network'
+        ]
+        
+        # Check for certification keywords
+        has_cert_keyword = any(keyword in cert_lower for keyword in cert_keywords)
+        
+        # Check for certification patterns
+        cert_patterns = [
+            r'\([A-Z]{2,}-?\d+\)',  # Certification codes like (AZ-900)
+            r'\b[A-Z]{2,}-?\d+\b',  # Certification codes like AZ-900
+            r'\([A-Z]{3,}\)',       # Certification acronyms like (PMP)
+        ]
+        
+        has_cert_pattern = any(re.search(pattern, cert_text) for pattern in cert_patterns)
+        
+        # Avoid common non-certification phrases
+        avoid_phrases = [
+            'years of experience', 'experience in', 'worked with', 'responsible for',
+            'developed', 'created', 'built', 'managed', 'led', 'coordinated',
+            'graduated', 'degree in', 'bachelor', 'master', 'university'
+        ]
+        
+        has_avoid_phrase = any(phrase in cert_lower for phrase in avoid_phrases)
+        
+        return (has_cert_keyword or has_cert_pattern) and not has_avoid_phrase
+    
+    def extract_certifications_dedicated(self, text):
+        """Dedicated certification extraction with comprehensive patterns"""
+        certifications = []
+        lines = text.split('\n')
+        
+        print("🏆 Starting dedicated certification extraction...")
+        
+        # Enhanced certification section patterns including training sections
+        cert_section_patterns = [
+            r'certifications?', r'certificates?', r'professional\s+certifications?',
+            r'licenses?\s*&?\s*certifications?', r'credentials?', r'awards?\s*&?\s*certifications?',
+            r'professional\s+development', r'continuing\s+education', r'training\s*&?\s*certifications?',
+            r'licenses?\s*and\s*certifications?', r'certifications?\s*and\s*licenses?',
+            # Training sections that often contain certifications
+            r'training\s*and\s*seminars?', r'trainings?\s*and\s*seminars?', 
+            r'seminars?\s*and\s*trainings?', r'training\s*&\s*seminars?',
+            r'trainings?\s*&\s*seminars?', r'seminars?\s*&\s*trainings?',
+            r'professional\s+training', r'training\s+programs?', r'training\s+courses?'
+        ]
+        
+        # Find certification section
+        in_cert_section = False
+        section_end_patterns = [
+            r'^(work\s+)?experience', r'^education', r'^skills', r'^projects', r'^references',
+            r'^languages', r'^hobbies', r'^interests', r'^achievements', r'^training'
+        ]
+        
+        for i, line in enumerate(lines):
+            line_clean = line.strip().lower()
+            original_line = line.strip()
+            
+            # Check if we're entering certification section
+            if not in_cert_section:
+                for pattern in cert_section_patterns:
+                    if re.search(pattern, line_clean) and len(line_clean.split()) <= 5:
+                        in_cert_section = True
+                        print(f"📋 Found certification section: {original_line}")
+                        break
+                continue
+            
+            # Check if we're leaving certification section
+            section_ended = False
+            for pattern in section_end_patterns:
+                if re.search(pattern, line_clean) and len(line_clean.split()) <= 3:
+                    section_ended = True
+                    break
+            
+            if section_ended:
+                print(f"📋 Certification section ended at: {original_line}")
+                break
+            
+            # Extract certifications from current line
+            if original_line and not re.match(r'^[=\-_]{3,}$', original_line):
+                # Clean the line - remove bullets and formatting
+                cert_line = re.sub(r'^[•\-\*○▪►→✓\s]+', '', original_line).strip()
+                cert_line = re.sub(r'^\d+[\.\)]\s*', '', cert_line)  # Remove numbering
+                
+                if cert_line and len(cert_line) > 5:
+                    # Split multiple certifications on same line
+                    potential_certs = re.split(r'[,;]\s*(?=[A-Z])', cert_line)
+                    
+                    for cert in potential_certs:
+                        cert = cert.strip()
+                        # Remove date patterns from end
+                        cert = re.sub(r'\s*\(\d{4}\)$', '', cert)
+                        cert = re.sub(r'\s*-?\s*\d{4}$', '', cert)
+                        
+                        if self.is_comprehensive_certification(cert):
+                            certifications.append(cert)
+                            print(f"🏆 Found certification: {cert}")
+        
+        # Also scan entire text for certification patterns if section method didn't find much
+        if len(certifications) < 2:
+            print("🔍 Scanning entire text for certification patterns...")
+            additional_certs = self.scan_text_for_certifications(text)
+            certifications.extend(additional_certs)
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_certs = []
+        for cert in certifications:
+            cert_lower = cert.lower()
+            if cert_lower not in seen:
+                seen.add(cert_lower)
+                unique_certs.append(cert)
+        
+        print(f"✅ Total certifications found: {len(unique_certs)}")
+        return unique_certs
+    
+    def is_comprehensive_certification(self, cert_text):
+        """Comprehensive certification validation - stricter for training sections"""
+        if not cert_text or len(cert_text) < 5 or len(cert_text) > 200:
+            return False
+        
+        cert_lower = cert_text.lower()
+        
+        # Strict certification keywords - must indicate formal certification
+        cert_keywords = [
+            'certified', 'certificate', 'certification', 'professional', 'associate',
+            'specialist', 'expert', 'foundation', 'advanced', 'master', 'practitioner',
+            'aws', 'microsoft', 'google', 'oracle', 'cisco', 'comptia', 'pmp', 'scrum',
+            'agile', 'itil', 'prince2', 'azure', 'cloud', 'security', 'network',
+            'salesforce', 'hubspot', 'tableau', 'power bi',
+            # License-related certifications
+            'license', 'licensed', 'registered', 'accredited', 'chartered'
+        ]
+        
+        # Check for certification keywords
+        has_cert_keyword = any(keyword in cert_lower for keyword in cert_keywords)
+        
+        # Check for certification patterns
+        cert_patterns = [
+            r'\([A-Z]{2,}-?\d+\)',  # Certification codes like (AZ-900)
+            r'\b[A-Z]{2,}-?\d+\b',  # Certification codes like AZ-900
+            r'\([A-Z]{3,}\)',       # Certification acronyms like (PMP)
+            r'\b(aws|azure|google cloud|gcp)\b',
+            r'\b(pmp|csm|cissp|ceh|ccna|ccnp)\b',
+            r'\b(comptia|oracle|salesforce|hubspot)\b'
+        ]
+        
+        has_cert_pattern = any(re.search(pattern, cert_lower) for pattern in cert_patterns)
+        
+        # Avoid common non-certification phrases - stricter for training sections
+        avoid_phrases = [
+            'years of experience', 'experience in', 'worked with', 'responsible for',
+            'developed', 'created', 'built', 'managed', 'led', 'coordinated',
+            'graduated', 'degree in', 'bachelor', 'master', 'basic', 'introduction',
+            'workshop', 'seminar', 'training', 'course', 'program'
+        ]
+        
+        has_avoid_phrase = any(phrase in cert_lower for phrase in avoid_phrases)
+        
+        # Additional check: if it contains generic training words without certification keywords, exclude it
+        generic_training_words = ['basic', 'introduction', 'workshop', 'seminar', 'training', 'leadership']
+        has_generic_training = any(word in cert_lower for word in generic_training_words)
+        
+        if has_generic_training and not has_cert_keyword and not has_cert_pattern:
+            return False
+        
+        # Special handling for training/seminar content
+        is_training_cert = self.is_training_certification(cert_text)
+        
+        return (has_cert_keyword or has_cert_pattern or is_training_cert) and not has_avoid_phrase
+    
+    def is_training_certification(self, text):
+        """Check if training/seminar text represents a formal certification"""
+        text_lower = text.lower()
+        
+        # Patterns that indicate formal certifications in training sections
+        formal_patterns = [
+            r'certificate\s+in\s+',
+            r'certified\s+',
+            r'certification\s+',
+            r'diploma\s+in\s+',
+            r'license\s+in\s+',
+            r'license$',  # Ends with license
+            r'registered\s+',
+            r'accredited\s+',
+            r'professional\s+',
+            r'advanced\s+',
+            r'specialist\s+',
+            r'expert\s+',
+            r'master\s+class',
+            r'bootcamp\s+certificate',
+            r'completion\s+certificate'
+        ]
+        
+        # Technology/professional terms that often indicate certifications
+        tech_terms = [
+            'aws', 'azure', 'google cloud', 'microsoft', 'oracle', 'cisco',
+            'java', 'python', 'javascript', 'react', 'angular', 'node',
+            'docker', 'kubernetes', 'jenkins', 'git', 'linux', 'windows',
+            'project management', 'scrum', 'agile', 'itil', 'prince2',
+            'data science', 'machine learning', 'artificial intelligence',
+            'cybersecurity', 'network security', 'cloud computing'
+        ]
+        
+        has_formal_pattern = any(re.search(pattern, text_lower) for pattern in formal_patterns)
+        has_tech_term = any(term in text_lower for term in tech_terms)
+        
+        # More strict criteria for training certifications
+        # Must have formal pattern AND tech term, OR be a well-known certification pattern
+        well_known_certs = [
+            'aws certified', 'microsoft certified', 'google certified', 'oracle certified',
+            'cisco certified', 'comptia', 'pmp', 'csm', 'cissp', 'ceh', 'ccna', 'ccnp',
+            'azure fundamentals', 'solutions architect', 'developer associate', 
+            'scrum master', 'project management professional'
+        ]
+        
+        is_well_known = any(cert in text_lower for cert in well_known_certs)
+        
+        return (has_formal_pattern and has_tech_term) or is_well_known
+    
+    def scan_text_for_certifications(self, text):
+        """Scan entire text for certification patterns"""
+        certifications = []
+        
+        # Known certification patterns
+        cert_patterns = [
+            r'AWS Certified [^,\n\.]+',
+            r'Microsoft [^,\n\.]+ Certified[^,\n\.]*',
+            r'Google [^,\n\.]+ Certified[^,\n\.]*',
+            r'Oracle Certified [^,\n\.]+',
+            r'Cisco Certified [^,\n\.]+',
+            r'CompTIA [^,\n\.]+',
+            r'Project Management Professional \(PMP\)',
+            r'Certified Scrum Master \(CSM\)',
+            r'Certified [^,\n\.]+ Professional[^,\n\.]*',
+            r'[^,\n\.]+ Certification[^,\n\.]*',
+            r'[^,\n\.]+ Certificate[^,\n\.]*'
+        ]
+        
+        for pattern in cert_patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            for match in matches:
+                match = match.strip()
+                # Clean up the match
+                match = re.sub(r'\s*\(\d{4}\)$', '', match)
+                match = re.sub(r'\s*-?\s*\d{4}$', '', match)
+                
+                if self.is_comprehensive_certification(match):
+                    certifications.append(match)
+                    print(f"🔍 Found certification pattern: {match}")
+        
+        return certifications
     
     def detect_language(self, text):
         """Detect the primary language of the resume text"""
@@ -832,260 +1133,425 @@ class EnhancedResumeParser:
         return ""
     
     def extract_skills_advanced(self, text):
-        """Advanced skills extraction with enhanced two-column format support"""
+        """Enhanced deterministic skills extraction with consistent results"""
         skills = set()
         
-        print(f"Starting skills extraction from text length: {len(text)}")
+        print(f"Starting enhanced skills extraction from text length: {len(text)}")
         
-        # Strategy 1: Dedicated skills sections with enhanced two-column support
-        skills_patterns = [
-            # Standard skills section
-            r'(?:TECHNICAL\s+SKILLS?|SKILLS?|CORE\s+COMPETENCIES|EXPERTISE|COMPETENCIES|PROFICIENCIES|PROGRAMMING\s+LANGUAGES?|TECHNOLOGIES)\s*:?\s*\n([\s\S]*?)(?=\n\s*(?:EXPERIENCE|WORK|EDUCATION|CERTIFICATIONS|PROJECTS|REFERENCES|LANGUAGES|$))',
-            # Two-column format - skills on left side
-            r'SKILLS\s*\n((?:•\s*[^\n]+\n?)+)',
-            # Skills followed by other content on same line (two-column)
-            r'SKILLS\s+((?:•\s*[^\n]+(?:\s{10,}[^\n]+)?\n?)+)',
-        ]
+        # Strategy 1: Find dedicated SKILLS section with improved parsing
+        skills_section_content = self.find_skills_section(text)
+        if skills_section_content:
+            print(f"Found skills section content: {skills_section_content[:200]}...")
+            section_skills = self.parse_skills_from_section(skills_section_content)
+            skills.update(section_skills)
+            print(f"Extracted {len(section_skills)} skills from dedicated section")
         
-        for pattern in skills_patterns:
-            match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
-            if match:
-                skills_text = match.group(1).strip()
-                print(f"Found skills section: {skills_text[:100]}...")
-                
-                # Parse different skill formats
-                extracted_skills = self.parse_skills_from_text(skills_text)
-                skills.update(extracted_skills)
-                print(f"Extracted {len(extracted_skills)} skills from section")
+        # Strategy 2: Extract from technology/tools lines
+        tech_skills = self.extract_technology_mentions(text)
+        skills.update(tech_skills)
+        print(f"Extracted {len(tech_skills)} skills from technology mentions")
         
-        # Strategy 1: Find skills section in two-column format
+        # Strategy 3: Extract validated skills from experience context
+        experience_skills = self.extract_validated_experience_skills(text)
+        skills.update(experience_skills)
+        print(f"Extracted {len(experience_skills)} skills from experience context")
+        
+        # Final validation and normalization
+        final_skills = self.normalize_and_validate_skills(list(skills))
+        
+        print(f"Final skills count after validation: {len(final_skills)}")
+        return sorted(final_skills)  # Sort for consistent ordering
+    
+    def find_skills_section(self, text):
+        """Find and extract the dedicated SKILLS section content with improved detection"""
         lines = text.split('\n')
-        in_skills_section = False
         skills_content = []
+        in_skills_section = False
         
         for i, line in enumerate(lines):
             line_stripped = line.strip()
             line_upper = line_stripped.upper()
             
-            # Check if this line contains SKILLS header (handle two-column format)
-            if 'SKILLS' in line_upper and (line_stripped.startswith('SKILLS') or line_upper.startswith('SKILLS')):
-                in_skills_section = True
-                print(f"Found skills section start at line {i}: {line}")
-                continue
-            elif in_skills_section:
-                # Check if we've moved to another major section
-                if line_stripped and (line_upper.startswith(('LANGUAGES', 'REFERENCES', 'CERTIFICATIONS', 'WORK EXPERIENCE')) or 
-                                    'EXPERIENCE' in line_upper):
-                    print(f"Skills section ended at line {i}: {line}")
-                    break
-                
-                # Process skills lines
-                if line_stripped:
-                    print(f"Processing skills line {i}: '{line_stripped}'")
-                    # Handle two-column format - extract left side only
-                    if '    ' in line:  # Multiple spaces indicate columns
-                        left_part = line.split('    ')[0].strip()
-                        if left_part and ('•' in left_part or left_part.startswith('-')):
-                            skills_content.append(left_part)
-                            print(f"  Added left column skills: {left_part}")
-                    elif '•' in line or line_stripped.startswith('-'):
-                        skills_content.append(line)
-                        print(f"  Added bullet skills: {line}")
-        
-        if skills_content:
-            skills_text = '\n'.join(skills_content)
-            print(f"Found two-column skills content: {skills_text[:100]}...")
-            extracted_skills = self.parse_skills_from_text(skills_text)
-            skills.update(extracted_skills)
-        
-        # Strategy 2: Handle two-column format specifically
-        lines = text.split('\n')
-        in_skills_section = False
-        skills_content = []
-        
-        for line in lines:
-            line_stripped = line.strip()
-            line_upper = line_stripped.upper()
+            # Enhanced skills section header detection
+            skills_headers = [
+                'SKILLS', 'TECHNICAL SKILLS', 'CORE COMPETENCIES', 'COMPETENCIES',
+                'EXPERTISE', 'PROFICIENCIES', 'PROGRAMMING LANGUAGES', 'TECHNOLOGIES'
+            ]
             
-            # Check if this line contains SKILLS header (handle two-column format)
-            if 'SKILLS' in line_upper and line_stripped.startswith('SKILLS'):
-                in_skills_section = True
-                print(f"Found skills section start: {line}")
-                continue
-            elif in_skills_section:
-                # Check if we've moved to another major section
-                if line_stripped and line_upper.startswith(('LANGUAGES', 'REFERENCES', 'CERTIFICATIONS')):
-                    print(f"Skills section ended at: {line}")
+            # Check for skills section header (exact match or starts with)
+            is_skills_header = False
+            for header in skills_headers:
+                if (line_upper == header or 
+                    line_upper.startswith(header + ':') or
+                    line_upper.startswith(header + ' ') or
+                    (header in line_upper and len(line_stripped) <= 30 and ':' in line_stripped)):
+                    is_skills_header = True
                     break
+            
+            if is_skills_header:
+                in_skills_section = True
+                print(f"Found skills section header at line {i}: {line_stripped}")
+                continue
+            
+            # Check for section end with more comprehensive headers
+            elif in_skills_section and line_stripped:
+                section_headers = [
+                    'EXPERIENCE', 'WORK EXPERIENCE', 'PROFESSIONAL EXPERIENCE', 'EMPLOYMENT', 
+                    'EDUCATION', 'EDUCATIONAL BACKGROUND', 'ACADEMIC BACKGROUND',
+                    'CERTIFICATIONS', 'PROJECTS', 'REFERENCES', 'LANGUAGES', 'AWARDS',
+                    'ACHIEVEMENTS', 'OBJECTIVE', 'SUMMARY', 'PROFILE'
+                ]
                 
-                # Process skills lines
-                if line_stripped:
-                    # Handle two-column format - extract left side only
-                    if '    ' in line:  # Multiple spaces indicate columns
-                        left_part = line.split('    ')[0].strip()
-                        if left_part and ('•' in left_part or left_part.startswith('-')):
-                            skills_content.append(left_part)
-                    elif '•' in line or line_stripped.startswith('-'):
-                        skills_content.append(line)
+                # Check if this line starts a new section
+                is_new_section = False
+                for header in section_headers:
+                    if (line_upper.startswith(header) or 
+                        (header in line_upper and len(line_stripped) <= 40)):
+                        is_new_section = True
+                        break
+                
+                if is_new_section:
+                    print(f"Skills section ended at line {i}: {line_stripped}")
+                    break
+            
+            # Collect skills content
+            if in_skills_section and line_stripped:
+                # Handle two-column format by extracting left side only
+                if '    ' in line and len(line.split('    ')) >= 2:
+                    left_content = line.split('    ')[0].strip()
+                    if left_content:
+                        skills_content.append(left_content)
+                else:
+                    skills_content.append(line_stripped)
         
-        if skills_content:
-            skills_text = '\n'.join(skills_content)
-            print(f"Found two-column skills content: {skills_text[:100]}...")
-            extracted_skills = self.parse_skills_from_text(skills_text)
-            skills.update(extracted_skills)
-            print(f"Extracted {len(extracted_skills)} skills from two-column format")
-        
-        # Strategy 3: Extract from "Technologies used:" or "Tools:" lines
-        tech_line_patterns = [
-            r'(?:Technologies?\s+used|Tools?|Languages?|Frameworks?)\s*:?\s*([A-Za-z0-9+#.,\-\s&/]+)',
-            r'(?:Tech\s+stack|Stack|Platform)\s*:?\s*([A-Za-z0-9+#.,\-\s&/]+)',
-        ]
-        
-        for pattern in tech_line_patterns:
-            matches = re.finditer(pattern, text, re.IGNORECASE)
-            for match in matches:
-                tech_text = match.group(1).strip()
-                print(f"Found tech line: {tech_text[:50]}...")
-                extracted_skills = self.parse_skills_from_text(tech_text)
-                skills.update(extracted_skills)
-        
-        # Strategy 4: Extract skills from experience but validate they're actually skills
-        experience_skills = self.extract_skills_from_experience_context(text)
-        skills.update(experience_skills)
-        
-        # Filter out non-skills and validate
-        validated_skills = self.validate_and_filter_skills(list(skills))
-        
-        print(f"Final validated skills count: {len(validated_skills)}")
-        return validated_skills
+        result = '\n'.join(skills_content) if skills_content else None
+        if result:
+            print(f"Extracted skills section content ({len(skills_content)} lines): {result[:100]}...")
+        return result
     
-    def parse_skills_from_text(self, text):
-        """Parse skills from a text block with various formats"""
+    def parse_skills_from_section(self, section_text):
+        """Parse skills from the dedicated skills section with improved formatting handling"""
         skills = set()
         
-        # Handle comma/semicolon separated
-        if ',' in text or ';' in text:
-            skill_items = re.split(r'[,;]\s*', text)
-            for skill in skill_items:
-                clean_skill = re.sub(r'^[•\-\*\s]+|[•\-\*\s]+$', '', skill).strip()
-                clean_skill = re.sub(r'\([^)]*\)', '', clean_skill).strip()  # Remove parentheses
-                if self.is_valid_skill(clean_skill):
-                    skills.add(clean_skill)
+        print(f"Parsing skills from section: {section_text[:200]}...")
         
-        # Handle bullet points with better extraction
-        bullet_skills = re.findall(r'[•\-\*]\s*([A-Za-z0-9+#.\s/&]+)', text)
-        for skill in bullet_skills:
-            clean_skill = re.sub(r'^[•\-\*\s]+|[•\-\*\s]+$', '', skill).strip()
-            clean_skill = re.sub(r'\([^)]*\)', '', clean_skill).strip()  # Remove parentheses
+        # Handle colon-separated format (e.g., "Programming Languages: JavaScript, Python")
+        colon_pattern = r'([A-Za-z\s]+):\s*([A-Za-z0-9+#.,\-\s&/\n]+?)(?=\n[A-Za-z\s]*:|$)'
+        colon_matches = re.findall(colon_pattern, section_text, re.MULTILINE | re.DOTALL)
+        
+        for category, skill_list in colon_matches:
+            print(f"Found category '{category.strip()}' with skills: {skill_list.strip()}")
+            # Clean up the skill list and parse
+            clean_skill_list = skill_list.replace('\n', ' ').strip()
             
-            # Remove trailing content after multiple spaces (two-column format)
-            if '    ' in clean_skill:
-                clean_skill = clean_skill.split('    ')[0].strip()
-            
-            # Split on common separators within bullet points
-            if '/' in clean_skill:
-                sub_skills = [s.strip() for s in clean_skill.split('/')]
+            if ',' in clean_skill_list:
+                skill_items = [s.strip() for s in clean_skill_list.split(',')]
+                for item in skill_items:
+                    clean_skill = self.clean_skill_text(item)
+                    if clean_skill and self.is_valid_technical_skill(clean_skill):
+                        skills.add(clean_skill)
+                        print(f"Added skill from category: {clean_skill}")
+            else:
+                # Single skill or space-separated
+                words = clean_skill_list.split()
+                for word in words:
+                    clean_skill = self.clean_skill_text(word)
+                    if clean_skill and self.is_valid_technical_skill(clean_skill):
+                        skills.add(clean_skill)
+                        print(f"Added skill from category: {clean_skill}")
+        
+        # Remove colon-separated content for other parsing
+        remaining_text = re.sub(colon_pattern, '', section_text, flags=re.MULTILINE | re.DOTALL)
+        
+        # Strategy 1: Bullet point skills
+        bullet_pattern = r'[•\-\*]\s*([^\n•\-\*]+)'
+        bullet_matches = re.findall(bullet_pattern, remaining_text)
+        
+        for match in bullet_matches:
+            # Handle multiple skills in one bullet point
+            if ',' in match:
+                sub_skills = [s.strip() for s in match.split(',')]
                 for sub_skill in sub_skills:
-                    if self.is_valid_skill(sub_skill):
-                        skills.add(sub_skill)
-            elif self.is_valid_skill(clean_skill):
-                skills.add(clean_skill)
+                    clean_skill = self.clean_skill_text(sub_skill)
+                    if clean_skill and self.is_valid_technical_skill(clean_skill):
+                        skills.add(clean_skill)
+                        print(f"Added bullet skill: {clean_skill}")
+            else:
+                clean_skill = self.clean_skill_text(match)
+                if clean_skill and self.is_valid_technical_skill(clean_skill):
+                    skills.add(clean_skill)
+                    print(f"Added bullet skill: {clean_skill}")
         
-        # Handle line-by-line for simple lists with better filtering
-        lines = text.split('\n')
-        for line in lines:
-            line = line.strip()
-            # Remove bullet points and clean up
-            clean_line = re.sub(r'^[•\-\*\s]+', '', line).strip()
-            
-            # Skip lines that look like job descriptions or experience
-            if clean_line and not any(word in clean_line.lower() for word in ['experience', 'worked', 'developed', 'managed', 'led', 'responsible', 'duties', 'tasks']):
-                # Handle two-column format - extract only left side for skills
-                if '    ' in clean_line:
-                    left_part = clean_line.split('    ')[0].strip()
-                    if self.is_valid_skill(left_part):
-                        skills.add(left_part)
-                elif self.is_valid_skill(clean_line):
-                    skills.add(clean_line)
+        # Strategy 2: Comma-separated skills (if no bullets found)
+        if not bullet_matches and ',' in remaining_text:
+            comma_skills = [s.strip() for s in remaining_text.replace('\n', ' ').split(',')]
+            for skill in comma_skills:
+                clean_skill = self.clean_skill_text(skill)
+                if clean_skill and self.is_valid_technical_skill(clean_skill):
+                    skills.add(clean_skill)
+                    print(f"Added comma skill: {clean_skill}")
         
+        # Strategy 3: Line-by-line skills (if no bullets or commas)
+        elif not bullet_matches and ',' not in remaining_text:
+            lines = remaining_text.split('\n')
+            for line in lines:
+                line = line.strip()
+                if line and not ':' in line:  # Skip category headers
+                    clean_skill = self.clean_skill_text(line)
+                    if clean_skill and self.is_valid_technical_skill(clean_skill):
+                        skills.add(clean_skill)
+                        print(f"Added line skill: {clean_skill}")
+        
+        print(f"Total skills parsed from section: {len(skills)}")
         return skills
     
-    def extract_skills_from_experience_context(self, text):
-        """Extract technical skills mentioned in experience but validate they're skills"""
-        skills = set()
+    def clean_skill_text(self, text):
+        """Clean and normalize skill text"""
+        if not text:
+            return None
         
-        # Look for technology mentions in experience sections
-        tech_patterns = [
-            r'(?:using|with|in)\s+([A-Za-z0-9+#.-]+(?:\s+[A-Za-z0-9+#.-]+)?)',
-            r'([A-Za-z0-9+#.-]+)\s+(?:development|programming|framework|library)',
+        # Remove bullet points and extra whitespace
+        clean_text = re.sub(r'^[•\-\*\s]+', '', text).strip()
+        clean_text = re.sub(r'[•\-\*\s]+$', '', clean_text).strip()
+        
+        # Remove parentheses and content
+        clean_text = re.sub(r'\([^)]*\)', '', clean_text).strip()
+        
+        # Remove proficiency levels
+        proficiency_words = ['beginner', 'intermediate', 'advanced', 'expert', 'basic', 'proficient']
+        for word in proficiency_words:
+            clean_text = re.sub(rf'\b{word}\b', '', clean_text, flags=re.IGNORECASE).strip()
+        
+        # Normalize common variations
+        normalizations = {
+            'javascript': 'JavaScript',
+            'typescript': 'TypeScript',
+            'nodejs': 'Node.js',
+            'reactjs': 'React.js',
+            'vuejs': 'Vue.js',
+            'angularjs': 'Angular.js',
+            'html5': 'HTML5',
+            'css3': 'CSS3',
+            'c++': 'C++',
+            'c#': 'C#',
+            'mysql': 'MySQL',
+            'postgresql': 'PostgreSQL',
+            'mongodb': 'MongoDB'
+        }
+        
+        clean_lower = clean_text.lower()
+        for original, normalized in normalizations.items():
+            if clean_lower == original:
+                return normalized
+        
+        return clean_text if len(clean_text) >= 2 else None
+    
+    def is_valid_technical_skill(self, skill):
+        """Enhanced validation for technical skills with comprehensive checks"""
+        if not skill or len(skill) < 2 or len(skill) > 40:
+            return False
+        
+        # Skip addresses that might be misclassified as skills
+        if self.is_likely_address(skill):
+            return False
+        
+        skill_lower = skill.lower().strip()
+        
+        # Exclude common non-technical words and languages
+        excluded_words = {
+            # Common words
+            'to', 'and', 'or', 'the', 'of', 'in', 'on', 'at', 'for', 'with', 'by', 'from',
+            'is', 'are', 'was', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did',
+            'will', 'would', 'could', 'should', 'may', 'might', 'can', 'must', 'a', 'an',
+            
+            # Languages (not programming languages)
+            'english', 'filipino', 'tagalog', 'cebuano', 'ilocano', 'bisaya', 'hiligaynon',
+            'spanish', 'mandarin', 'chinese', 'japanese', 'korean', 'french', 'german',
+            
+            # Common resume words
+            'core', 'basic', 'advanced', 'intermediate', 'beginner', 'expert', 'proficient',
+            'technology', 'skill', 'skills', 'competency', 'competencies', 'expertise',
+            'experience', 'work', 'job', 'career', 'professional', 'personal',
+            
+            # Location words
+            'ave', 'avenue', 'street', 'road', 'city', 'province', 'manila', 'quezon',
+            'makati', 'taguig', 'pasig', 'cebu', 'davao', 'brgy', 'barangay',
+            
+            # Time words
+            'year', 'years', 'month', 'months', 'day', 'days', 'week', 'weeks',
+            
+            # Education words
+            'degree', 'bachelor', 'master', 'phd', 'university', 'college', 'school'
+        }
+        
+        # Additional pattern-based exclusions
+        if re.match(r'^[a-z]{1,2}$', skill_lower):  # Single/double letters like 'to', 'in'
+            return False
+        
+        if skill.endswith(' -') or skill.startswith('- '):  # Incomplete fragments
+            return False
+        
+        if re.search(r'\b(technology|skill|competenc)\s*-?$', skill_lower):  # Ends with these words
+            return False
+        
+        if skill_lower in excluded_words:
+            return False
+        
+        # Skip obvious non-skills with regex patterns
+        invalid_patterns = [
+            r'\b(?:experience|worked|developed|managed|led|created|implemented|designed|maintained|responsible|duties)\b',
+            r'\b(?:training|course|program)\b',
+            r'\b(?:years?|months?|days?)\s+(?:of|in)\b',
+            r'\b(?:the|and|or|with|for|in|on|at|to|from|of)\s+\b(?:the|and|or|with|for|in|on|at|to|from|of)\b'
         ]
         
-        # Known technical skills to look for
-        known_tech_skills = {
-            'JavaScript', 'Python', 'Java', 'C++', 'C#', 'PHP', 'Ruby', 'Go', 'Rust',
-            'React', 'Angular', 'Vue', 'Node.js', 'Express', 'Django', 'Flask', 'Laravel',
-            'HTML', 'CSS', 'Bootstrap', 'Tailwind', 'SASS', 'SCSS',
-            'MySQL', 'PostgreSQL', 'MongoDB', 'Redis', 'SQLite',
-            'Git', 'Docker', 'Kubernetes', 'AWS', 'Azure', 'GCP',
-            'TypeScript', 'GraphQL', 'REST', 'API'
+        for pattern in invalid_patterns:
+            if re.search(pattern, skill_lower):
+                return False
+        
+        # Enhanced technical skills database with more comprehensive coverage
+        known_skills = {
+            # Programming Languages
+            'javascript', 'python', 'java', 'c++', 'c#', 'php', 'ruby', 'go', 'rust', 'swift',
+            'kotlin', 'typescript', 'scala', 'r', 'matlab', 'perl', 'dart', 'lua', 'haskell',
+            'objective-c', 'assembly', 'cobol', 'fortran', 'pascal', 'vb.net', 'f#',
+            
+            # Web Technologies
+            'html', 'html5', 'css', 'css3', 'sass', 'scss', 'less', 'bootstrap', 'tailwind',
+            'react', 'react.js', 'angular', 'vue', 'vue.js', 'svelte', 'jquery', 'ember',
+            'next.js', 'nuxt.js', 'gatsby', 'webpack', 'vite', 'parcel', 'rollup',
+            
+            # Backend Frameworks
+            'node.js', 'express', 'express.js', 'django', 'flask', 'laravel', 'spring', 'spring boot',
+            'asp.net', 'rails', 'fastapi', 'nestjs', 'koa', 'hapi', 'meteor', 'codeigniter',
+            'symfony', 'gin', 'echo', 'fiber',
+            
+            # Databases
+            'mysql', 'postgresql', 'mongodb', 'redis', 'sqlite', 'oracle', 'sql server',
+            'cassandra', 'elasticsearch', 'dynamodb', 'firebase', 'couchdb', 'neo4j',
+            'mariadb', 'influxdb', 'clickhouse',
+            
+            # Cloud & DevOps
+            'aws', 'azure', 'gcp', 'google cloud', 'docker', 'kubernetes', 'jenkins', 'git', 
+            'github', 'gitlab', 'bitbucket', 'terraform', 'ansible', 'vagrant', 'chef',
+            'puppet', 'prometheus', 'grafana', 'elk stack', 'circleci', 'travis ci',
+            
+            # Mobile Development
+            'android', 'ios', 'react native', 'flutter', 'xamarin', 'ionic', 'cordova',
+            'phonegap', 'unity', 'unreal engine',
+            
+            # Data Science & AI
+            'machine learning', 'deep learning', 'tensorflow', 'pytorch', 'scikit-learn',
+            'pandas', 'numpy', 'matplotlib', 'seaborn', 'jupyter', 'tableau', 'power bi',
+            'apache spark', 'hadoop', 'kafka', 'airflow',
+            
+            # Testing & Quality
+            'jest', 'cypress', 'selenium', 'postman', 'junit', 'pytest', 'mocha', 'chai',
+            'jasmine', 'karma', 'protractor',
+            
+            # Other Technologies
+            'graphql', 'rest', 'api', 'json', 'xml', 'soap', 'microservices', 'agile', 'scrum',
+            'devops', 'ci/cd', 'tdd', 'bdd', 'linux', 'windows', 'macos', 'bash', 'powershell',
+            'vim', 'emacs', 'vscode', 'intellij', 'eclipse'
         }
+        
+        # Check if it's a known skill
+        if skill_lower in known_skills:
+            return True
+        
+        # Check skill patterns
+        valid_patterns = [
+            r'^[A-Za-z]+(?:\.[a-z]+)?$',  # JavaScript, React.js
+            r'^[A-Za-z]+\s+[A-Za-z]+$',  # Project Management
+            r'^[A-Za-z]+\+\+?$',         # C++
+            r'^[A-Za-z]+\s*[0-9]+$',     # HTML5, CSS3
+            r'^[A-Za-z]+\.[A-Za-z]+$'   # Node.js, Vue.js
+        ]
+        
+        if any(re.match(pattern, skill) for pattern in valid_patterns):
+            return True
+        
+        # Final check: reasonable skill name (2-3 words max, no common words)
+        words = skill.split()
+        if len(words) <= 3 and all(len(word) >= 2 for word in words):
+            common_words = {'the', 'and', 'or', 'with', 'for', 'in', 'on', 'at', 'to', 'from', 'of'}
+            if not any(word.lower() in common_words for word in words):
+                return True
+        
+        return False
+    
+    def extract_technology_mentions(self, text):
+        """Extract technology mentions from various contexts"""
+        skills = set()
+        
+        # Technology line patterns
+        tech_patterns = [
+            r'(?:Technologies?\s+used|Tools?|Tech\s+stack|Stack|Platform|Languages?)\s*:?\s*([A-Za-z0-9+#.,\-\s&/]+)',
+            r'(?:Built\s+with|Using|Developed\s+in)\s*:?\s*([A-Za-z0-9+#.,\-\s&/]+)'
+        ]
         
         for pattern in tech_patterns:
             matches = re.finditer(pattern, text, re.IGNORECASE)
             for match in matches:
-                potential_skill = match.group(1).strip()
-                # Only add if it's a known technical skill
-                for known_skill in known_tech_skills:
-                    if known_skill.lower() == potential_skill.lower():
-                        skills.add(known_skill)
-                        break
+                tech_text = match.group(1).strip()
+                # Parse comma-separated technologies
+                if ',' in tech_text:
+                    tech_items = [item.strip() for item in tech_text.split(',')]
+                    for item in tech_items:
+                        clean_skill = self.clean_skill_text(item)
+                        if clean_skill and self.is_valid_technical_skill(clean_skill):
+                            skills.add(clean_skill)
         
         return skills
     
-    def is_valid_skill(self, skill):
-        """Validate if a string is likely a skill"""
-        if not skill or len(skill) < 2 or len(skill) > 50:
-            return False
+    def extract_validated_experience_skills(self, text):
+        """Extract validated technical skills from experience context"""
+        skills = set()
         
-        # Skip if it looks like a sentence or job description
-        if any(word in skill.lower() for word in ['developed', 'managed', 'led', 'worked', 'created', 'implemented', 'designed', 'maintained', 'responsible', 'duties']):
-            return False
-        
-        # Skip obvious non-skills
-        non_skills = ['experience', 'worked', 'developed', 'managed', 'led', 'created', 
-                     'implemented', 'designed', 'maintained', 'responsible', 'duties',
-                     'training', 'course', 'program', 'degree', 'bachelor', 'master', 
-                     'university', 'college', 'school']
-        if any(non_skill in skill.lower() for non_skill in non_skills):
-            return False
-        
-        # Skip if it contains too many common words
-        common_words = ['the', 'and', 'or', 'with', 'for', 'in', 'on', 'at', 'to', 'from', 'of', 'is', 'are', 'was', 'were']
-        word_count = len([w for w in skill.lower().split() if w in common_words])
-        if word_count > 1:
-            return False
-        
-        # Accept common skill patterns
+        # High-confidence skill extraction patterns
         skill_patterns = [
-            r'^[A-Za-z]+(?:\.[a-z]+)?$',  # JavaScript, React.js, Node.js
-            r'^[A-Za-z]+\s+[A-Za-z]+$',  # Project Management, Digital Marketing
-            r'^[A-Za-z]+\+\+?$',         # C++, C#
-            r'^[A-Za-z]+\s*[0-9]+$',     # Python3, HTML5
+            r'\b(JavaScript|Python|Java|React|Angular|Vue|Node\.js|PHP|C\+\+|C#)\b',
+            r'\b(HTML5?|CSS3?|MySQL|PostgreSQL|MongoDB|Git|Docker|AWS|Azure)\b'
         ]
         
-        if any(re.match(pattern, skill) for pattern in skill_patterns):
-            return True
+        for pattern in skill_patterns:
+            matches = re.finditer(pattern, text, re.IGNORECASE)
+            for match in matches:
+                skill = match.group(1)
+                normalized_skill = self.clean_skill_text(skill)
+                if normalized_skill:
+                    skills.add(normalized_skill)
         
-        # Check if it's a reasonable skill name (2-4 words max)
-        words = skill.split()
-        if len(words) <= 4 and all(len(word) >= 2 for word in words):
-            return True
+        return skills
+    
+    def normalize_and_validate_skills(self, skills_list):
+        """Final normalization and validation of skills"""
+        normalized_skills = set()
         
-        # Skip if it's just numbers or dates
-        if re.match(r'^\d+[-/]\d+', skill) or re.match(r'^\d{4}$', skill):
-            return False
+        for skill in skills_list:
+            clean_skill = self.clean_skill_text(skill)
+            if clean_skill and self.is_valid_technical_skill(clean_skill):
+                normalized_skills.add(clean_skill)
         
-        return True
+        # Remove duplicates and variations
+        final_skills = set()
+        for skill in normalized_skills:
+            # Check for existing similar skills to avoid duplicates
+            is_duplicate = False
+            for existing_skill in final_skills:
+                if (skill.lower() == existing_skill.lower() or 
+                    skill.lower().replace('.', '') == existing_skill.lower().replace('.', '')):
+                    is_duplicate = True
+                    break
+            
+            if not is_duplicate:
+                final_skills.add(skill)
+        
+        return list(final_skills)
+    
+    def is_valid_skill(self, skill):
+        """Legacy skill validation - redirects to enhanced validation"""
+        return self.is_valid_technical_skill(skill)
     
     def validate_and_filter_skills(self, skills):
         """Final validation and filtering of extracted skills"""
@@ -1370,11 +1836,11 @@ class EnhancedResumeParser:
             return date_text
     
     def extract_education_advanced(self, text):
-        """Enhanced education extraction with flexible patterns"""
+        """Enhanced education extraction with flexible patterns and better section detection"""
         education = []
         print(f"Starting education extraction from text length: {len(text)}")
         
-        # Enhanced education section detection for two-column format
+        # Strategy 1: Enhanced education section detection
         lines = text.split('\n')
         in_education_section = False
         education_content = []
@@ -1383,63 +1849,118 @@ class EnhancedResumeParser:
             line_stripped = line.strip()
             line_upper = line_stripped.upper()
             
-            # Check if this line contains EDUCATION header
-            if 'EDUCATION' in line_upper and (line_stripped.startswith('EDUCATION') or 
-                                            'EDUCATION' in line_upper.split()):
+            # Enhanced education header detection
+            education_headers = ['EDUCATION', 'EDUCATIONAL BACKGROUND', 'ACADEMIC BACKGROUND', 
+                               'EDUCATIONAL ATTAINMENT', 'ACADEMIC QUALIFICATIONS', 'SCHOOLING']
+            
+            if any(header in line_upper for header in education_headers):
                 in_education_section = True
                 print(f"Found education section at line {i}: {line}")
                 continue
             elif in_education_section:
                 # Check if we've moved to another major section
-                if line_stripped and (line_upper.startswith(('SKILLS', 'EXPERIENCE', 'LANGUAGES', 'REFERENCES')) or
-                                    'WORK EXPERIENCE' in line_upper):
+                section_headers = ['SKILLS', 'EXPERIENCE', 'WORK EXPERIENCE', 'EMPLOYMENT', 
+                                 'LANGUAGES', 'REFERENCES', 'CERTIFICATIONS', 'PROJECTS']
+                if line_stripped and any(line_upper.startswith(header) for header in section_headers):
                     print(f"Education section ended at line {i}: {line}")
                     break
                 
-                # Process education lines
-                if line_stripped:
-                    # Handle two-column format - extract right side for education
+                # Process education lines with better filtering
+                if line_stripped and not self.is_contact_info(line_stripped):
+                    # Handle two-column format - extract appropriate side for education
                     if '    ' in line:  # Multiple spaces indicate columns
-                        right_part = line.split('    ')[-1].strip()
-                        if right_part and not right_part.isdigit() and '@' not in right_part:
-                            education_content.append(right_part)
-                            print(f"  Added education content: {right_part}")
-                    elif not line_stripped.isdigit() and '@' not in line_stripped:
+                        parts = line.split('    ')
+                        # Choose the part that looks more like education
+                        for part in parts:
+                            part = part.strip()
+                            if part and self.looks_like_education(part):
+                                education_content.append(part)
+                                print(f"  Added education content: {part}")
+                                break
+                    elif self.looks_like_education(line_stripped):
                         education_content.append(line_stripped)
                         print(f"  Added education line: {line_stripped}")
         
+        # Strategy 2: Process collected education content
         if education_content:
             edu_text = '\n'.join(education_content)
             print(f"Processing education content: {edu_text[:200]}...")
             education = self.parse_education_entries(edu_text)
-            print(f"Parsed {len(education)} education entries from two-column format")
-        else:
-            print("No education section found, trying fallback patterns...")
-            # Fallback: Look for degree patterns anywhere in text
+            print(f"Parsed {len(education)} education entries from section")
+        
+        # Strategy 3: Enhanced fallback patterns if no section found
+        if not education:
+            print("No education section found, trying enhanced fallback patterns...")
+            
+            # More comprehensive degree patterns
             degree_patterns = [
-                r'(Bachelor|Master|PhD|Doctorate|Associate|Diploma|Certificate)\s+(?:of\s+)?(?:Science|Arts|Engineering|Business|Technology|Education|Medicine|Law|Nursing|Computer\s+Science|Information\s+Technology|Management|Administration|Marketing|Finance|Accounting|Psychology|Communications?|Literature|History|Mathematics|Physics|Chemistry|Biology)\s*(?:in\s+[A-Za-z\s]+)?\s*(?:from\s+|at\s+)?([A-Za-z\s,&.]+(?:University|College|Institute|School|Academy))',
-                r'([A-Za-z\s,&.]+(?:University|College|Institute|School|Academy))\s*[\-–]\s*(Bachelor|Master|PhD|Doctorate|Associate|Diploma|Certificate)',
+                # Standard format: Degree at/from Institution
+                r'(Bachelor|Master|PhD|Doctorate|Associate|Diploma|Certificate|BS|BA|MS|MA|BSBA|BSA|BSN|BSIT|BSCS)\s+(?:of\s+|in\s+)?([A-Za-z\s]+?)\s*(?:from|at)\s+([A-Za-z\s,&.]+(?:University|College|Institute|School|Academy|Polytechnic))',
+                # Institution - Degree format
+                r'([A-Za-z\s,&.]+(?:University|College|Institute|School|Academy|Polytechnic))\s*[\-–|]\s*(Bachelor|Master|PhD|Doctorate|Associate|Diploma|Certificate|BS|BA|MS|MA|BSBA|BSA|BSN|BSIT|BSCS)(?:\s+(?:of\s+|in\s+)?([A-Za-z\s]+))?',
+                # Pipe separated format: Degree | Institution
+                r'(Bachelor|Master|PhD|BS|BA|MS|MA|BSBA|BSA|BSN|BSIT|BSCS)\s*([A-Za-z\s]+?)\s*\|\s*([A-Za-z\s,&.]+(?:University|College|Institute|School|Academy))',
+                # Simple degree with field
+                r'(BSBA|BS|BA|MS|MA|BSN|BSIT|BSCS)\s+(Marketing|Computer\s+Science|Information\s+Technology|Business|Management|Nursing|Engineering|Education)(?:\s+Management)?'
             ]
             
             for i, pattern in enumerate(degree_patterns):
-                print(f"Trying degree pattern {i+1}...")
+                print(f"Trying enhanced degree pattern {i+1}...")
                 matches = re.finditer(pattern, text, re.IGNORECASE)
                 for match in matches:
                     print(f"Found degree match: {match.group(0)}")
-                    if len(match.groups()) >= 2:
-                        degree = match.group(1) if 'Bachelor' in match.group(1) else match.group(2)
-                        school = match.group(2) if 'Bachelor' in match.group(1) else match.group(1)
+                    groups = match.groups()
+                    
+                    if len(groups) >= 2:
+                        if i == 0:  # Degree at Institution
+                            degree = f"{groups[0]} {groups[1]}".strip()
+                            institution = groups[2] if len(groups) > 2 else ''
+                        elif i == 1:  # Institution - Degree
+                            institution = groups[0]
+                            degree = groups[1]
+                            if len(groups) > 2 and groups[2]:
+                                degree += f" {groups[2]}"
+                        elif i == 2:  # Pipe format
+                            degree = f"{groups[0]} {groups[1]}".strip()
+                            institution = groups[2]
+                        else:  # Simple format
+                            degree = f"{groups[0]} {groups[1]}".strip()
+                            institution = ''
+                        
+                        # Extract year if present in the match
+                        year_match = re.search(r'\b(19|20)\d{2}\b', match.group(0))
+                        year = year_match.group() if year_match else ''
+                        
                         education.append({
                             'degree': degree.strip(),
-                            'school': school.strip(),
-                            'year': '',
+                            'institution': institution.strip(),
+                            'year': year,
                             'field': ''
                         })
             
-            print(f"Fallback patterns found {len(education)} education entries")
+            print(f"Enhanced fallback patterns found {len(education)} education entries")
         
         print(f"Final education extraction result: {len(education)} entries")
         return education
+    
+    def is_contact_info(self, text):
+        """Check if text looks like contact information (phone, email, address)"""
+        contact_patterns = [
+            r'\b\d{10,}\b',  # Phone numbers
+            r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',  # Email
+            r'\b(?:brgy|barangay|unit|block|street|avenue|road|city|province)\b'  # Address indicators
+        ]
+        return any(re.search(pattern, text, re.IGNORECASE) for pattern in contact_patterns)
+    
+    def looks_like_education(self, text):
+        """Check if text looks like education information"""
+        education_indicators = [
+            r'\b(?:bachelor|master|phd|doctorate|associate|diploma|certificate|bs|ba|ms|ma|bsba|bsa|bsn|bsit|bscs)\b',
+            r'\b(?:university|college|institute|school|academy|polytechnic)\b',
+            r'\b(?:marketing|computer\s+science|information\s+technology|business|management|nursing|engineering|education)\b',
+            r'\b(?:19|20)\d{2}\b'  # Years
+        ]
+        return any(re.search(pattern, text, re.IGNORECASE) for pattern in education_indicators)
     
     def extract_experience_advanced(self, text):
         """Advanced experience extraction with enhanced two-column format support"""
@@ -1610,21 +2131,21 @@ class EnhancedResumeParser:
         return experience if experience['position'] else None
     
     def parse_education_entries(self, edu_text):
-        """Parse education entries with better degree and institution separation"""
+        """Parse education entries with enhanced degree and institution separation"""
         education = []
         print(f"Parsing education from: {edu_text[:200]}...")
         
-        # Handle two-column format and pipe-separated format
+        # Handle various education formats
         lines = edu_text.split('\n')
         
         for line in lines:
             line = line.strip()
-            if not line:
+            if not line or self.is_contact_info(line):
                 continue
             
             print(f"Processing education line: {line}")
             
-            # Handle pipe-separated format: "BSBA Marketing Management | De La Salle Lipa"
+            # Strategy 1: Pipe-separated format: "BSBA Marketing Management | De La Salle Lipa"
             if '|' in line:
                 parts = [part.strip() for part in line.split('|')]
                 if len(parts) >= 2:
@@ -1639,64 +2160,96 @@ class EnhancedResumeParser:
                         'degree': degree_part,
                         'institution': institution_part,
                         'year': year,
-                        'field': ''
+                        'field': self.extract_field_from_degree(degree_part)
                     })
                     print(f"  Found pipe-separated: degree='{degree_part}', institution='{institution_part}'")
                     continue
             
-            # Handle space-separated format with institution keywords
+            # Strategy 2: Dash-separated format: "University Name - Degree"
+            if ' - ' in line or ' – ' in line:
+                separator = ' - ' if ' - ' in line else ' – '
+                parts = [part.strip() for part in line.split(separator)]
+                if len(parts) >= 2:
+                    # Determine which part is institution vs degree
+                    if self.is_educational_institution(parts[0]):
+                        institution_part = parts[0]
+                        degree_part = parts[1]
+                    else:
+                        degree_part = parts[0]
+                        institution_part = parts[1]
+                    
+                    year_match = re.search(r'\b(19|20)\d{2}\b', line)
+                    year = year_match.group() if year_match else ''
+                    
+                    education.append({
+                        'degree': degree_part,
+                        'institution': institution_part,
+                        'year': year,
+                        'field': self.extract_field_from_degree(degree_part)
+                    })
+                    print(f"  Found dash-separated: degree='{degree_part}', institution='{institution_part}'")
+                    continue
+            
+            # Strategy 3: Institution-only lines
             if self.is_educational_institution(line):
-                # This line contains an institution, look for degree in previous context
-                words = line.split()
-                degree_part = ""
-                institution_part = ""
-                
-                # Find where institution starts
-                institution_keywords = ['university', 'college', 'institute', 'school', 'academy', 'polytechnic']
-                for i, word in enumerate(words):
-                    if any(keyword in word.lower() for keyword in institution_keywords):
-                        degree_part = ' '.join(words[:i]).strip()
-                        institution_part = ' '.join(words[i:]).strip()
-                        break
-                
-                if not institution_part:
-                    institution_part = line
-                
                 # Extract year if present
                 year_match = re.search(r'\b(19|20)\d{2}\b', line)
                 year = year_match.group() if year_match else ''
                 
+                # Clean institution name
+                institution_clean = re.sub(r'\b(19|20)\d{2}\b', '', line).strip()
+                
                 education.append({
-                    'degree': degree_part if degree_part else 'Undergraduate Degree',
-                    'institution': institution_part,
+                    'degree': '',  # Will be filled if found in context
+                    'institution': institution_clean,
                     'year': year,
                     'field': ''
                 })
-                print(f"  Found institution line: degree='{degree_part}', institution='{institution_part}'")
+                print(f"  Found institution: '{institution_clean}'")
                 continue
             
-            # Handle degree-only lines
+            # Strategy 4: Degree-only lines with enhanced patterns
             degree_patterns = [
-                r'(BSBA|BS|BA|MS|MA|PhD|Bachelor|Master|Associate|Diploma|Certificate|Undergraduate)',
-                r'(Marketing\s+Management|Computer\s+Science|Information\s+Technology|Business\s+Administration)'
+                r'\b(BSBA|BS|BA|MS|MA|PhD|Bachelor|Master|Associate|Diploma|Certificate)\b',
+                r'\b(Marketing\s+Management|Computer\s+Science|Information\s+Technology|Business\s+Administration|Nursing|Engineering)\b'
             ]
             
             is_degree = any(re.search(pattern, line, re.IGNORECASE) for pattern in degree_patterns)
-            if is_degree:
+            if is_degree and not self.is_educational_institution(line):
+                # Extract year if present
+                year_match = re.search(r'\b(19|20)\d{2}\b', line)
+                year = year_match.group() if year_match else ''
+                
+                # Clean degree text
+                degree_clean = re.sub(r'\b(19|20)\d{2}\b', '', line).strip()
+                
                 education.append({
-                    'degree': line,
+                    'degree': degree_clean,
                     'institution': '',
-                    'year': '',
-                    'field': ''
+                    'year': year,
+                    'field': self.extract_field_from_degree(degree_clean)
                 })
-                print(f"  Found degree line: '{line}'")
+                print(f"  Found degree line: '{degree_clean}'")
         
         print(f"Parsed {len(education)} education entries")
         return education
     
+    def extract_field_from_degree(self, degree_text):
+        """Extract field of study from degree text"""
+        field_patterns = [
+            r'\b(Marketing|Computer\s+Science|Information\s+Technology|Business|Management|Nursing|Engineering|Education|Psychology|Communications?|Literature|History|Mathematics|Physics|Chemistry|Biology|Accounting|Finance)\b'
+        ]
+        
+        for pattern in field_patterns:
+            match = re.search(pattern, degree_text, re.IGNORECASE)
+            if match:
+                return match.group(1)
+        
+        return ''
+    
     def is_educational_institution(self, text):
         """Check if text looks like an educational institution"""
-        edu_keywords = ['university', 'college', 'colleges', 'institute', 'school', 'academy', 'polytechnic']
+        edu_keywords = ['university', 'college', 'colleges', 'institute', 'school', 'academy', 'polytechnic', 'seminary', 'conservatory']
         return any(keyword in text.lower() for keyword in edu_keywords)
     
     def combine_extraction_results(self, spacy_results, transformer_results, rule_results, semantic_results):
@@ -1781,15 +2334,28 @@ def parse_resume():
         
         # Extract text from PDF or use provided text
         if 'pdf_base64' in data:
-            pdf_data = base64.b64decode(data['pdf_base64'])
-            pdf_document = fitz.open(stream=pdf_data, filetype="pdf")
-            
-            text = ""
-            for page_num in range(pdf_document.page_count):
-                page = pdf_document[page_num]
-                text += page.get_text()
-            
-            pdf_document.close()
+            try:
+                decoded_data = base64.b64decode(data['pdf_base64'])
+                # Try to decode as UTF-8 text first (for testing)
+                try:
+                    text = decoded_data.decode('utf-8')
+                    print(f"✓ Processed as text data, length: {len(text)}")
+                except UnicodeDecodeError:
+                    # It's actual PDF data
+                    pdf_document = fitz.open(stream=decoded_data, filetype="pdf")
+                    
+                    text = ""
+                    for page_num in range(pdf_document.page_count):
+                        page = pdf_document[page_num]
+                        text += page.get_text()
+                    
+                    pdf_document.close()
+                    print(f"✓ Processed as PDF, extracted {len(text)} characters")
+            except Exception as decode_error:
+                return jsonify({
+                    'success': False,
+                    'error': f'Failed to decode data: {str(decode_error)}'
+                }), 400
         elif 'text' in data:
             text = data['text']
         else:

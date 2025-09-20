@@ -59,7 +59,16 @@ const ResumeEditModal: React.FC<ResumeEditModalProps> = ({
   initialData,
   fileName
 }) => {
-  const [resumeData, setResumeData] = useState<ParsedResumeData>(initialData);
+  const [resumeData, setResumeData] = useState<ParsedResumeData>(initialData || {
+    personalInfo: { name: '', email: '', phone: '', address: '' },
+    summary: '',
+    skills: [],
+    languages: [],
+    experience: [],
+    education: [],
+    trainings: [],
+    certifications: []
+  });
   const [newSkill, setNewSkill] = useState('');
   const [newLanguage, setNewLanguage] = useState('');
   const [newCertification, setNewCertification] = useState('');
@@ -68,7 +77,9 @@ const ResumeEditModal: React.FC<ResumeEditModalProps> = ({
   const [activeSection, setActiveSection] = useState<string>('personal');
 
   useEffect(() => {
-    setResumeData(initialData);
+    if (initialData) {
+      setResumeData(initialData);
+    }
   }, [initialData]);
 
   const handlePersonalInfoChange = (field: keyof PersonalInfo, value: string) => {
@@ -291,7 +302,7 @@ const ResumeEditModal: React.FC<ResumeEditModalProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={resumeData.personalInfo.name}
+                    value={resumeData?.personalInfo?.name || ''}
                     onChange={(e) => handlePersonalInfoChange('name', e.target.value)}
                     className={styles.input}
                     placeholder="Enter your full name"
@@ -305,7 +316,7 @@ const ResumeEditModal: React.FC<ResumeEditModalProps> = ({
                   </label>
                   <input
                     type="tel"
-                    value={resumeData.personalInfo.phone}
+                    value={resumeData?.personalInfo?.phone || ''}
                     onChange={(e) => handlePersonalInfoChange('phone', e.target.value)}
                     className={styles.input}
                     placeholder="Enter your phone number"
@@ -319,7 +330,7 @@ const ResumeEditModal: React.FC<ResumeEditModalProps> = ({
                   Email Addresses
                 </label>
                 <div className={styles.skillsContainer}>
-                  {resumeData.personalInfo.email && resumeData.personalInfo.email.split(',').map((email, index) => (
+                  {resumeData?.personalInfo?.email && resumeData.personalInfo.email.split(',').map((email, index) => (
                     <div key={index} className={styles.skillItem}>
                       {email.trim()}
                       <button 
@@ -330,7 +341,7 @@ const ResumeEditModal: React.FC<ResumeEditModalProps> = ({
                           handlePersonalInfoChange('email', emails.join(','));
                         }}
                       >
-                        <FiX />
+                        <FiTrash2 />
                       </button>
                     </div>
                   ))}
@@ -348,7 +359,7 @@ const ResumeEditModal: React.FC<ResumeEditModalProps> = ({
                     className={styles.addButton}
                     onClick={() => {
                       if (newEmail.trim()) {
-                        const currentEmails = resumeData.personalInfo.email ? resumeData.personalInfo.email.split(',') : [];
+                        const currentEmails = resumeData?.personalInfo?.email ? resumeData.personalInfo.email.split(',') : [];
                         currentEmails.push(newEmail.trim());
                         handlePersonalInfoChange('email', currentEmails.join(','));
                         setNewEmail('');
@@ -367,7 +378,7 @@ const ResumeEditModal: React.FC<ResumeEditModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  value={resumeData.personalInfo.address}
+                  value={resumeData?.personalInfo?.address || ''}
                   onChange={(e) => handlePersonalInfoChange('address', e.target.value)}
                   className={styles.input}
                   placeholder="Enter your address"
@@ -592,38 +603,44 @@ const ResumeEditModal: React.FC<ResumeEditModalProps> = ({
                   </button>
                 </div>
                 <div className={styles.compactList}>
-                  {resumeData.certifications.map((cert, index) => (
-                    <div key={index} className={styles.compactCertItem}>
-                      <input
-                        type="text"
-                        value={cert}
-                        onChange={(e) => handleCertificationChange(index, e.target.value)}
-                        className={styles.input}
-                        placeholder="Certification name"
-                      />
-                      <button
-                        onClick={() => handleCertificationRemove(index)}
-                        className={styles.removeButton}
-                      >
-                        <FiTrash2 />
-                      </button>
+                  {resumeData.certifications.length > 0 ? (
+                    resumeData.certifications.map((cert, index) => (
+                      <div key={index} className={styles.compactCertItem}>
+                        <input
+                          type="text"
+                          value={cert}
+                          onChange={(e) => handleCertificationChange(index, e.target.value)}
+                          className={styles.input}
+                          placeholder="Certification name"
+                        />
+                        <button
+                          onClick={() => handleCertificationRemove(index)}
+                          className={styles.removeButton}
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className={styles.emptyState}>
+                      <p>No certifications found. Click the + button to add certifications.</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             </div>
 
             {/* Trainings Section */}
-            {(resumeData.trainings && resumeData.trainings.length > 0) && (
-              <div className={styles.section}>
-                <div className={styles.sectionHeader}>
-                  <h3 className={styles.sectionTitle}>Trainings & Seminars</h3>
-                  <button onClick={handleTrainingAdd} className={styles.addButton}>
-                    <FiPlus /> Add Training
-                  </button>
-                </div>
-                <div className={styles.compactList}>
-                  {(resumeData.trainings || []).map((training, index) => (
+            <div className={styles.section}>
+              <div className={styles.sectionHeader}>
+                <h3 className={styles.sectionTitle}>Trainings & Seminars</h3>
+                <button onClick={handleTrainingAdd} className={styles.addButton}>
+                  <FiPlus /> Add Training
+                </button>
+              </div>
+              <div className={styles.compactList}>
+                {(resumeData.trainings && resumeData.trainings.length > 0) ? (
+                  resumeData.trainings.map((training, index) => (
                     <div key={index} className={styles.compactItem}>
                       <div className={styles.compactHeader}>
                         <h4>Training {index + 1}</h4>
@@ -653,10 +670,14 @@ const ResumeEditModal: React.FC<ResumeEditModalProps> = ({
                         </div>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  ))
+                ) : (
+                  <div className={styles.emptyState}>
+                    <p>No trainings found. Click the "Add Training" button to add one.</p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
 
@@ -672,6 +693,10 @@ const ResumeEditModal: React.FC<ResumeEditModalProps> = ({
       </div>
     </div>
   );
+
+  if (!isOpen) {
+    return null;
+  }
 
   return createPortal(modalContent, document.body);
 };

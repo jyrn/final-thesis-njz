@@ -18,33 +18,17 @@
   },
   "labels":{
     "ner":[
-      "ACTION_VERB",
       "ADDRESS",
-      "BULLET",
       "CERTIFICATION",
-      "CERTIFICATION_TYPE",
       "COMPANY",
-      "CONTACT_LABEL",
       "DATE",
-      "DATE_RANGE",
       "DEGREE",
-      "EDUCATION_LEVEL",
       "EMAIL",
-      "EXPERIENCE_YEARS",
-      "FIELD",
-      "HONOR",
       "JOB_TITLE",
-      "LICENSE",
-      "OBJECTIVE_KEYWORD",
       "PERSON",
       "PHONE",
-      "SCHOOL",
-      "SECTION_HEADER",
       "SKILL",
-      "SPECIALIZATION",
-      "SUBSECTION",
-      "UNIVERSITY",
-      "WORK_DESCRIPTION"
+      "UNIVERSITY"
     ]
   },
   "pipeline":[

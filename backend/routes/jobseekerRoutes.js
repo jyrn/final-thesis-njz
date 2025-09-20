@@ -253,15 +253,19 @@ router.post('/resume', verifyToken, upload.single('resume'), async (req, res) =>
     });
     await resumeRecord.save();
 
-    // Step 2: Parse resume using enhanced NER service
+    // Step 2: Parse resume using working parser service
     let parsedData = null;
     try {
       const fs = require('fs');
       const fetch = require('node-fetch');
       
+      console.log('📤 Starting resume parsing...');
+      
       // Read the PDF file and convert to base64
       const pdfBuffer = fs.readFileSync(req.file.path);
       const pdfBase64 = pdfBuffer.toString('base64');
+      
+      console.log('📄 PDF converted to base64, length:', pdfBase64.length);
       
       const nerResponse = await fetch('http://localhost:5000/parse-resume', {
         method: 'POST',
@@ -273,26 +277,63 @@ router.post('/resume', verifyToken, upload.single('resume'), async (req, res) =>
         })
       });
       
+      console.log('📥 Parser response status:', nerResponse.status);
+      
       if (nerResponse.ok) {
         const parseResult = await nerResponse.json();
+        console.log('📊 Parser result:', parseResult);
+        
         if (parseResult.success) {
           parsedData = parseResult.data;
+          console.log('✅ Successfully parsed resume data:', {
+            name: parsedData.name,
+            email: parsedData.email,
+            skillsCount: parsedData.skills?.length || 0,
+            experienceCount: parsedData.experience?.length || 0
+          });
           
-          // Update resume processing status
+          // Update resume processing status and save extracted text
           resumeRecord.processingStatus = 'completed';
           resumeRecord.processedAt = new Date();
+          resumeRecord.extractedText = parseResult.data.extractedText || '';
+          
+          // Add processing log entry
+          resumeRecord.addProcessingLog('completed', 'Resume parsed successfully', {
+            skillsCount: parseResult.data.skills?.length || 0,
+            experienceCount: parseResult.data.experience?.length || 0,
+            educationCount: parseResult.data.education?.length || 0,
+            confidence: parseResult.data.confidence
+          });
+          
           await resumeRecord.save();
+        } else {
+          console.log('❌ Parser returned success=false:', parseResult);
+          throw new Error(parseResult.error || 'Parser failed');
         }
+      } else {
+        const errorText = await nerResponse.text();
+        console.log('❌ Parser request failed:', nerResponse.status, errorText);
+        throw new Error(`Parser request failed: ${nerResponse.status}`);
       }
     } catch (parseError) {
-      console.warn('Resume parsing error:', parseError.message);
+      console.error('❌ Resume parsing error:', parseError.message);
       resumeRecord.processingStatus = 'failed';
+      resumeRecord.addProcessingLog('failed', 'Resume parsing failed', {
+        error: parseError.message
+      });
       await resumeRecord.save();
     }
 
     // Update jobseeker profile with resume URL
     jobseekerProfile.resumeUrl = resumeUrl;
     await jobseekerProfile.save();
+
+    console.log('📤 Sending response to frontend:', {
+      resumeId: resumeRecord._id,
+      resumeUrl: resumeUrl,
+      parsedDataExists: !!parsedData,
+      parsedDataKeys: parsedData ? Object.keys(parsedData) : []
+    });
 
     // Step 3: Return parsed data for edit modal (don't save to ParsedResume yet)
     res.json({

@@ -432,7 +432,7 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
                     <label className={styles.compactLabel}>Salary Range</label>
                     <div className={styles.compactSalaryRange}>
                       <div className={styles.compactSalaryInput}>
-                        <span className={styles.currencySymbol}></span>
+                        <span className={styles.currencySymbol}>₱</span>
                         <input
                           type="number"
                           value={formData.salaryMin || ''}
@@ -443,7 +443,7 @@ export const JobFormModal: React.FC<JobFormModalProps> = ({
                       </div>
                       <span className={styles.salaryDivider}>-</span>
                       <div className={styles.compactSalaryInput}>
-                        <span className={styles.currencySymbol}></span>
+                        <span className={styles.currencySymbol}>₱</span>
                         <input
                           type="number"
                           value={formData.salaryMax || ''}

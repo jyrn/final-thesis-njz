@@ -59,6 +59,15 @@ const ResumeUploadWithEdit: React.FC<ResumeUploadWithEditProps> = ({
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'uploading' | 'processing' | 'completed' | 'failed' | 'error'>('idle');
   const [statusMessage, setStatusMessage] = useState<string>('');
 
+  // Debug effect to watch modal state changes
+  useEffect(() => {
+    console.log('🔄 Modal state changed:', {
+      showEditModal,
+      parsedDataExists: !!parsedData,
+      parsedDataName: parsedData?.personalInfo?.name
+    });
+  }, [showEditModal, parsedData]);
+
   const pollProcessingStatus = useCallback(async (resumeId: string) => {
     const maxAttempts = 30; // 30 attempts with 2-second intervals = 1 minute max
     let attempts = 0;
@@ -155,61 +164,114 @@ const ResumeUploadWithEdit: React.FC<ResumeUploadWithEditProps> = ({
       const formData = new FormData();
       formData.append('resume', file);
 
-      console.log('📤 Making request to /api/jobseekers/resume');
-      const response = await fetch('/api/jobseekers/resume', {
+      console.log('📤 Making request to /api/jobseekers/upload-resume');
+      console.log('🚀 Starting resume upload...');
+      const response = await fetch('/api/jobseekers/upload-resume', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${userToken}`
+          'Authorization': `Bearer ${userToken}`,
         },
-        body: formData
+        body: formData,
       });
 
-      console.log('📥 Response status:', response.status);
-      console.log('📥 Response ok:', response.ok);
-
+      console.log('📡 Upload response status:', response.status);
+      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Upload failed');
       }
 
       const result = await response.json();
+      console.log('📡 Upload response result:', result);
       
       if (result.success) {
         setCurrentResumeId(result.data.resumeId);
         setUploadProgress(100);
         setProcessingStatus('completed');
-        setStatusMessage('Resume uploaded and text extracted successfully!');
+        setStatusMessage('Resume uploaded and parsed successfully!');
         
-        // Parse the extracted text into structured data
-        if (result.data.extractedText) {
-          console.log('📄 Extracted text:', result.data.extractedText);
+        // Handle parsed data from enhanced parser
+        console.log('📄 Full backend response:', result);
+        console.log('📄 Backend response keys:', Object.keys(result.data || {}));
+        console.log('📄 Has parsedData?', !!result.data.parsedData);
+        
+        if (result.data.parsedData) {
+          console.log('📄 Parsed data from enhanced parser:', result.data.parsedData);
+          console.log('📄 Parsed data keys:', Object.keys(result.data.parsedData));
+          console.log('📄 Certifications in parsedData:', result.data.parsedData.certifications);
+          console.log('📄 Trainings in parsedData:', result.data.parsedData.trainings);
           
           try {
-            const parsedResumeData = parseResumeText(result.data.extractedText);
-            console.log('🔍 Parsed resume data:', parsedResumeData);
+            // Transform enhanced parser data to match our interface
+            const enhancedParsedData = result.data.parsedData;
             
-            // Transform to match our interface
-            const transformedData: ParsedResumeData = {
-              personalInfo: parsedResumeData.personalInfo,
-              summary: parsedResumeData.summary,
-              skills: parsedResumeData.skills,
-              languages: [], // Will be filled by user in edit modal
-              experience: parsedResumeData.experience,
-              education: parsedResumeData.education,
-              trainings: [], // Will be filled by user in edit modal
-              certifications: parsedResumeData.certifications
+            // Handle both old format (name, email, phone) and new format (personalInfo)
+            const personalInfo = enhancedParsedData.personalInfo || {
+              name: enhancedParsedData.name || '',
+              email: enhancedParsedData.email || '',
+              phone: enhancedParsedData.phone || '',
+              address: enhancedParsedData.address || ''
             };
             
-            console.log('✅ Transformed data:', transformedData);
+            const transformedData: ParsedResumeData = {
+              personalInfo: {
+                name: personalInfo.name || '',
+                email: personalInfo.email || '',
+                phone: personalInfo.phone || '',
+                address: personalInfo.address || ''
+              },
+              summary: '',
+              skills: enhancedParsedData.skills || [],
+              languages: enhancedParsedData.languages || [],
+              experience: (enhancedParsedData.experience || []).map((exp: any) => ({
+                company: exp.company || '',
+                position: exp.position || '',
+                duration: exp.duration || '',
+                description: exp.description || ''
+              })),
+              education: (enhancedParsedData.education || []).map((edu: any) => ({
+                institution: edu.institution || '',
+                degree: edu.degree || '',
+                year: edu.year || ''
+              })),
+              trainings: enhancedParsedData.trainings || [],
+              certifications: enhancedParsedData.certifications || []
+            };
+            
+            console.log('✅ Transformed data for modal:', transformedData);
+            console.log('🔍 Data check - Name:', transformedData.personalInfo.name);
+            console.log('🔍 Data check - Skills count:', transformedData.skills.length);
+            console.log('🔍 Data check - Experience count:', transformedData.experience.length);
+            console.log('🏆 Data check - Certifications count:', transformedData.certifications.length);
+            console.log('🏆 Data check - Certifications:', transformedData.certifications);
+            console.log('🏆 Raw backend certifications:', enhancedParsedData.certifications);
+            
             setParsedData(transformedData);
             console.log('🎯 Setting showEditModal to true');
             setShowEditModal(true);
+            
+            // Force a re-render to ensure modal shows
+            setTimeout(() => {
+              console.log('🔄 Modal state after timeout - showEditModal:', showEditModal);
+              console.log('🔄 Modal state after timeout - parsedData exists:', !!parsedData);
+              console.log('🔄 Current transformed data:', transformedData);
+            }, 100);
+            
+            // Additional debugging
+            console.log('🔍 State before modal:', {
+              showEditModal: showEditModal,
+              parsedDataExists: !!parsedData,
+              transformedDataExists: !!transformedData
+            });
+            
           } catch (parseError) {
-            console.error('❌ Error parsing extracted text:', parseError);
-            throw new Error('Failed to parse extracted text: ' + (parseError instanceof Error ? parseError.message : 'Unknown error'));
+            console.error('❌ Error transforming parsed data:', parseError);
+            throw new Error('Failed to transform parsed data: ' + (parseError instanceof Error ? parseError.message : 'Unknown error'));
           }
         } else {
-          throw new Error('No text could be extracted from the resume');
+          console.log('❌ No parsedData in response, checking for other data formats...');
+          console.log('📊 Available data keys:', Object.keys(result.data || {}));
+          throw new Error('No data could be parsed from the resume');
         }
       } else {
         throw new Error(result.error || 'Upload failed');
@@ -335,6 +397,44 @@ const ResumeUploadWithEdit: React.FC<ResumeUploadWithEditProps> = ({
           initialData={parsedData}
           fileName={fileName}
         />
+      )}
+      
+      {/* Debug modal state */}
+      {process.env.NODE_ENV === 'development' && (
+        <div style={{ position: 'fixed', top: '100px', right: '10px', background: 'rgba(0,0,0,0.8)', color: 'white', padding: '10px', fontSize: '12px', zIndex: 9999 }}>
+          <div>showEditModal: {showEditModal.toString()}</div>
+          <div>parsedData exists: {parsedData ? 'YES' : 'NO'}</div>
+          <div>parsedData name: {parsedData?.personalInfo?.name || 'none'}</div>
+          <div>parsedData skills: {parsedData?.skills?.length || 0}</div>
+          <button 
+            onClick={() => {
+              console.log('🧪 Test button clicked - forcing modal open');
+              setShowEditModal(true);
+              setParsedData({
+                personalInfo: { name: 'Test User', email: 'test@test.com', phone: '+63 9171234567', address: 'Test Address' },
+                summary: '',
+                skills: ['JavaScript', 'React', 'Node.js'],
+                languages: ['English', 'Filipino'],
+                experience: [{
+                  company: 'Test Company',
+                  position: 'Software Developer',
+                  duration: '2020-Present',
+                  description: 'Test description'
+                }],
+                education: [{
+                  institution: 'Test University',
+                  degree: 'BS Computer Science',
+                  year: '2020'
+                }],
+                trainings: [],
+                certifications: ['Test Certification']
+              });
+            }}
+            style={{ marginTop: '10px', padding: '5px', background: 'green', color: 'white', border: 'none', cursor: 'pointer' }}
+          >
+            Test Modal
+          </button>
+        </div>
       )}
       
       {/* Debug info */}
