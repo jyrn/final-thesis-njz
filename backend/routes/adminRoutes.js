@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const User = require('../models/User');
-const Admin = require('../models/Admin');
 const Employer = require('../models/Employer');
+const EmployerDocument = require('../models/EmployerDocument');
+const User = require('../models/User');
+const emailService = require('../services/emailService');
+const Admin = require('../models/Admin');
 const JobSeeker = require('../models/JobSeeker');
 const Job = require('../models/Job');
 const Application = require('../models/Application');
@@ -158,20 +160,52 @@ router.get('/employers', verifyToken, adminMiddleware, async (req, res) => {
       query.accountStatus = status;
     }
 
-    // Get all employers (or filtered by status)
+    // Get all employers (or filtered by status) with full company details
     const employers = await Employer.find(query)
       .populate('userId', 'email companyName createdAt')
       .sort({ createdAt: -1 });
 
-    // Format employers with documents
-    const employersWithDocuments = employers.map(employer => ({
-      ...employer.toObject(),
+    // Format employers with full company details and documents
+    const employersWithFullDetails = employers.map(employer => ({
+      _id: employer._id,
+      userId: employer.userId,
+      accountStatus: employer.accountStatus,
+      verificationNotes: employer.verificationNotes,
+      verifiedAt: employer.verifiedAt,
+      // Full company information
+      companyDetails: {
+        companyName: employer.companyName,
+        companyDescription: employer.companyDescription,
+        industry: employer.industry,
+        companySize: employer.companySize,
+        foundedYear: employer.foundedYear,
+        website: employer.website,
+        businessRegistrationNumber: employer.businessRegistrationNumber,
+        taxIdentificationNumber: employer.taxIdentificationNumber
+      },
+      // Contact person information
+      contactPerson: employer.contactPerson || {},
+      // Address information
+      address: employer.address || {},
+      // Social media and other details
+      socialMedia: employer.socialMedia || {},
+      benefits: employer.benefits || [],
+      companyValues: employer.companyValues || [],
+      workEnvironment: employer.workEnvironment,
+      // Documents and verification
       documents: employer.documents || [],
-      documentVerificationStatus: employer.documentVerificationStatus || 'pending'
+      documentVerificationStatus: employer.documentVerificationStatus || 'pending',
+      documentVerifiedAt: employer.documentVerifiedAt,
+      documentRejectionReason: employer.documentRejectionReason,
+      // Profile status
+      profileComplete: employer.profileComplete,
+      isActive: employer.isActive,
+      createdAt: employer.createdAt,
+      updatedAt: employer.updatedAt
     }));
 
     // Only include employers that have uploaded documents
-    const employersWithDocs = employersWithDocuments.filter(employer => 
+    const employersWithDocs = employersWithFullDetails.filter(employer => 
       employer.documents && employer.documents.length > 0
     );
 
@@ -335,6 +369,29 @@ router.put('/employers/:employerId/verify', verifyToken, adminMiddleware, async 
       canLogin: userUpdate?.canLogin,
       registrationStatus: userUpdate?.registrationStatus
     });
+
+    // Send email notification
+    try {
+      const employerEmail = employer.userId?.email;
+      const companyName = employer.companyName;
+      
+      if (employerEmail) {
+        console.log('📧 Sending email notification to:', employerEmail);
+        
+        if (action === 'approve') {
+          const emailResult = await emailService.sendEmployerApprovalEmail(employerEmail, companyName);
+          console.log('✅ Approval email result:', emailResult);
+        } else {
+          const emailResult = await emailService.sendEmployerRejectionEmail(employerEmail, companyName, reason);
+          console.log('✅ Rejection email result:', emailResult);
+        }
+      } else {
+        console.warn('⚠️ No email address found for employer');
+      }
+    } catch (emailError) {
+      console.error('❌ Error sending email notification:', emailError);
+      // Don't fail the entire operation if email fails
+    }
 
     console.log('🎯 About to send response - employer verification complete');
     console.log('🔍 DEBUG: Document update section should have executed by now');

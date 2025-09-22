@@ -16,6 +16,12 @@ export interface FormErrors {
   businessPermit?: string
   philjobnetRegistration?: string
   doleNoPendingCase?: string
+  contactPersonFirstName?: string
+  contactPersonLastName?: string
+  contactNumber?: string
+  companyDescription?: string
+  companyAddress?: string
+  natureOfBusiness?: string
 }
 
 export interface DocumentUpload {
@@ -44,4 +50,13 @@ export interface JobseekerFormData extends BaseFormData {
 
 export interface EmployerFormData extends BaseFormData {
   companyName: string
+}
+
+export interface CompanyDetails {
+  contactPersonFirstName: string
+  contactPersonLastName: string
+  contactNumber: string
+  companyDescription: string
+  companyAddress: string
+  natureOfBusiness: string
 }

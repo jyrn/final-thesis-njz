@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiX, FiHome, FiMail, FiPhone, FiMapPin, FiGlobe } from 'react-icons/fi';
 import styles from './SettingsModal.module.css';
 
@@ -26,17 +26,33 @@ export const CompanyProfileModal: React.FC<CompanyProfileModalProps> = ({
   onSave,
   initialData
 }) => {
-  const [formData, setFormData] = useState<CompanyProfileData>(
-    initialData || {
-      companyName: 'TechCorp Solutions Philippines',
-      industry: 'Technology',
-      website: 'https://techcorp.ph',
-      email: 'contact@techcorp.ph',
-      phone: '+63 2 8123 4567',
-      address: 'Unit 1234, One Corporate Center, Ortigas Avenue, Pasig City, Metro Manila 1605',
-      description: 'Leading technology solutions provider in the Philippines, specializing in innovative software development and digital transformation services for Filipino businesses.'
+  const [formData, setFormData] = useState<CompanyProfileData>({
+    companyName: '',
+    industry: 'Technology',
+    website: '',
+    email: '',
+    phone: '',
+    address: '',
+    description: ''
+  });
+
+  // Update form data when initialData changes
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+    } else {
+      // Set default values when no initial data
+      setFormData({
+        companyName: '',
+        industry: 'Technology',
+        website: '',
+        email: '',
+        phone: '',
+        address: '',
+        description: ''
+      });
     }
-  );
+  }, [initialData]);
 
   if (!isOpen) return null;
 

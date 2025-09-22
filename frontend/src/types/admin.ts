@@ -43,6 +43,40 @@ export interface EmployerDocument {
   documentNumber?: string;
 }
 
+export interface CompanyDetails {
+  companyName: string;
+  companyDescription?: string;
+  industry?: string;
+  companySize?: string;
+  foundedYear?: number;
+  website?: string;
+  businessRegistrationNumber?: string;
+  taxIdentificationNumber?: string;
+}
+
+export interface ContactPerson {
+  firstName?: string;
+  lastName?: string;
+  position?: string;
+  email?: string;
+  phoneNumber?: string;
+}
+
+export interface Address {
+  street?: string;
+  city?: string;
+  province?: string;
+  zipCode?: string;
+  country?: string;
+}
+
+export interface SocialMedia {
+  linkedin?: string;
+  facebook?: string;
+  twitter?: string;
+  instagram?: string;
+}
+
 export interface PendingEmployer {
   _id: string;
   userId: {
@@ -50,10 +84,30 @@ export interface PendingEmployer {
     companyName: string;
     createdAt: string;
   };
+  accountStatus: string;
+  verificationNotes?: string;
+  verifiedAt?: string;
+  // Full company information
+  companyDetails: CompanyDetails;
+  contactPerson: ContactPerson;
+  address: Address;
+  socialMedia: SocialMedia;
+  benefits: string[];
+  companyValues: string[];
+  workEnvironment?: string;
+  // Documents and verification
+  documents: EmployerDocument[];
+  documentVerificationStatus: string;
+  documentVerifiedAt?: string;
+  documentRejectionReason?: string;
+  // Profile status
+  profileComplete: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  // Legacy fields for backward compatibility
   businessPermitUrl?: string;
   dtiRegistrationUrl?: string;
-  accountStatus: string;
-  documents?: EmployerDocument[];
 }
 
 export interface Job {

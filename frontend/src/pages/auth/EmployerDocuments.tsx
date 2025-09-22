@@ -4,8 +4,9 @@ import type React from "react"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import styles from "./AuthPage.module.css"
-import { FormErrors, EmployerDocuments as EmployerDocsType } from "./shared/authTypes"
+import { FormErrors, EmployerDocuments as EmployerDocsType, CompanyDetails } from "./shared/authTypes"
 import SuccessModal from '../../components/SuccessModal'
+import VerificationPending from './VerificationPending'
 
 const EmployerDocuments: React.FC = () => {
   const navigate = useNavigate()
@@ -13,12 +14,24 @@ const EmployerDocuments: React.FC = () => {
   const [errors, setErrors] = useState<FormErrors>({})
   const [successMessage, setSuccessMessage] = useState("")
   const [showSuccessModal, setShowSuccessModal] = useState(false)
+  const [showVerificationPending, setShowVerificationPending] = useState(false)
+  const [currentStep, setCurrentStep] = useState(1)
+  const totalSteps = 2
 
   const [employerDocuments, setEmployerDocuments] = useState<EmployerDocsType>({
     companyProfile: { file: null, uploaded: false },
     businessPermit: { file: null, uploaded: false },
     philjobnetRegistration: { file: null, uploaded: false },
     doleNoPendingCase: { file: null, uploaded: false },
+  })
+
+  const [companyDetails, setCompanyDetails] = useState<CompanyDetails>({
+    contactPersonFirstName: '',
+    contactPersonLastName: '',
+    contactNumber: '',
+    companyDescription: '',
+    companyAddress: '',
+    natureOfBusiness: ''
   })
 
   const handleEmployerDocumentChange = (documentType: keyof EmployerDocsType, file: File | null) => {
@@ -41,13 +54,117 @@ const EmployerDocuments: React.FC = () => {
     setErrors(prev => ({ ...prev, documents: undefined }))
   }
 
+  const validateField = (fieldName: keyof CompanyDetails, value: string) => {
+    let error = ''
+    
+    switch (fieldName) {
+      case 'contactPersonFirstName':
+        if (!value.trim()) {
+          error = "First name is required"
+        } else if (value.trim().length < 2) {
+          error = "First name must be at least 2 characters"
+        }
+        break
+        
+      case 'contactPersonLastName':
+        if (!value.trim()) {
+          error = "Last name is required"
+        } else if (value.trim().length < 2) {
+          error = "Last name must be at least 2 characters"
+        }
+        break
+        
+      case 'contactNumber':
+        if (!value.trim()) {
+          error = "Contact number is required"
+        } else if (!/^[+]?[0-9\s\-\(\)]{10,15}$/.test(value.trim())) {
+          error = "Please enter a valid contact number (10-15 digits)"
+        }
+        break
+        
+      case 'companyDescription':
+        if (!value.trim()) {
+          error = "Company description is required"
+        } else if (value.trim().length < 150) {
+          error = `Company description must be at least 150 characters (${value.trim().length}/150)`
+        } else if (value.trim().length > 1000) {
+          error = "Company description must not exceed 1000 characters"
+        }
+        break
+        
+      case 'companyAddress':
+        if (!value.trim()) {
+          error = "Company address is required"
+        } else if (value.trim().length < 10) {
+          error = "Please provide a complete address"
+        }
+        break
+        
+      case 'natureOfBusiness':
+        if (!value.trim()) {
+          error = "Nature of business is required"
+        }
+        break
+    }
+    
+    return error
+  }
+
+  const validateCompanyDetails = () => {
+    const newErrors: FormErrors = {}
+    
+    Object.keys(companyDetails).forEach((key) => {
+      const fieldName = key as keyof CompanyDetails
+      const error = validateField(fieldName, companyDetails[fieldName])
+      if (error) {
+        newErrors[fieldName] = error
+      }
+    })
+    
+    return newErrors
+  }
+
+  const handleFieldChange = (fieldName: keyof CompanyDetails, value: string) => {
+    setCompanyDetails(prev => ({ ...prev, [fieldName]: value }))
+    
+    // Real-time validation
+    const error = validateField(fieldName, value)
+    setErrors(prev => ({ 
+      ...prev, 
+      [fieldName]: error || undefined 
+    }))
+  }
+
+  const handleNextStep = () => {
+    if (currentStep === 1) {
+      const detailsErrors = validateCompanyDetails()
+      if (Object.keys(detailsErrors).length > 0) {
+        setErrors(prev => ({ ...prev, ...detailsErrors }))
+        return
+      }
+      setCurrentStep(2)
+    }
+  }
+
+  const handlePreviousStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1)
+    }
+  }
+
   const handleEmployerVerification = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const allDocumentsUploaded = Object.values(employerDocuments).every(doc => doc.file !== null)
+    const detailsErrors = validateCompanyDetails()
 
     if (!allDocumentsUploaded) {
       setErrors(prev => ({ ...prev, documents: "Please upload all required documents." }))
+      return
+    }
+    
+    if (Object.keys(detailsErrors).length > 0) {
+      setErrors(prev => ({ ...prev, ...detailsErrors }))
       return
     }
 
@@ -61,6 +178,11 @@ const EmployerDocuments: React.FC = () => {
         if (doc.file) {
           formData.append(key, doc.file)
         }
+      })
+      
+      // Add company details to FormData
+      Object.entries(companyDetails).forEach(([key, value]) => {
+        formData.append(key, value)
       })
 
       // Get Firebase auth token
@@ -95,7 +217,7 @@ const EmployerDocuments: React.FC = () => {
       }
 
       console.log("Documents uploaded successfully:", result)
-      setShowSuccessModal(true)
+      setShowVerificationPending(true)
     } catch (error) {
       console.error("Document upload failed:", error)
       setErrors(prev => ({ 
@@ -110,6 +232,11 @@ const EmployerDocuments: React.FC = () => {
   const handleSuccessModalClose = () => {
     setShowSuccessModal(false)
     navigate("/employer/dashboard")
+  }
+
+  // If verification pending is shown, render that component instead
+  if (showVerificationPending) {
+    return <VerificationPending />
   }
 
   const renderDocumentUpload = (documentType: keyof EmployerDocsType, label: string, description: string) => {
@@ -175,9 +302,28 @@ const EmployerDocuments: React.FC = () => {
               </div>
             </div>
 
-            <h1 className={styles.formTitle}>Verify your Company</h1>
+            <div className={styles.stepIndicator}>
+              <div className={styles.stepProgress}>
+                <div className={`${styles.step} ${currentStep >= 1 ? styles.active : ''} ${currentStep > 1 ? styles.completed : ''}`}>
+                  <div className={styles.stepNumber}>1</div>
+                  <span className={styles.stepLabel}>Company Info</span>
+                </div>
+                <div className={styles.stepConnector}></div>
+                <div className={`${styles.step} ${currentStep >= 2 ? styles.active : ''}`}>
+                  <div className={styles.stepNumber}>2</div>
+                  <span className={styles.stepLabel}>Documents</span>
+                </div>
+              </div>
+            </div>
+
+            <h1 className={styles.formTitle}>
+              {currentStep === 1 ? 'Company Information' : 'Upload Documents'}
+            </h1>
             <p className={styles.formSubtitle}>
-              Please upload the required documents before posting jobs. These will be verified by PESO.
+              {currentStep === 1 
+                ? 'Please provide detailed information about your company'
+                : 'Upload the required documents for company verification'
+              }
             </p>
 
             {errors.general && (
@@ -190,50 +336,187 @@ const EmployerDocuments: React.FC = () => {
             )}
 
 
-            <form onSubmit={handleEmployerVerification} className={styles.form}>
-              {errors.documents && (
-                <div className={styles.errorMessage}>
-                  <svg className={styles.messageIcon} viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                  {errors.documents}
+            <form onSubmit={currentStep === 2 ? handleEmployerVerification : (e) => e.preventDefault()} className={styles.form}>
+              {currentStep === 1 && (
+                <div className={styles.stepContent}>
+                  <div className={styles.inputGroup}>
+                    <label className={styles.inputLabel}>Contact Person *</label>
+                    <div className={styles.nameFieldsRow}>
+                      <div className={styles.nameField}>
+                        <label className={styles.subLabel}>First Name</label>
+                        <input
+                          type="text"
+                          value={companyDetails.contactPersonFirstName}
+                          onChange={(e) => handleFieldChange('contactPersonFirstName', e.target.value)}
+                          className={`${styles.input} ${errors.contactPersonFirstName ? styles.error : ''}`}
+                          placeholder="First name"
+                        />
+                        {errors.contactPersonFirstName && (
+                          <div className={styles.errorText}>{errors.contactPersonFirstName}</div>
+                        )}
+                      </div>
+                      <div className={styles.nameField}>
+                        <label className={styles.subLabel}>Last Name</label>
+                        <input
+                          type="text"
+                          value={companyDetails.contactPersonLastName}
+                          onChange={(e) => handleFieldChange('contactPersonLastName', e.target.value)}
+                          className={`${styles.input} ${errors.contactPersonLastName ? styles.error : ''}`}
+                          placeholder="Last name"
+                        />
+                        {errors.contactPersonLastName && (
+                          <div className={styles.errorText}>{errors.contactPersonLastName}</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+
+              <div className={styles.inputGroup}>
+                <label className={styles.inputLabel}>Contact Number *</label>
+                <input
+                  type="tel"
+                  value={companyDetails.contactNumber}
+                  onChange={(e) => handleFieldChange('contactNumber', e.target.value)}
+                  className={`${styles.input} ${errors.contactNumber ? styles.error : ''}`}
+                  placeholder="e.g., +63 912 345 6789 "
+                />
+                {errors.contactNumber && (
+                  <div className={styles.errorText}>{errors.contactNumber}</div>
+                )}
+              </div>
+
+              <div className={styles.inputGroup}>
+                <label className={styles.inputLabel}>Company Address *</label>
+                <textarea
+                  value={companyDetails.companyAddress}
+                  onChange={(e) => handleFieldChange('companyAddress', e.target.value)}
+                  className={`${styles.textarea} ${errors.companyAddress ? styles.error : ''}`}
+                  placeholder="Enter complete company address including city and postal code"
+                  rows={3}
+                />
+                {errors.companyAddress && (
+                  <div className={styles.errorText}>{errors.companyAddress}</div>
+                )}
+              </div>
+
+              <div className={styles.inputGroup}>
+                <label className={styles.inputLabel}>Nature of Business *</label>
+                <select
+                  value={companyDetails.natureOfBusiness}
+                  onChange={(e) => handleFieldChange('natureOfBusiness', e.target.value)}
+                  className={`${styles.select} ${errors.natureOfBusiness ? styles.error : ''}`}
+                >
+                  <option value="">Select nature of business</option>
+                  <option value="Information Technology">Information Technology</option>
+                  <option value="Healthcare">Healthcare</option>
+                  <option value="Manufacturing">Manufacturing</option>
+                  <option value="Retail">Retail</option>
+                  <option value="Construction">Construction</option>
+                  <option value="Education">Education</option>
+                  <option value="Finance">Finance</option>
+                  <option value="Hospitality">Hospitality</option>
+                  <option value="Transportation">Transportation</option>
+                  <option value="Real Estate">Real Estate</option>
+                  <option value="Agriculture">Agriculture</option>
+                  <option value="Business Process Outsourcing">Business Process Outsourcing</option>
+                  <option value="Telecommunications">Telecommunications</option>
+                  <option value="Government">Government</option>
+                  <option value="Non-Profit">Non-Profit</option>
+                  <option value="Other">Other</option>
+                </select>
+                {errors.natureOfBusiness && (
+                  <div className={styles.errorText}>{errors.natureOfBusiness}</div>
+                )}
+              </div>
+
+              <div className={styles.inputGroup}>
+                <label className={styles.inputLabel}>Company Description *</label>
+                <textarea
+                  value={companyDetails.companyDescription}
+                  onChange={(e) => handleFieldChange('companyDescription', e.target.value)}
+                  className={`${styles.textarea} ${errors.companyDescription ? styles.error : ''}`}
+                  placeholder="Provide a detailed description of your company, its services, mission, and what makes it unique (minimum 150 characters)"
+                  rows={4}
+                />
+                <div className={`${styles.characterCount} ${companyDetails.companyDescription.length >= 150 ? styles.success : companyDetails.companyDescription.length > 0 ? styles.warning : ''}`}>
+                  {companyDetails.companyDescription.length}/150 minimum (max 1000)
+                </div>
+                {errors.companyDescription && (
+                  <div className={styles.errorText}>{errors.companyDescription}</div>
+                )}
+                  </div>
                 </div>
               )}
 
-              {renderDocumentUpload(
-                "companyProfile",
-                "Upload Company Profile",
-                "Company profile document or business registration",
+              {currentStep === 2 && (
+                <div className={styles.stepContent}>
+                  {errors.documents && (
+                    <div className={styles.errorMessage}>
+                      <svg className={styles.messageIcon} viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                      {errors.documents}
+                    </div>
+                  )}
+
+                  {renderDocumentUpload(
+                    "companyProfile",
+                    "Upload Company Profile",
+                    "Company profile document or business registration",
+                  )}
+
+                  {renderDocumentUpload(
+                    "businessPermit",
+                    "Upload Business Permit",
+                    "Valid business permit from local government",
+                  )}
+
+                  {renderDocumentUpload(
+                    "philjobnetRegistration",
+                    "Upload PhilJobNet Registration",
+                    "PhilJobNet registration certificate",
+                  )}
+
+                  {renderDocumentUpload(
+                    "doleNoPendingCase",
+                    "Upload DOLE No Pending Case Certificate",
+                    "Certificate showing no pending labor cases",
+                  )}
+                </div>
               )}
 
-              {renderDocumentUpload(
-                "businessPermit",
-                "Upload Business Permit",
-                "Valid business permit from local government",
-              )}
-
-              {renderDocumentUpload(
-                "philjobnetRegistration",
-                "Upload PhilJobNet Registration",
-                "PhilJobNet registration certificate",
-              )}
-
-              {renderDocumentUpload(
-                "doleNoPendingCase",
-                "Upload DOLE No Pending Case Certificate",
-                "Certificate showing no pending labor cases",
-              )}
-
-              <button type="submit" className={styles.primaryButton} disabled={isUploading}>
-                {isUploading && <div className={styles.loadingSpinner}></div>}
-                {isUploading ? "Submitting..." : "Submit"}
-              </button>
-
-              <div className={styles.authToggle}>
-                <button type="button" onClick={() => navigate("/auth/employer")} className={styles.toggleLink}>
-                  Back to Basic Information
-                </button>
+              <div className={styles.formNavigation}>
+                <div className={styles.navigationLeft}>
+                  {currentStep > 1 && (
+                    <span 
+                      onClick={handlePreviousStep}
+                      className={styles.previousLink}
+                    >
+                      ← Back to Company Information
+                    </span>
+                  )}
+                </div>
+                
+                <div className={styles.navigationRight}>
+                  {currentStep < totalSteps ? (
+                    <button 
+                      type="button" 
+                      onClick={handleNextStep}
+                      className={styles.primaryButton}
+                    >
+                      Next
+                    </button>
+                  ) : (
+                    <button type="submit" className={styles.primaryButton} disabled={isUploading}>
+                      {isUploading && <div className={styles.loadingSpinner}></div>}
+                      {isUploading ? "Submitting..." : "Submit"}
+                    </button>
+                  )}
+                </div>
               </div>
+
+             
             </form>
           </div>
         </div>

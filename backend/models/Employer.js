@@ -276,15 +276,15 @@ EmployerSchema.methods.getPublicProfile = function() {
     companySize: this.companySize,
     foundedYear: this.foundedYear,
     website: this.website,
-    address: {
-      city: this.address?.city,
-      province: this.address?.province,
-      country: this.address?.country
-    },
+    email: this.email,
+    contactPerson: this.contactPerson,
+    address: this.address,
     socialMedia: this.socialMedia,
     benefits: this.benefits,
     companyValues: this.companyValues,
     workEnvironment: this.workEnvironment,
+    documents: this.documents || [],
+    documentVerificationStatus: this.documentVerificationStatus,
     isVerified: this.accountStatus === 'verified',
     profileComplete: this.profileComplete
   };

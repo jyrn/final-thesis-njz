@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { FiX, FiUpload, FiFileText, FiCheck, FiAlertCircle } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { FiX, FiUpload, FiFileText, FiCheck, FiAlertCircle, FiBriefcase } from 'react-icons/fi';
 import styles from './SettingsModal.module.css';
 
 interface DocumentsModalProps {
@@ -20,6 +20,15 @@ interface ExistingDocument {
   uploadDate: string;
   size: string;
   url: string;
+  verificationStatus?: string;
+}
+
+interface BackendDocument {
+  documentType: string;
+  documentName: string;
+  documentUrl: string;
+  uploadedAt: string;
+  verificationStatus?: string;
 }
 
 export const DocumentsModal: React.FC<DocumentsModalProps> = ({
@@ -35,34 +44,59 @@ export const DocumentsModal: React.FC<DocumentsModalProps> = ({
   });
 
   const [uploadStatus, setUploadStatus] = useState<{[key: string]: 'idle' | 'uploading' | 'success' | 'error'}>({});
+  const [existingDocuments, setExistingDocuments] = useState<{[key: string]: ExistingDocument}>({});
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
 
-  // Mock existing documents - in real app, this would come from props or API
-  const [existingDocuments] = useState<{[key: string]: ExistingDocument}>({
-    companyProfile: {
-      name: 'Company_Profile_2024.pdf',
-      uploadDate: '2024-01-10',
-      size: '3.2 MB',
-      url: '/documents/company-profile.pdf'
-    },
-    businessPermit: {
-      name: 'Business_Permit_2024.pdf',
-      uploadDate: '2024-01-15',
-      size: '2.3 MB',
-      url: '/documents/business-permit.pdf'
-    },
-    philjobnetRegistration: {
-      name: 'PhilJobNet_Registration_Certificate.pdf',
-      uploadDate: '2024-01-08',
-      size: '1.9 MB',
-      url: '/documents/philjobnet-registration.pdf'
-    },
-    doleNoPendingCase: {
-      name: 'DOLE_No_Pending_Case_Certificate.pdf',
-      uploadDate: '2024-01-20',
-      size: '1.4 MB',
-      url: '/documents/dole-certificate.pdf'
+  // Load existing documents from backend
+  useEffect(() => {
+    if (isOpen) {
+      loadExistingDocuments();
     }
-  });
+  }, [isOpen]);
+
+  const loadExistingDocuments = async () => {
+    setIsLoadingDocuments(true);
+    try {
+      const { auth } = require('../../../config/firebase');
+      const user = auth.currentUser;
+      
+      if (user) {
+        const token = await user.getIdToken();
+        const response = await fetch('http://localhost:3001/api/employers/profile', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const employer = data.data;
+          
+          // Convert backend documents to frontend format
+          const documentsMap: {[key: string]: ExistingDocument} = {};
+          
+          if (employer.documents && employer.documents.length > 0) {
+            employer.documents.forEach((doc: BackendDocument) => {
+              documentsMap[doc.documentType] = {
+                name: doc.documentName,
+                uploadDate: doc.uploadedAt,
+                size: 'Unknown', // Backend doesn't store file size
+                url: `http://localhost:3001/${doc.documentUrl}`,
+                verificationStatus: doc.verificationStatus || employer.documentVerificationStatus
+              };
+            });
+          }
+          
+          setExistingDocuments(documentsMap);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading documents:', error);
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  };
 
   const documentTypes = [
     {
@@ -145,9 +179,9 @@ export const DocumentsModal: React.FC<DocumentsModalProps> = ({
     <div className={styles.modalOverlay}>
       <div className={`${styles.modalContainer} ${styles.documentsModalContainer}`}>
         <div className={styles.modalHeader}>
-          <div className={styles.modalHeaderContent}>
-            <FiFileText className={styles.modalIcon} />
-            <h2>Company Documents</h2>
+          <div className={styles.headerContent}>
+            <FiBriefcase className={styles.headerIcon} />
+            <h2 className={styles.title}>Company Documents</h2>
           </div>
           <button onClick={onClose} className={styles.closeButton}>
             <FiX />
@@ -185,14 +219,24 @@ export const DocumentsModal: React.FC<DocumentsModalProps> = ({
                 <p className={styles.documentDescription}>{docType.description}</p>
                 
                 {/* Existing Document Preview */}
-                {existingDocuments[docType.key] && !documents[docType.key as keyof DocumentsData] && (
+                {isLoadingDocuments ? (
+                  <div className={styles.loadingDocument}>
+                    <div className={styles.spinner} />
+                    <span>Loading documents...</span>
+                  </div>
+                ) : existingDocuments[docType.key] && !documents[docType.key as keyof DocumentsData] ? (
                   <div className={styles.existingDocument}>
                     <div className={styles.documentPreview}>
                       <FiFileText className={styles.pdfIcon} />
                       <div className={styles.documentInfo}>
                         <div className={styles.documentName}>{existingDocuments[docType.key].name}</div>
                         <div className={styles.documentMeta}>
-                          Uploaded: {new Date(existingDocuments[docType.key].uploadDate).toLocaleDateString('en-PH')} • {existingDocuments[docType.key].size}
+                          Uploaded: {new Date(existingDocuments[docType.key].uploadDate).toLocaleDateString('en-PH')}
+                          {existingDocuments[docType.key].verificationStatus && (
+                            <span className={`${styles.verificationStatus} ${styles[existingDocuments[docType.key].verificationStatus || '']}`}>
+                              • {existingDocuments[docType.key].verificationStatus?.charAt(0).toUpperCase() + existingDocuments[docType.key].verificationStatus?.slice(1)}
+                            </span>
+                          )}
                         </div>
                       </div>
                       <a 
@@ -204,6 +248,11 @@ export const DocumentsModal: React.FC<DocumentsModalProps> = ({
                         View PDF
                       </a>
                     </div>
+                  </div>
+                ) : !isLoadingDocuments && (
+                  <div className={styles.noDocument}>
+                    <FiFileText className={styles.noDocIcon} />
+                    <span>No document uploaded yet</span>
                   </div>
                 )}
 

@@ -199,6 +199,25 @@ router.post('/upload-documents', verifyToken, requireRole('employer'), upload.fi
       }
     }
 
+    // Extract company details from request body
+    const {
+      contactPersonFirstName,
+      contactPersonLastName,
+      contactNumber,
+      companyDescription,
+      companyAddress,
+      natureOfBusiness
+    } = req.body;
+
+    console.log(`📋 [${requestId}] Company details received:`, {
+      contactPersonFirstName,
+      contactPersonLastName,
+      contactNumber: contactNumber ? '***' : 'not provided',
+      companyDescription: companyDescription ? `${companyDescription.substring(0, 50)}...` : 'not provided',
+      companyAddress: companyAddress ? 'provided' : 'not provided',
+      natureOfBusiness
+    });
+
     // Process documents into array format
     const documentsArray = [];
     console.log(`📁 [${requestId}] Processing uploaded files:`, Object.keys(uploadedFiles));
@@ -223,6 +242,43 @@ router.post('/upload-documents', verifyToken, requireRole('employer'), upload.fi
     console.log(`📄 [${requestId}] Documents array to save:`, documentsArray.length, 'documents');
     console.log(`📋 [${requestId}] Document details:`, documentsArray.map(d => ({ type: d.documentType, name: d.documentName })));
     
+    // Update employer with company details
+    if (contactPersonFirstName || contactPersonLastName) {
+      const fullName = [contactPersonFirstName, contactPersonLastName]
+        .filter(name => name && name.trim())
+        .join(' ');
+      
+      employer.contactPerson = {
+        ...employer.contactPerson,
+        firstName: contactPersonFirstName || '',
+        lastName: contactPersonLastName || '',
+        fullName: fullName
+      };
+    }
+    
+    if (contactNumber) {
+      employer.contactPerson = {
+        ...employer.contactPerson,
+        phoneNumber: contactNumber
+      };
+    }
+    
+    if (companyDescription) {
+      employer.companyDescription = companyDescription;
+    }
+    
+    if (companyAddress) {
+      employer.address = {
+        ...employer.address,
+        street: companyAddress,
+        full: companyAddress
+      };
+    }
+    
+    if (natureOfBusiness) {
+      employer.industry = natureOfBusiness;
+    }
+
     // Save documents directly to employer record
     employer.documents = documentsArray;
     employer.documentVerificationStatus = 'pending';
@@ -230,21 +286,29 @@ router.post('/upload-documents', verifyToken, requireRole('employer'), upload.fi
     employer.documentRejectionReason = undefined;
     employer.documentAdminNotes = undefined;
     
-    console.log(`💾 [${requestId}] Saving documents to employer record:`, employer._id);
+    console.log(`💾 [${requestId}] Saving documents and company details to employer record:`, employer._id);
 
     // Update employer account status
     employer.accountStatus = 'pending';
-    employer.verificationNotes = 'Documents uploaded and pending review';
+    employer.verificationNotes = 'Documents and company information uploaded, pending review';
     
     await employer.save();
     console.log(`✅ [${requestId}] Employer record updated with ${documentsArray.length} documents`);
 
     res.json({
       success: true,
-      message: 'Documents uploaded successfully and are now under review',
+      message: 'Documents and company information uploaded successfully and are now under review',
       data: {
         documentsUploaded: documentsArray.length,
         accountStatus: employer.accountStatus,
+        companyDetailsUpdated: {
+          contactPersonFirstName: !!contactPersonFirstName,
+          contactPersonLastName: !!contactPersonLastName,
+          contactNumber: !!contactNumber,
+          companyDescription: !!companyDescription,
+          companyAddress: !!companyAddress,
+          natureOfBusiness: !!natureOfBusiness
+        },
         uploadedDocuments: documentsArray.map(doc => ({
           type: doc.documentType,
           uploadedAt: doc.uploadedAt

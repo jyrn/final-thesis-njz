@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
+import { useNavigate } from 'react-router-dom';
 import { 
   FiHome,
   FiUsers,
@@ -99,6 +100,8 @@ interface TeamData {
 type TabType = 'overview' | 'applicants' | 'jobs' | 'settings';
 
 const EmployerDashboard: React.FC = () => {
+  const navigate = useNavigate();
+  
   // State management
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,6 +113,8 @@ const EmployerDashboard: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userVerificationStatus, setUserVerificationStatus] = useState<string | null>(null);
+  const [isCheckingVerification, setIsCheckingVerification] = useState(true);
   
   // Settings modal states
   const [isCompanyProfileModalOpen, setIsCompanyProfileModalOpen] = useState(false);
@@ -120,24 +125,110 @@ const EmployerDashboard: React.FC = () => {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [isJobDetailsModalOpen, setIsJobDetailsModalOpen] = useState(false);
   const [applicantStatuses, setApplicantStatuses] = useState<Record<number, string>>({});
+  const [companyProfileData, setCompanyProfileData] = useState<CompanyProfileData | null>(null);
 
-  // Initialize Firebase auth state listener
+  // Initialize Firebase auth state listener and check verification status
   useEffect(() => {
     const { auth } = require('../../config/firebase');
     
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log('Auth state changed:', !!user);
       setCurrentUser(user);
       setIsAuthReady(true);
+      
+      if (user) {
+        // Check employer account status
+        try {
+          const token = await user.getIdToken();
+          const response = await fetch('http://localhost:3001/api/employers/account-status', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log('Employer account status:', data.data?.accountStatus);
+            setUserVerificationStatus(data.data?.accountStatus);
+            
+            // If employer is not verified, redirect to verification pending
+            if (data.data?.accountStatus !== 'verified') {
+              navigate('/auth/verification-pending');
+              return;
+            }
+          } else {
+            console.error('Failed to fetch employer account status');
+            // If we can't verify status, redirect to auth
+            navigate('/auth');
+            return;
+          }
+        } catch (error) {
+          console.error('Error checking employer account status:', error);
+          navigate('/auth');
+          return;
+        }
+      } else {
+        // No user logged in, redirect to auth
+        navigate('/auth');
+        return;
+      }
+      
+      setIsCheckingVerification(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [navigate]);
 
-  // Load jobs from backend when auth is ready
+  // Load company profile data
   useEffect(() => {
-    if (!isAuthReady || !currentUser) {
-      console.log('Auth not ready or no user:', { isAuthReady, hasUser: !!currentUser });
+    if (!isAuthReady || !currentUser || isCheckingVerification || userVerificationStatus !== 'verified') {
+      return;
+    }
+
+    const loadCompanyProfile = async () => {
+      try {
+        const token = await currentUser.getIdToken();
+        const response = await fetch('http://localhost:3001/api/employers/profile', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const employer = data.data;
+          
+          // Map backend data to frontend CompanyProfileData format
+          setCompanyProfileData({
+            companyName: employer.companyName || '',
+            industry: employer.industry || '',
+            website: employer.website || '',
+            email: employer.contactPerson?.email || employer.email || '',
+            phone: employer.contactPerson?.phoneNumber || '',
+            address: employer.address?.street || 
+                    (employer.address ? `${employer.address.street || ''} ${employer.address.city || ''} ${employer.address.province || ''}`.trim() : ''),
+            description: employer.companyDescription || ''
+          });
+        }
+      } catch (error) {
+        console.error('Error loading company profile:', error);
+      }
+    };
+
+    loadCompanyProfile();
+  }, [isAuthReady, currentUser, isCheckingVerification, userVerificationStatus]);
+
+  // Load jobs from backend when auth is ready and user is verified
+  useEffect(() => {
+    if (!isAuthReady || !currentUser || isCheckingVerification || userVerificationStatus !== 'verified') {
+      console.log('Auth not ready, no user, or not verified:', { 
+        isAuthReady, 
+        hasUser: !!currentUser, 
+        isCheckingVerification, 
+        verificationStatus: userVerificationStatus 
+      });
       return;
     }
 
@@ -194,17 +285,65 @@ const EmployerDashboard: React.FC = () => {
     };
 
     loadJobs();
-  }, [isAuthReady, currentUser]);
+  }, [isAuthReady, currentUser, isCheckingVerification, userVerificationStatus]);
+
+  // Handle saving company profile
+  const handleSaveCompanyProfile = async (profileData: CompanyProfileData) => {
+    try {
+      const token = await currentUser?.getIdToken();
+      const response = await fetch('http://localhost:3001/api/employers/profile', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          companyName: profileData.companyName,
+          companyDescription: profileData.description,
+          industry: profileData.industry,
+          website: profileData.website,
+          contactPerson: {
+            email: profileData.email,
+            phoneNumber: profileData.phone
+          },
+          address: {
+            street: profileData.address
+          }
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Company profile updated successfully:', data);
+        
+        // Update local state with new data
+        setCompanyProfileData(profileData);
+        
+        // Show success message (you can add a toast notification here)
+        alert('Company profile updated successfully!');
+      } else {
+        throw new Error('Failed to update company profile');
+      }
+    } catch (error) {
+      console.error('Error updating company profile:', error);
+      alert('Error updating company profile. Please try again.');
+    }
+  };
 
 
   // State for real applications from backend
   const [applications, setApplications] = useState<Applicant[]>([]);
   const [isLoadingApplications, setIsLoadingApplications] = useState(true);
 
-  // Load applications from backend when auth is ready
+  // Load applications from backend when auth is ready and user is verified
   useEffect(() => {
-    if (!isAuthReady || !currentUser) {
-      console.log('Auth not ready for applications:', { isAuthReady, hasUser: !!currentUser });
+    if (!isAuthReady || !currentUser || isCheckingVerification || userVerificationStatus !== 'approved') {
+      console.log('Auth not ready for applications or not verified:', { 
+        isAuthReady, 
+        hasUser: !!currentUser, 
+        isCheckingVerification, 
+        verificationStatus: userVerificationStatus 
+      });
       return;
     }
 
@@ -280,7 +419,7 @@ const EmployerDashboard: React.FC = () => {
     };
 
     loadApplications();
-  }, [isAuthReady, currentUser]);
+  }, [isAuthReady, currentUser, isCheckingVerification, userVerificationStatus]);
 
   // Use real applications data only
   const enhancedApplicants: Applicant[] = applications.sort((a, b) => b.matchPercentage - a.matchPercentage);
@@ -798,6 +937,30 @@ const EmployerDashboard: React.FC = () => {
     { id: 'settings' as TabType, label: 'Settings', icon: FiSettings, badge: null }
   ];
 
+  // Show loading screen while checking verification status
+  if (isCheckingVerification) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        flexDirection: 'column',
+        gap: '20px'
+      }}>
+        <div style={{ 
+          width: '40px', 
+          height: '40px', 
+          border: '4px solid #f3f3f3', 
+          borderTop: '4px solid #3498db', 
+          borderRadius: '50%', 
+          animation: 'spin 1s linear infinite' 
+        }}></div>
+        <p>Verifying your account...</p>
+      </div>
+    );
+  }
+
   return (
     <div className={layoutStyles.dashboard}>
       {/* Sidebar */}
@@ -958,10 +1121,8 @@ const EmployerDashboard: React.FC = () => {
       <CompanyProfileModal
         isOpen={isCompanyProfileModalOpen}
         onClose={() => setIsCompanyProfileModalOpen(false)}
-        onSave={(data: CompanyProfileData) => {
-          console.log('Company profile updated:', data);
-          // Handle save company profile
-        }}
+        onSave={handleSaveCompanyProfile}
+        initialData={companyProfileData || undefined}
       />
 
       <NotificationPreferencesModal

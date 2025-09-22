@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../config/firebase';
-import { HiLockClosed, HiUserGroup, HiEye, HiShieldCheck, HiExclamationCircle } from 'react-icons/hi2';
-import { HiMail, HiEyeOff } from 'react-icons/hi';
+import { HiLockClosed, HiUserGroup, HiShieldCheck, HiExclamationCircle } from 'react-icons/hi2';
+import { HiMail, HiEye, HiEyeOff } from 'react-icons/hi';
 import adminService from '../../services/adminService';
 import './AdminAuth.css';
 

@@ -9,6 +9,7 @@ import TermsModal from '../../components/TermsModal'
 import SuccessModal from '../../components/SuccessModal'
 import VerificationModal from '../../components/VerificationModal'
 import ErrorModal from '../../components/ErrorModal'
+import VerificationPendingModal from '../../components/VerificationPendingModal'
 import { FormErrors, EmployerFormData, EmployerDocuments } from "./shared/authTypes"
 import { validateEmail, validatePassword, validateName, validateCompanyName, validateConfirmPassword } from './shared/authValidation'
 import firebaseAuthService from "../../services/firebaseAuthService"
@@ -38,6 +39,7 @@ const EmployerAuth: React.FC = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [showVerificationModal, setShowVerificationModal] = useState(false)
   const [showErrorModal, setShowErrorModal] = useState(false)
+  const [showVerificationPendingModal, setShowVerificationPendingModal] = useState(false)
   const [errorDetails, setErrorDetails] = useState<AuthErrorDetails | null>(null)
 
   const [formData, setFormData] = useState<EmployerFormData>({
@@ -94,6 +96,7 @@ const EmployerAuth: React.FC = () => {
       // For registration, we need to handle the fact that Google OAuth will create a Firebase account
       // even if the email already exists with email/password provider
       if (!isLogin) {
+        // First, get Google account info without creating backend record
         const response = await firebaseAuthService.signInWithGoogle("employer")
         
         if (response.success && response.user) {
@@ -153,12 +156,8 @@ const EmployerAuth: React.FC = () => {
             throw new Error(profileResponse.error || "Failed to create user profile")
           }
           
-          // Redirect to email verification page if not verified, otherwise to documents page
-          if (!response.user.emailVerified) {
-            navigate(`/auth/verify-email?email=${encodeURIComponent(response.user.email!)}&role=employer`)
-          } else {
-            navigate('/auth/employer/documents')
-          }
+          // Always redirect to documents page for Google signup (same as email signup flow)
+          navigate('/auth/employer/documents')
         } else {
           throw new Error(response.error || "Failed to sign up with Google")
         }
@@ -167,10 +166,14 @@ const EmployerAuth: React.FC = () => {
         const tempResponse = await firebaseAuthService.signInWithGoogle("employer")
         
         if (tempResponse.success && tempResponse.user) {
+          console.log('🔍 Google Sign-In successful, checking email conflicts for:', tempResponse.user.email)
+          
           // Check if this email has role conflicts
           const emailCheck = await apiService.checkEmailExists(tempResponse.user.email!, 'employer')
+          console.log('📧 Email check result:', emailCheck)
           
           if (emailCheck.success && emailCheck.data.exists && emailCheck.data.crossRoleConflict) {
+            console.log('❌ Role conflict detected')
             await firebaseAuthService.signOut()
             showError({
               code: 'role-mismatch',
@@ -178,6 +181,8 @@ const EmployerAuth: React.FC = () => {
             })
             return
           }
+          
+          console.log('✅ No role conflicts, proceeding with authentication')
           
           // Check if user is verified and redirect accordingly
           if (!tempResponse.user.emailVerified) {
@@ -197,9 +202,8 @@ const EmployerAuth: React.FC = () => {
               console.log('🏢 Employer account status:', accountStatus)
               
               if (accountStatus === 'pending') {
-                console.log('⏳ Account pending - redirecting to documents')
-                // Redirect to document upload for unverified employers
-                navigate('/auth/employer/documents')
+                console.log('⏳ Account pending - redirecting to verification pending')
+                navigate('/auth/verification-pending')
                 return
               } else if (accountStatus === 'rejected') {
                 console.log('❌ Account rejected')
@@ -217,16 +221,31 @@ const EmployerAuth: React.FC = () => {
                 })
                 await firebaseAuthService.signOut()
                 return
+              } else if (accountStatus === 'verified') {
+                console.log('✅ Account verified - proceeding to dashboard')
+                // Continue to dashboard redirect below
+              } else {
+                console.log('⚠️ Unknown account status:', accountStatus, '- redirecting to verification pending')
+                navigate('/auth/verification-pending')
+                return
               }
-              console.log('✅ Account verified - proceeding to dashboard')
             } else {
-              console.log('⚠️ No account status data received')
+              console.log('⚠️ No account status data received - redirecting to verification pending')
+              navigate('/auth/verification-pending')
+              return
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error('❌ Error checking account status:', error)
-            console.log('🔄 Redirecting to documents as fallback')
-            // If we can't check status, redirect to documents to be safe
-            navigate('/auth/employer/documents')
+            
+            // Check if it's a 404 error (no employer profile found)
+            if (error.response && error.response.status === 404) {
+              console.log('📋 No employer profile found - redirecting to documents upload')
+              navigate('/auth/employer/documents')
+              return
+            }
+            
+            console.log('🔄 Redirecting to verification pending as fallback')
+            navigate('/auth/verification-pending')
             return
           }
           
@@ -388,15 +407,22 @@ const EmployerAuth: React.FC = () => {
         
         // Check employer account status before allowing dashboard access
         try {
+          console.log('🔍 Checking employer account status for login...')
           const statusResponse = await apiService.get('/employers/account-status')
+          console.log('📊 Account status response:', statusResponse)
+          
           if (statusResponse.success && statusResponse.data) {
             const { accountStatus } = statusResponse.data
+            console.log('🏢 Employer account status:', accountStatus)
+            console.log('🔍 Full status response data:', statusResponse.data)
+            console.log('🔍 Status comparison - accountStatus === "verified":', accountStatus === 'verified')
             
             if (accountStatus === 'pending') {
-              // Redirect to document upload for unverified employers
-              navigate('/auth/employer/documents')
+              console.log('⏳ Account pending - redirecting to verification pending page')
+              navigate('/auth/verification-pending')
               return
             } else if (accountStatus === 'rejected') {
+              console.log('❌ Account rejected')
               showError({
                 code: 'account-rejected',
                 message: 'Your employer account has been rejected. Please contact support for assistance.'
@@ -404,18 +430,30 @@ const EmployerAuth: React.FC = () => {
               await firebaseAuthService.signOut()
               return
             } else if (accountStatus === 'suspended') {
+              console.log('🚫 Account suspended')
               showError({
                 code: 'account-suspended',
                 message: 'Your employer account has been suspended. Please contact support for assistance.'
               })
               await firebaseAuthService.signOut()
               return
+            } else if (accountStatus === 'verified') {
+              console.log('✅ Account verified - proceeding to dashboard')
+              // Continue to dashboard redirect below
+            } else {
+              console.log('⚠️ Unknown account status:', accountStatus, '- redirecting to verification pending page')
+              navigate('/auth/verification-pending')
+              return
             }
+          } else {
+            console.log('⚠️ No account status data received - redirecting to verification pending page')
+            navigate('/auth/verification-pending')
+            return
           }
         } catch (error) {
-          console.error('Error checking account status:', error)
-          // If we can't check status, redirect to documents to be safe
-          navigate('/auth/employer/documents')
+          console.error('❌ Error checking account status:', error)
+          console.log('🔄 Redirecting to verification pending page as fallback')
+          navigate('/auth/verification-pending')
           return
         }
         
@@ -434,6 +472,27 @@ const EmployerAuth: React.FC = () => {
   const handleLoginSuccessModalClose = () => {
     setShowSuccessModal(false)
     navigate("/employer/dashboard")
+  }
+
+  const handleVerificationPendingModalClose = () => {
+    setShowVerificationPendingModal(false)
+    // Reset form and redirect to employer login
+    setIsLogin(true)
+    setRegistrationStep(1)
+    setFormData({
+      email: '',
+      password: '',
+      confirmPassword: '',
+      companyName: '',
+    })
+    setEmployerDocuments({
+      companyProfile: { file: null, uploaded: false },
+      businessPermit: { file: null, uploaded: false },
+      philjobnetRegistration: { file: null, uploaded: false },
+      doleNoPendingCase: { file: null, uploaded: false },
+    })
+    // Stay on employer auth page instead of going to role selection
+    // navigate('/auth') - removed to stay on current page
   }
 
   const handleBasicRegistration = async (e: React.FormEvent) => {
@@ -555,31 +614,8 @@ const EmployerAuth: React.FC = () => {
           throw new Error(data.error || 'Document upload failed')
         }
         
-        // Show success message
-        setSuccessMessage('Registration successful! Your documents are under review. You will receive an email once your account is verified.')
-        
-        // Reset form and go back to login after delay
-        setTimeout(() => {
-          setIsLogin(true)
-          setRegistrationStep(1)
-          setSuccessMessage('')
-          // Reset form data
-          setFormData({
-            email: '',
-            password: '',
-            confirmPassword: '',
-            companyName: '',
-          })
-          setEmployerDocuments({
-            companyProfile: { file: null, uploaded: false },
-            businessPermit: { file: null, uploaded: false },
-            philjobnetRegistration: { file: null, uploaded: false },
-            doleNoPendingCase: { file: null, uploaded: false },
-          })
-          
-          // Redirect to login page
-          navigate('/auth')
-        }, 3000)
+        // Show verification pending modal instead of success message
+        setShowVerificationPendingModal(true)
       } catch (error) {
         console.error('Document upload error:', error)
         setErrors({
@@ -1168,6 +1204,12 @@ const EmployerAuth: React.FC = () => {
         }}
         type="privacy"
         userRole="employer"
+      />
+
+      <VerificationPendingModal
+        isOpen={showVerificationPendingModal}
+        onClose={handleVerificationPendingModalClose}
+        companyName={formData.companyName}
       />
     </div>
   )

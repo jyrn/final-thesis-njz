@@ -1,6 +1,21 @@
 import React from 'react';
 import JobCard from './JobCard';
-import { Job, FilterIcon } from '../Dashboard';
+import { FiFilter as FilterIcon } from 'react-icons/fi';
+
+interface Job {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  salary: string;
+  type: string;
+  description: string;
+  requirements: string[];
+  responsibilities: string[];
+  posted: string;
+  saved?: boolean;
+  matchPercentage?: number;
+}
 import styles from '../Dashboard.enhanced.module.css';
 
 type DashboardContentProps = {

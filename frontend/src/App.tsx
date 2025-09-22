@@ -4,6 +4,7 @@ import RoleSelectionPage from './pages/auth/RoleSelectionPage';
 import EmployerAuth from './pages/auth/EmployerAuth';
 import JobseekerAuth from './pages/auth/JobseekerAuth';
 import EmployerDocuments from './pages/auth/EmployerDocuments';
+import VerificationPending from './pages/auth/VerificationPending';
 import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import EmailVerificationPage from './pages/auth/EmailVerificationPage';
@@ -22,6 +23,7 @@ function App() {
         <Route path="/auth" element={<RoleSelectionPage />} />
         <Route path="/auth/employer" element={<EmployerAuth />} />
         <Route path="/auth/employer/documents" element={<EmployerDocuments />} />
+        <Route path="/auth/verification-pending" element={<VerificationPending />} />
         <Route path="/auth/jobseeker" element={<JobseekerAuth />} />
         <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/auth/reset-password" element={<ResetPasswordPage />} />

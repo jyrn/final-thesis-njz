@@ -198,26 +198,15 @@ const firebaseAuthService = {
     }
   },
 
-  // Sign in with Google
+  // Sign in with Google (without auto-creating backend user)
   async signInWithGoogle(role: 'jobseeker' | 'employer'): Promise<AuthResponse> {
     try {
       const provider = new GoogleAuthProvider();
       const userCredential = await signInWithPopup(auth, provider);
       const { user } = userCredential;
       
-      const existingUser = await checkUserExists(user.uid);
-      
-      if (!existingUser) {
-        await saveUserToDatabase({
-          uid: user.uid,
-          email: user.email || '',
-          role,
-          emailVerified: user.emailVerified,
-          firstName: user.displayName?.split(' ')[0] || '',
-          lastName: user.displayName?.split(' ').slice(-1)[0] || '',
-          companyName: role === 'employer' ? user.displayName || '' : undefined
-        });
-      }
+      // Don't automatically create backend user - let the frontend handle this
+      // This prevents the race condition where backend creates user before frontend checks
       
       return {
         success: true,

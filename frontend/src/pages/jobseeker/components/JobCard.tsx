@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookmarkIcon, LocationIcon, SalaryIcon, ClockIcon } from '../Dashboard';
+import { FiBookmark as BookmarkIcon, FiMapPin as LocationIcon, FiDollarSign as SalaryIcon, FiClock as ClockIcon } from 'react-icons/fi';
 import styles from '../Dashboard.module.css';
 
 type JobCardProps = {
